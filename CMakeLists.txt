@@ -214,6 +214,10 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR}
   tests/*.h tests/*.cpp
   tools/*.h tools/*.cpp)
 
+if (NOT IBVerbs_FOUND)
+  list(FILTER SOURCES EXCLUDE REGEX ".*ofed.*")
+endif (NOT IBVerbs_FOUND)
+
 foreach (SOURCE ${SOURCES})
   string(REGEX REPLACE "[/.]" "_" TARGET ${SOURCE})
   string(TOLOWER ${TARGET} TARGET)
