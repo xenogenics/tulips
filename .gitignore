@@ -3,6 +3,7 @@
 *.pcap
 *.swp
 *build*
+.cache
 .idea
 .nfs*
 index.html

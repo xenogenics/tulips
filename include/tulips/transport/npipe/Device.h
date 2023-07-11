@@ -77,8 +77,8 @@ protected:
 
   inline bool write(const uint32_t len, uint8_t* const buf)
   {
-    int ret = 0;
-    for (uint32_t s = 0; s < len; s += ret) {
+    ssize_t ret = 0;
+    for (uint32_t s = 0; s < len; s += (uint32_t)ret) {
       ret = ::write(write_fd, buf + s, len - s);
       if (ret < 0) {
         return false;

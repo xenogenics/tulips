@@ -40,7 +40,8 @@ namespace tulips { namespace system { namespace utils {
 
 #ifdef TULIPS_DEBUG
 #define LOG(__hdr, __msg)                                                      \
-  std::cout << "[ " << std::setw(8) << __hdr << " ] " << __msg << std::endl
+  std::cout << "[ " << std::setw(8) << /* NOLINT */ __hdr << " ] "             \
+            << /* NOLINT */ __msg << std::endl
 #else
 #define LOG(__hdr, __msg) ((void)0)
 #endif

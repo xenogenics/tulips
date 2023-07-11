@@ -947,7 +947,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
 }
 
 Status
-Processor::reset(const uint16_t UNUSED len, const uint8_t* const data)
+Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
 {
   /*
    * Update IP and Ethernet attributes

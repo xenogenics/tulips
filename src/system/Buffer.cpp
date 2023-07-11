@@ -48,7 +48,7 @@ bool
 Buffer::append(const uint32_t len, const uint8_t* const data)
 {
   /*
-   * Abort if the buffer if there is not enought place left.
+   * Abort if there is not enough place left in the buffer.
    */
   if (m_fill + len > m_size) {
     return false;
@@ -61,6 +61,6 @@ Buffer::append(const uint32_t len, const uint8_t* const data)
   return true;
 }
 
-Buffer::Buffer(const uint32_t size) : m_size(size), m_fill(0), m_data() {}
+Buffer::Buffer(const uint32_t size) : m_size(size), m_fill(0) {}
 
 }}

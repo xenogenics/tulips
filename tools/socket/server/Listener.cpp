@@ -56,7 +56,7 @@ namespace listener {
  * Listener class.
  */
 
-constexpr size_t BUFFER_SIZE = (1024 * 1024);
+constexpr size_t BUFFER_SIZE = (1024UL * 1024);
 
 class Listener
 {
@@ -231,7 +231,7 @@ private:
        */
       for (i = CLIENT_FD_IDX; i < CLIENT_FD_IDX + m_clients.size(); i += 1) {
         if (fds[i].revents & POLLIN) {
-          res = read(fds[i].fd, m_buffer, BUFFER_SIZE);
+          ssize_t res = read(fds[i].fd, m_buffer, BUFFER_SIZE);
           if (res <= 0) {
             ::close(fds[i].fd);
             m_clients.erase(fds[i].fd);
@@ -659,7 +659,7 @@ public:
 private:
   static void printThroughput(const uint64_t value)
   {
-    double bps = value << 3;
+    double bps = (double)(value << 3);
     std::ostringstream oss;
     oss << std::setprecision(3);
     /*

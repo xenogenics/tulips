@@ -272,7 +272,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
 }
 
 Status
-Processor::send(ipv4::Address const& UNUSED dst, const uint32_t len,
+Processor::send(UNUSED ipv4::Address const& dst, const uint32_t len,
                 const uint16_t mss, uint8_t* const outdata)
 {
   /*

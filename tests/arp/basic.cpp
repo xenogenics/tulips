@@ -48,7 +48,7 @@ public:
 
   Status run() override { return Status::Ok; }
 
-  Status process(const uint16_t UNUSED len, const uint8_t* const data) override
+  Status process(UNUSED const uint16_t len, const uint8_t* const data) override
   {
     m_data = *(uint64_t*)data;
     return Status::Ok;
@@ -67,7 +67,7 @@ public:
 
   Status run() override { return Status::Ok; }
 
-  Status process(const uint16_t UNUSED len, const uint8_t* const data) override
+  Status process(UNUSED const uint16_t len, const uint8_t* const data) override
   {
     m_data = *(uint64_t*)data;
     m_ipv4to->setProtocol(ipv4::PROTO_TEST);

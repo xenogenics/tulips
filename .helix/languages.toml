@@ -1,0 +1,10 @@
+[[language]]
+name = "cpp"
+rulers = [80]
+text-width = 80
+
+[[language]]
+name = "make"
+indent = { tab-width = 2, unit = "\t" }
+rulers = [80]
+text-width = 80

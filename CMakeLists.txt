@@ -25,8 +25,8 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # 
 
-project("TULIPS" C CXX)
 cmake_minimum_required(VERSION 3.3)
+project("TULIPS" C CXX)
 
 #
 # Policies
@@ -47,9 +47,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Dependencies
 #
 
-find_package(PCAP REQUIRED)
-find_package(TCLAP REQUIRED)
-find_package(OpenSSL REQUIRED)
+find_package(PCAP 1.10 REQUIRED)
+find_package(TCLAP 1.1 REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED)
 find_package(IBVerbs)
 find_package(ClangFormat)
 find_package(ClangTidy)
@@ -213,6 +213,28 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR}
   src/*.h src/*.cpp
   tests/*.h tests/*.cpp
   tools/*.h tools/*.cpp)
+
+if (APPLE)
+  list(FILTER SOURCES EXCLUDE REGEX ".*linux.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*openbsd.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
+endif (APPLE)
+
+if (BSD)
+  list(FILTER SOURCES EXCLUDE REGEX ".*darwin.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*linux.*")
+endif (BSD)
+
+if (LINUX)
+  list(FILTER SOURCES EXCLUDE REGEX ".*darwin.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*openbsd.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
+endif (LINUX)
+
+if (NOT IBVerbs_FOUND)
+  list(FILTER SOURCES EXCLUDE REGEX ".*ofed.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*uspace.*")
+endif (NOT IBVerbs_FOUND)
 
 foreach (SOURCE ${SOURCES})
   string(REGEX REPLACE "[/.]" "_" TARGET ${SOURCE})

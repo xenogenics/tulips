@@ -332,7 +332,7 @@ Client::get(const ID id, stack::ipv4::Address& ripaddr,
 }
 
 system::Clock::Value
-Client::averageLatency(const ID UNUSED id)
+Client::averageLatency(UNUSED const ID id)
 {
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   /*

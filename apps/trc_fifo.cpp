@@ -42,7 +42,7 @@ using namespace stack;
  * Client state
  */
 
-static int interval = 0;
+static size_t interval = 0;
 static size_t count = 0;
 static size_t sends = 0;
 static size_t retries = 0;
@@ -95,8 +95,8 @@ alarm_handler(UNUSED int signal)
   static double cpns = CLOCK_SECOND / 1e9;
   size_t cur = count, delta = cur - last;
   last = cur;
-  double hits = sends / (float)retries * 100.0;
-  double avgns = (double)cumul / cpns / delta;
+  double hits = (double)sends / (double)retries * 100.0;
+  double avgns = (double)cumul / cpns / (double)delta;
   cumul = 0;
   alarm(interval);
   printf("%ld half round-trips per seconds, hits = %.2f, avg = %.4lf\n",

@@ -4,9 +4,9 @@ used interchangeably with the non-secure classes.
 
 # Overview
 
-The `SecureClient` and `SecureServer` classes support `SSLv3`, `TLSv1`,
-`TLSv1.1` and `TLSv1.2` encryption methods. The cipher list is limited to the
-most secure flavors of `AES`.
+The `SecureClient` and `SecureServer` classes support `SSLv3` and `TLS`
+encryption methods. The cipher list is limited to the most secure flavors of
+`AES`.
 
 # Implementation details
 

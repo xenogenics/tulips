@@ -34,9 +34,7 @@ namespace tulips { namespace ssl {
 enum class Protocol
 {
   SSLv3,
-  TLSv1,
-  TLSv1_1,
-  TLSv1_2
+  TLS,
 };
 
 std::string toString(const Protocol type);

@@ -38,12 +38,12 @@
 #define SSL_VERBOSE 1
 
 #if SSL_VERBOSE
-#define SSL_LOG(__args) LOG("SSL", __args)
+#define SSL_LOG(__args) LOG("SSL", __args) // NOLINT
 #else
 #define SSL_LOG(...)
 #endif
 
-#define AS_SSL(__c) reinterpret_cast<SSL_CTX*>(__c)
+#define AS_SSL(__c) (reinterpret_cast<SSL_CTX*>(__c))
 
 namespace tulips { namespace ssl {
 
@@ -102,7 +102,7 @@ struct Context
     if (rlen > alen) {
       rlen = alen;
     }
-    SSL_write(ssl, out, rlen);
+    SSL_write(ssl, out, (int)rlen);
     return flush(alen, sdata, slen);
   }
 
@@ -116,7 +116,7 @@ struct Context
     /*
      * Write the data in the input BIO.
      */
-    BIO_write(bin, data, len);
+    BIO_write(bin, data, (int)len);
     /*
      * Only accept Ready state.
      */
@@ -132,7 +132,7 @@ struct Context
      * Process the internal buffer as long as there is data available.
      */
     do {
-      ret = SSL_read(ssl, in, len);
+      ret = SSL_read(ssl, in, (int)len);
       /*
        * Handle partial data.
        */
@@ -182,7 +182,7 @@ struct Context
     /*
      * Write the data in the input BIO.
      */
-    BIO_write(bin, data, len);
+    BIO_write(bin, data, (int)len);
     /*
      * Check the connection's state.
      */
@@ -217,9 +217,7 @@ struct Context
           }
         }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if !__GNUC_PREREQ(5, 0)
         break;
-#endif
 #endif
       }
       /*
@@ -257,7 +255,7 @@ struct Context
          * Process the internal buffer as long as there is data available.
          */
         do {
-          ret = SSL_read(ssl, in, len);
+          ret = SSL_read(ssl, in, (int)len);
           /*
            * Handle partial data.
            */
@@ -299,7 +297,7 @@ struct Context
             rlen = alen - acc;
           }
           acc += rlen;
-          SSL_write(ssl, out, rlen);
+          SSL_write(ssl, out, (int)rlen);
         } while (ret > 0);
         /*
          * Flush the output.
@@ -317,9 +315,7 @@ struct Context
       }
     }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if !__GNUC_PREREQ(5, 0)
     return Action::Continue;
-#endif
 #endif
   }
 

@@ -52,9 +52,9 @@ public:
 
   stack::ipv4::Address const& netmask() const { return m_nm; }
 
-  Status listen(const uint16_t port) { return Status::Ok; }
+  Status listen(UNUSED const uint16_t port) { return Status::Ok; }
 
-  void unlisten(const uint16_t port) {}
+  void unlisten(UNUSED const uint16_t port) {}
 
   Status prepare(uint8_t*& buf);
   Status commit(const uint32_t len, uint8_t* const buf, const uint16_t mss = 0);

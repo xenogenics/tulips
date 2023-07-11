@@ -87,7 +87,7 @@ getGateway(std::string const& dev, tulips::stack::ipv4::Address& gw)
       {
         std::array<uint8_t, 4> b;
         uint32_t a;
-      } __attribute__((packed));
+      };
       std::istringstream(parts[2]) >> std::hex >> a;
       gw = tulips::stack::ipv4::Address(b[0], b[1], b[2], b[3]);
       route.close();

@@ -52,8 +52,8 @@
 namespace {
 
 bool
-getDefaultRoute(tulips::stack::ipv4::Address const& UNUSED ip,
-                tulips::stack::ipv4::Address& UNUSED dr)
+getDefaultRoute(UNUSED tulips::stack::ipv4::Address const& ip,
+                UNUSED tulips::stack::ipv4::Address& dr)
 {
   return false;
 }
@@ -113,8 +113,8 @@ getInterfaceInformation(std::string const& ifn,
 
 bool
 getInterfaceInformation(std::string const& ifn,
-                        stack::ethernet::Address& UNUSED hwaddr,
-                        uint32_t& UNUSED mtu, stack::ipv4::Address& ipaddr,
+                        UNUSED stack::ethernet::Address& hwaddr,
+                        UNUSED uint32_t& mtu, stack::ipv4::Address& ipaddr,
                         stack::ipv4::Address& draddr,
                         stack::ipv4::Address& ntmask)
 {

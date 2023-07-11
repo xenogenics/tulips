@@ -62,8 +62,8 @@ writePacket(pcap_dumper_t* const dumper, const void* const data,
 #else
     system::Clock::Value nscs = delta - secs * cps;
     nscs = nscs * 1000000000ULL / cps;
-    hdr.ts.tv_sec = secs;
-    hdr.ts.tv_usec = nscs;
+    hdr.ts.tv_sec = (time_t)secs;
+    hdr.ts.tv_usec = (time_t)nscs;
 #endif
   }
   hdr.caplen = len;
@@ -88,7 +88,7 @@ Device::Device(transport::Device& device, std::string const& fn)
 #ifdef __OpenBSD__
   m_pcap = pcap_open_dead(DLT_EN10MB, snaplen);
 #else
-  m_pcap = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, snaplen,
+  m_pcap = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, (int)snaplen,
                                                 PCAP_TSTAMP_PRECISION_NANO);
 #endif
   m_pcap_dumper = pcap_dump_open(m_pcap, fn.c_str());
