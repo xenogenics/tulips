@@ -25,8 +25,8 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # 
 
-project("TULIPS" C CXX)
 cmake_minimum_required(VERSION 3.3)
+project("TULIPS" C CXX)
 
 #
 # Policies
