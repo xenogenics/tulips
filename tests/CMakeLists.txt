@@ -36,7 +36,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBS
 endif ()
 
 add_executable(tulips_tests ${SOURCES})
-add_test(gtest tulips_tests)
+gtest_discover_tests(tulips_tests)
 
 target_link_libraries(tulips_tests
   PRIVATE
