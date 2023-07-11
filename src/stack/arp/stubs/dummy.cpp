@@ -32,9 +32,9 @@
 namespace tulips { namespace stack { namespace arp { namespace stub {
 
 bool
-lookup(std::string const& UNUSED eth,
-       tulips::stack::ipv4::Address const& UNUSED ip,
-       tulips::stack::ethernet::Address& UNUSED hw)
+lookup(UNUSED std::string const& eth,
+       UNUSED tulips::stack::ipv4::Address const& ip,
+       UNUSED tulips::stack::ethernet::Address& hw)
 {
   return false;
 }

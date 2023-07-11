@@ -85,7 +85,7 @@ Processor::run()
 }
 
 Status
-Processor::process(const uint16_t UNUSED len, const uint8_t* const data)
+Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
 {
   Status ret;
   /*

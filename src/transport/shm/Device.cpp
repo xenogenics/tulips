@@ -151,7 +151,7 @@ Device::prepare(uint8_t*& buf)
 
 Status
 Device::commit(const uint32_t len, uint8_t* const buf,
-               const uint16_t UNUSED mss)
+               UNUSED const uint16_t mss)
 {
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
   SHM_LOG("committing packet: " << len << "B, " << packet);

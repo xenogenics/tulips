@@ -85,7 +85,7 @@ public:
 
   Status run() override { return Status::Ok; }
 
-  Status process(const uint16_t UNUSED len, const uint8_t* const data) override
+  Status process(UNUSED const uint16_t len, const uint8_t* const data) override
   {
     m_value = *(size_t*)data;
     uint8_t* outdata;
