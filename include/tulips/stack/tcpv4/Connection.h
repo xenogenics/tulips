@@ -156,7 +156,7 @@ private:
 
   inline void updateRttEstimation()
   {
-    uint8_t m = m_rto - m_timer;
+    int8_t m = (int8_t)m_rto - (int8_t)m_timer;
     /*
      * This is taken directly from VJs original code in his paper
      */
