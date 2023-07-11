@@ -48,20 +48,8 @@ getMethod(const Protocol type, const bool server, long& flags)
               SSL_OP_NO_TLSv1_2;
       break;
     }
-    case Protocol::TLSv1: {
-      method = server ? TLSv1_server_method() : TLSv1_client_method();
-      flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1_1 |
-              SSL_OP_NO_TLSv1_2;
-      break;
-    }
-    case Protocol::TLSv1_1: {
-      method = server ? TLSv1_1_server_method() : TLSv1_1_client_method();
-      flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 |
-              SSL_OP_NO_TLSv1_2;
-      break;
-    }
-    case Protocol::TLSv1_2: {
-      method = server ? TLSv1_2_server_method() : TLSv1_2_client_method();
+    case Protocol::TLS: {
+      method = server ? TLS_server_method() : TLS_client_method();
       flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 |
               SSL_OP_NO_TLSv1_1;
       break;

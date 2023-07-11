@@ -69,9 +69,7 @@ toString(const Status s)
       return "UnsupportedOperation";
   }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if !__GNUC_PREREQ(5, 0)
   return "";
-#endif
 #endif
 }
 

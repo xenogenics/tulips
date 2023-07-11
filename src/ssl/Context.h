@@ -217,9 +217,7 @@ struct Context
           }
         }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if !__GNUC_PREREQ(5, 0)
         break;
-#endif
 #endif
       }
       /*
@@ -317,9 +315,7 @@ struct Context
       }
     }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if !__GNUC_PREREQ(5, 0)
     return Action::Continue;
-#endif
 #endif
   }
 

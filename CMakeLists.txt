@@ -47,9 +47,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Dependencies
 #
 
-find_package(PCAP REQUIRED)
-find_package(TCLAP REQUIRED)
-find_package(OpenSSL REQUIRED)
+find_package(PCAP 1.10 REQUIRED)
+find_package(TCLAP 1.1 REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED)
 find_package(IBVerbs)
 find_package(ClangFormat)
 find_package(ClangTidy)

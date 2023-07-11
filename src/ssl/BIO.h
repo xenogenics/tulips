@@ -31,7 +31,6 @@
 
 namespace tulips { namespace ssl { namespace bio {
 
-BIO_METHOD* method();
 BIO* allocate(const size_t size);
 
 const uint8_t* readAt(BIO* h);

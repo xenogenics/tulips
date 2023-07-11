@@ -35,17 +35,11 @@ toString(const Protocol type)
   switch (type) {
     case Protocol::SSLv3:
       return "SSLv3";
-    case Protocol::TLSv1:
-      return "TLSv1";
-    case Protocol::TLSv1_1:
-      return "TLSv1.1";
-    case Protocol::TLSv1_2:
-      return "TLSv1.2";
+    case Protocol::TLS:
+      return "TLS";
   }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
-#if !__GNUC_PREREQ(5, 0)
   return "";
-#endif
 #endif
 }
 

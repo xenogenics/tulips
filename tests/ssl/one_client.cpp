@@ -168,14 +168,12 @@ protected:
      * Create the client.
      */
     m_client = new ssl::Client(m_client_delegate, *m_client_pcap, 1,
-                               tulips::ssl::Protocol::TLSv1_2, certFile,
-                               keyFile);
+                               tulips::ssl::Protocol::TLS, certFile, keyFile);
     /*
      * Create the server.
      */
     m_server = new ssl::Server(m_server_delegate, *m_server_pcap, 1,
-                               tulips::ssl::Protocol::TLSv1_2, certFile,
-                               keyFile);
+                               tulips::ssl::Protocol::TLS, certFile, keyFile);
   }
 
   void TearDown() override

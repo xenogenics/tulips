@@ -58,7 +58,6 @@ Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
   SSL_library_init();
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
-  ERR_load_BIO_strings();
   ERR_load_crypto_strings();
   /*
    * Create the SSL context.
@@ -293,7 +292,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
    * Write the data. With BIO mem, the write will always succeed.
    */
   off = 0;
-  off += SSL_write(c.ssl, data, len);
+  off += SSL_write(c.ssl, data, (int)len);
   /*
    * Flush the data.
    */

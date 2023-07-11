@@ -136,7 +136,7 @@ run(Options const& options, transport::Device& base_device)
   interface::Client* client = nullptr;
   if (options.withSSL()) {
     client = new tulips::ssl::Client(delegate, *device, 1,
-                                     tulips::ssl::Protocol::TLSv1_2,
+                                     tulips::ssl::Protocol::TLS,
                                      options.sslCert(), options.sslKey());
   } else {
     client = new tulips::Client(delegate, *device, 1);
@@ -178,6 +178,7 @@ run(Options const& options, transport::Device& base_device)
         }
         case Status::NoDataAvailable: {
           client->run();
+          break;
         }
         default: {
           std::cout << "Unknown error, aborting" << std::endl;
@@ -405,7 +406,7 @@ run(Options const& options, transport::Device& base_device)
   interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(delegate, *device, options.connections(),
-                                     tulips::ssl::Protocol::TLSv1_2,
+                                     tulips::ssl::Protocol::TLS,
                                      options.sslCert(), options.sslKey());
   } else {
     server = new tulips::Server(delegate, *device, options.connections());

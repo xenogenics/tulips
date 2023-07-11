@@ -114,7 +114,7 @@ main(int argc, char** argv)
    * Initialize the client.
    */
   defaults::ClientDelegate client_delegate;
-  ssl::Client client(client_delegate, cdev, 1, ssl::Protocol::TLSv1_2,
+  ssl::Client client(client_delegate, cdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   /*
    * Open a connection.
@@ -125,7 +125,7 @@ main(int argc, char** argv)
    * Initialize the server
    */
   ServerDelegate server_delegate;
-  ssl::Server server(server_delegate, sdev, 1, ssl::Protocol::TLSv1_2,
+  ssl::Server server(server_delegate, sdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   server.listen(1234, nullptr);
   /*
