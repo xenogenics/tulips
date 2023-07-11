@@ -67,7 +67,7 @@ struct Header
 } __attribute__((packed));
 
 #define HEADER_LEN_WITH_OPTS(__HDR)                                            \
-  (((tulips::stack::tcpv4::Header*)__HDR)->offset << 2)
+  (((tulips::stack::tcpv4::Header*)(__HDR))->offset << 2)
 
 static constexpr size_t USED HEADER_LEN = sizeof(Header);
 static constexpr uint8_t USED RTO = 3;

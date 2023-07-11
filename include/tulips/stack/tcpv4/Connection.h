@@ -43,10 +43,10 @@ namespace tulips { namespace stack { namespace tcpv4 {
  * need at least 3 bits for NRTX to SEGM_B cannot be more that 5.
  */
 #define SEGM_B 4
-#define NRTX_B 9 - SEGM_B
+#define NRTX_B (9 - SEGM_B)
 
-#define HAS_NODELAY(__e) (__e.m_opts & Connection::NO_DELAY)
-#define HAS_DELAYED_ACK(__e) (__e.m_opts & Connection::DELAYED_ACK)
+#define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
+#define HAS_DELAYED_ACK(__e) ((__e).m_opts & Connection::DELAYED_ACK)
 
 class Connection
 {
@@ -156,7 +156,7 @@ private:
 
   inline void updateRttEstimation()
   {
-    int8_t m = m_rto - m_timer;
+    uint8_t m = m_rto - m_timer;
     /*
      * This is taken directly from VJs original code in his paper
      */

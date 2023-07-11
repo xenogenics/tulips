@@ -47,10 +47,10 @@ public:
 
   Mutex() : m_lock() { pthread_mutex_init(&m_lock, nullptr); }
 
-  ~Condition() { pthread_init_destroy(&m_lock); }
+  ~Mutex() { pthread_mutex_destroy(&m_lock); }
 
 private:
-  pthread_mutex_t m_cond;
+  pthread_mutex_t m_lock;
 };
 
 }}

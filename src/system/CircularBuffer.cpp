@@ -67,7 +67,7 @@ CircularBuffer::CircularBuffer(const size_t size)
   /*
    * Truncate the file.
    */
-  if (ftruncate(fd, size) < 0) {
+  if (ftruncate(fd, (off_t)size) < 0) {
     throw std::runtime_error("cannot truncate temporary file");
   }
   /*

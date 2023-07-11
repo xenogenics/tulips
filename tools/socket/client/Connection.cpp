@@ -308,7 +308,7 @@ public:
      * Read data.
      */
     uint8_t buffer[len];
-    int res = read(sock, buffer, len);
+    ssize_t res = read(sock, buffer, len);
     if (res <= 0) {
       std::cout << strerror(errno) << std::endl;
     }
@@ -370,7 +370,7 @@ public:
     std::string data;
     std::vector<std::string> rest(args.begin() + 2, args.end());
     system::utils::join(rest, ' ', data);
-    int res = write(sock, data.c_str(), data.length());
+    ssize_t res = write(sock, data.c_str(), data.length());
     if (res <= 0) {
       std::cout << strerror(errno) << std::endl;
     }

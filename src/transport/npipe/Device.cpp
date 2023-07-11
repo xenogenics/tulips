@@ -111,7 +111,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 Status
 Device::poll(Processor& proc)
 {
-  int ret = 0;
+  ssize_t ret = 0;
   uint32_t len = 0;
   /*
    * Read length first.

@@ -33,18 +33,20 @@
 namespace tulips { namespace transport { namespace utils {
 
 bool
-getInterfaceInformation(std::string const& ifn,
-                        stack::ethernet::Address& hwaddr, uint32_t& mtu)
+getInterfaceInformation(UNUSED std::string const& ifn,
+                        UNUSED stack::ethernet::Address& hwaddr,
+                        UNUSED uint32_t& mtu)
 {
   return false;
 }
 
 bool
-getInterfaceInformation(std::string const& ifn,
-                        stack::ethernet::Address& hwaddr, uint32_t& mtu,
-                        stack::ipv4::Address& ipaddr,
-                        stack::ipv4::Address& draddr,
-                        stack::ipv4::Address& ntmask)
+getInterfaceInformation(UNUSED std::string const& ifn,
+                        UNUSED stack::ethernet::Address& hwaddr,
+                        UNUSED uint32_t& mtu,
+                        UNUSED stack::ipv4::Address& ipaddr,
+                        UNUSED stack::ipv4::Address& draddr,
+                        UNUSED stack::ipv4::Address& ntmask)
 {
   return false;
 }

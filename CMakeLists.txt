@@ -214,8 +214,26 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR}
   tests/*.h tests/*.cpp
   tools/*.h tools/*.cpp)
 
+if (APPLE)
+  list(FILTER SOURCES EXCLUDE REGEX ".*linux.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*openbsd.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
+endif (APPLE)
+
+if (BSD)
+  list(FILTER SOURCES EXCLUDE REGEX ".*darwin.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*linux.*")
+endif (BSD)
+
+if (LINUX)
+  list(FILTER SOURCES EXCLUDE REGEX ".*darwin.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*openbsd.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
+endif (LINUX)
+
 if (NOT IBVerbs_FOUND)
   list(FILTER SOURCES EXCLUDE REGEX ".*ofed.*")
+  list(FILTER SOURCES EXCLUDE REGEX ".*uspace.*")
 endif (NOT IBVerbs_FOUND)
 
 foreach (SOURCE ${SOURCES})

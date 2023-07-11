@@ -34,6 +34,7 @@ extern "C" {
 #endif
 
 #include <tulips/fifo/errors.h>
+#include <tulips/system/Compiler.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -48,7 +49,7 @@ typedef struct __tulips_fifo
   volatile uint64_t write_count;
   volatile uint64_t read_count;
   uint8_t data[];
-} * restrict tulips_fifo_t;
+}* restrict tulips_fifo_t;
 
 /**
  * Inline methods
@@ -110,7 +111,7 @@ tulips_fifo_must_commit(tulips_fifo_t const fifo)
   return TULIPS_FIFO_NO;
 }
 
-static inline tulips_fifo_error_t
+USED static inline tulips_fifo_error_t
 tulips_fifo_front(tulips_fifo_t const fifo, void** const data)
 {
 #ifdef TULIPS_FIFO_RUNTIME_CHECKS
@@ -126,7 +127,7 @@ tulips_fifo_front(tulips_fifo_t const fifo, void** const data)
   return TULIPS_FIFO_OK;
 }
 
-static inline tulips_fifo_error_t
+USED static inline tulips_fifo_error_t
 tulips_fifo_push(tulips_fifo_t const fifo, const void* restrict const data)
 {
 #ifdef TULIPS_FIFO_RUNTIME_CHECKS
@@ -144,7 +145,7 @@ tulips_fifo_push(tulips_fifo_t const fifo, const void* restrict const data)
   return TULIPS_FIFO_OK;
 }
 
-static inline tulips_fifo_error_t
+USED static inline tulips_fifo_error_t
 tulips_fifo_pop(tulips_fifo_t const fifo)
 {
 #ifdef TULIPS_FIFO_RUNTIME_CHECKS
@@ -159,7 +160,7 @@ tulips_fifo_pop(tulips_fifo_t const fifo)
   return TULIPS_FIFO_OK;
 }
 
-static inline tulips_fifo_error_t
+USED static inline tulips_fifo_error_t
 tulips_fifo_prepare(tulips_fifo_t const fifo, void** const data)
 {
 #ifdef TULIPS_FIFO_RUNTIME_CHECKS
@@ -176,7 +177,7 @@ tulips_fifo_prepare(tulips_fifo_t const fifo, void** const data)
   return TULIPS_FIFO_OK;
 }
 
-static inline tulips_fifo_error_t
+USED static inline tulips_fifo_error_t
 tulips_fifo_commit(tulips_fifo_t const fifo)
 {
 #ifdef TULIPS_FIFO_RUNTIME_CHECKS

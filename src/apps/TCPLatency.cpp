@@ -242,7 +242,7 @@ run(Options const& options, transport::Device& base_device)
             oss << delta;
             options.noDelay() ? oss << " round-trips/s" : oss << " sends/s";
             oss << ", hits: " << hits << "%, latency: ";
-            double lat = client->averageLatency(id);
+            double lat = (double)client->averageLatency(id);
             if (lat > 1e9L) {
               oss << (lat / 1e9L) << " s";
             } else if (lat > 1e6L) {
@@ -362,7 +362,7 @@ public:
     static uint64_t prev = 0;
     uint64_t delta = m_bytes - prev;
     prev = m_bytes;
-    return (double)(delta << 3) / sec;
+    return (double)(delta << 3) / (double)sec;
   }
 
 private:

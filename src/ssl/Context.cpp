@@ -173,7 +173,7 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
    * Send the response.
    */
   size_t rlen = len > alen ? alen : len;
-  BIO_read(bout, sdata, rlen);
+  BIO_read(bout, sdata, (int)rlen);
   slen = rlen;
   return Action::Continue;
 }
