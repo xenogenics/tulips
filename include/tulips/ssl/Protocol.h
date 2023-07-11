@@ -29,7 +29,7 @@
 
 #include <string>
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 enum class Protocol
 {
@@ -39,4 +39,4 @@ enum class Protocol
 
 std::string toString(const Protocol type);
 
-}}
+}

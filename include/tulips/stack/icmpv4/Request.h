@@ -33,7 +33,7 @@
 #include <tulips/stack/arp/Processor.h>
 #include <cstdint>
 
-namespace tulips { namespace stack { namespace icmpv4 {
+namespace tulips::stack::icmpv4 {
 
 class Request
 {
@@ -63,4 +63,4 @@ private:
   friend class Processor;
 };
 
-}}}
+}

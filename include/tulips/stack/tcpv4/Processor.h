@@ -55,7 +55,7 @@
 #define TCP_CWR 0x80
 #define TCP_CTL 0x3f
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 /*
  * Protocol constants.
@@ -229,4 +229,4 @@ private:
   system::Timer m_timer;
 };
 
-}}}
+}

@@ -43,7 +43,7 @@
 
 #define INIP ((const Header*)data)
 
-namespace tulips { namespace stack { namespace ipv4 {
+namespace tulips::stack::ipv4 {
 
 Processor::Processor(Address const& ha)
   : m_hostAddress(ha)
@@ -187,4 +187,4 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   return ret;
 }
 
-}}}
+}

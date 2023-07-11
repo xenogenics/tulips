@@ -30,7 +30,7 @@
 #include <tclap/CmdLine.h>
 #include <cstdint>
 
-namespace tulips { namespace apps {
+namespace tulips::apps {
 
 class Options
 {
@@ -85,4 +85,4 @@ private:
   TCLAP::ValueArg<long> cpu;
 };
 
-}}
+}

@@ -29,7 +29,7 @@
 
 #include <pthread.h>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 class Mutex
 {
@@ -53,4 +53,4 @@ private:
   pthread_mutex_t m_lock;
 };
 
-}}
+}

@@ -32,7 +32,7 @@
 #include <set>
 #include <string>
 
-namespace tulips { namespace tools { namespace uspace { namespace client {
+namespace tulips::tools::uspace::client {
 
 using IDs = std::set<Client::ID>;
 
@@ -45,4 +45,4 @@ struct State : public utils::State
   IDs ids;
 };
 
-}}}}
+}

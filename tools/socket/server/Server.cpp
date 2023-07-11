@@ -64,7 +64,7 @@ completion(const char* buf, linenoiseCompletions* lc, void* cookie)
 {
   std::string e(buf);
   auto* state = reinterpret_cast<utils::State*>(cookie);
-  utils::Commands::const_iterator it = state->commands.lower_bound(e);
+  auto it = state->commands.lower_bound(e);
   while (it != state->commands.end() && it->first.length() >= e.length() &&
          it->first.substr(0, e.length()) == e) {
     linenoiseAddCompletion(lc, it->first.c_str());

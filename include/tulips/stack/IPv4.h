@@ -31,7 +31,7 @@
 #include <cstdint>
 #include <string>
 
-namespace tulips { namespace stack { namespace ipv4 {
+namespace tulips::stack::ipv4 {
 
 /*
  * The IPv4 address.
@@ -112,4 +112,4 @@ static constexpr uint8_t USED PROTO_TEST = 254;
 uint16_t checksum(const uint8_t* const data);
 #endif
 
-}}}
+}

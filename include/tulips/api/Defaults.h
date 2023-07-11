@@ -30,7 +30,7 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Server.h>
 
-namespace tulips { namespace defaults {
+namespace tulips::defaults {
 
 class ClientDelegate : public Client::Delegate
 {
@@ -76,4 +76,4 @@ public:
   void onClosed(Server::ID const& id, void* const cookie) override;
 };
 
-}}
+}

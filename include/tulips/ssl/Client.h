@@ -32,7 +32,7 @@
 #include <tulips/ssl/Protocol.h>
 #include <vector>
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 class Client
   : public interface::Client
@@ -104,4 +104,4 @@ private:
   void* m_context;
 };
 
-}}
+}

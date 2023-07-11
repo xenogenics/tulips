@@ -31,7 +31,7 @@
 #include <cstdint>
 #include <set>
 
-namespace tulips { namespace tools { namespace socket { namespace server {
+namespace tulips::tools::socket::server {
 
 using Ports = std::set<uint16_t>;
 
@@ -42,4 +42,4 @@ struct State : public utils::State
   Ports ports;
 };
 
-}}}}
+}

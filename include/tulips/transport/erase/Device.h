@@ -29,7 +29,7 @@
 
 #include <tulips/transport/Device.h>
 
-namespace tulips { namespace transport { namespace erase {
+namespace tulips::transport::erase {
 
 class Device : public transport::Device
 {
@@ -84,4 +84,4 @@ private:
   transport::Device& m_device;
 };
 
-}}}
+}

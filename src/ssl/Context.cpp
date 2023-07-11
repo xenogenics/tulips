@@ -28,7 +28,7 @@
 #include "Context.h"
 #include <openssl/err.h>
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 /*
  * Utilities
@@ -84,7 +84,7 @@ errorToString(SSL* ssl, const int err)
     case SSL_ERROR_SSL: {
       char buffer[1024];
       ERR_error_string_n(ERR_peek_error(), buffer, 1024);
-      return std::string(buffer);
+      return { buffer };
     }
   }
   return "no error";
@@ -178,4 +178,4 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   return Action::Continue;
 }
 
-}}
+}

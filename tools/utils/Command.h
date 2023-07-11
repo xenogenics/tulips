@@ -31,7 +31,7 @@
 #include <string>
 #include <vector>
 
-namespace tulips { namespace tools { namespace utils {
+namespace tulips::tools::utils {
 
 /*
  * Forward declarations.
@@ -71,4 +71,4 @@ private:
 
 using Commands = std::map<std::string, Command*>;
 
-}}}
+}

@@ -31,7 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 class CircularBuffer
 {
@@ -92,4 +92,4 @@ private:
   size_t m_write;
 };
 
-}}
+}

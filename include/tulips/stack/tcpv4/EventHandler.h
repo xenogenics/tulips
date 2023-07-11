@@ -31,7 +31,7 @@
 #include <tulips/stack/tcpv4/Connection.h>
 #include <cstdint>
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 class EventHandler
 {
@@ -89,4 +89,4 @@ public:
   virtual void onClosed(Connection& c) = 0;
 };
 
-}}}
+}

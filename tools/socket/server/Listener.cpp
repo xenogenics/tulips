@@ -49,8 +49,7 @@
 #include <sys/timerfd.h>
 #endif
 
-namespace tulips { namespace tools { namespace socket { namespace server {
-namespace listener {
+namespace tulips::tools::socket::server::listener {
 
 /*
  * Listener class.
@@ -659,7 +658,7 @@ public:
 private:
   static void printThroughput(const uint64_t value)
   {
-    double bps = (double)(value << 3);
+    auto bps = (double)(value << 3);
     std::ostringstream oss;
     oss << std::setprecision(3);
     /*
@@ -697,4 +696,4 @@ populate(utils::Commands& cmds)
   cmds["lsclients"] = new ListClients;
 }
 
-}}}}}
+}

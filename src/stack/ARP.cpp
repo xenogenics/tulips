@@ -36,7 +36,7 @@
 #define ARP_LOG(...)
 #endif
 
-namespace tulips { namespace stack { namespace arp {
+namespace tulips::stack::arp {
 
 namespace stub {
 
@@ -56,4 +56,4 @@ lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
   return false;
 }
 
-}}}
+}

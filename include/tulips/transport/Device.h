@@ -35,12 +35,13 @@
 
 namespace tulips {
 
-namespace stack { namespace ethernet {
+namespace stack::ethernet {
 class Address;
-}}
-namespace stack { namespace ipv4 {
+}
+
+namespace stack::ipv4 {
 class Address;
-}}
+}
 
 namespace transport {
 
@@ -60,7 +61,7 @@ public:
   static constexpr uint32_t DEFAULT_MTU = 1500;
 
   Device() : m_name(), m_hints(0) {}
-  Device(std::string const& name) : m_name(name), m_hints(0) {}
+  Device(std::string name) : m_name(std::move(name)), m_hints(0) {}
   ~Device() override = default;
 
   /**

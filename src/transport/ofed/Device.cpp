@@ -58,7 +58,7 @@
 #define OFED_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace transport { namespace ofed {
+namespace tulips::transport::ofed {
 
 Device::Device(const uint16_t nbuf)
   : transport::Device()
@@ -794,4 +794,4 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   return Status::Ok;
 }
 
-}}}
+}

@@ -32,7 +32,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace tulips { namespace stack { namespace ethernet {
+namespace tulips::stack::ethernet {
 
 const Address Address::BROADCAST(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
 
@@ -100,4 +100,4 @@ Address::toString() const
   return oss.str();
 }
 
-}}}
+}

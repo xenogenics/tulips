@@ -32,7 +32,7 @@
 #include <iomanip>
 #include <ostream>
 
-namespace tulips { namespace stack { namespace utils {
+namespace tulips::stack::utils {
 
 uint16_t
 checksum(const uint16_t seed, const uint8_t* const data, const uint16_t len)
@@ -106,4 +106,4 @@ headerLength(const uint8_t* const packet, const uint32_t plen, uint32_t& len)
   return len <= plen;
 }
 
-}}}
+}

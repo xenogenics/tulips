@@ -40,7 +40,7 @@
 #define OPT_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace stack { namespace tcpv4 { namespace Options {
+namespace tulips::stack::tcpv4::Options {
 
 void
 parse(Connection& e, const uint16_t len, const uint8_t* const data)
@@ -122,4 +122,4 @@ parse(Connection& e, const uint16_t len, const uint8_t* const data)
   }
 }
 
-}}}}
+}

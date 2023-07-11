@@ -32,7 +32,7 @@
 #include <limits>
 #include <ostream>
 
-namespace tulips { namespace stack { namespace utils {
+namespace tulips::stack::utils {
 
 uint16_t checksum(const uint16_t seed, const uint8_t* const data,
                   const uint16_t len);
@@ -49,4 +49,4 @@ cap(const uint32_t length)
   return length > uint16_limits::max() ? uint16_limits::max() : length;
 }
 
-}}}
+}

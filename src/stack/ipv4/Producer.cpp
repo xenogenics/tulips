@@ -32,7 +32,7 @@
 #define OUTIP ((Header*)outdata)
 #define TTL 64
 
-namespace tulips { namespace stack { namespace ipv4 {
+namespace tulips::stack::ipv4 {
 
 Producer::Producer(ethernet::Producer& prod, Address const& ha)
   : m_eth(prod)
@@ -109,4 +109,4 @@ Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return m_eth.commit(outlen, outdata, mss);
 }
 
-}}}
+}

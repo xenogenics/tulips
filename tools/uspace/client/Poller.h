@@ -32,7 +32,7 @@
 #include <string>
 #include <pthread.h>
 
-namespace tulips { namespace tools { namespace uspace { namespace client {
+namespace tulips::tools::uspace::client {
 
 class Poller
 {
@@ -89,4 +89,4 @@ private:
   std::string m_data;
 };
 
-}}}}
+}

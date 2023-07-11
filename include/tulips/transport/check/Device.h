@@ -29,7 +29,7 @@
 
 #include <tulips/transport/Device.h>
 
-namespace tulips { namespace transport { namespace check {
+namespace tulips::transport::check {
 
 class Device
   : public transport::Device
@@ -93,4 +93,4 @@ private:
   uint8_t* m_buffer;
 };
 
-}}}
+}

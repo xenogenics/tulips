@@ -32,7 +32,7 @@
 #include <string>
 #include <unistd.h>
 
-namespace tulips { namespace stack { namespace ethernet {
+namespace tulips::stack::ethernet {
 
 /*
  * The ethernet address class.
@@ -104,4 +104,4 @@ static constexpr size_t USED HEADER_LEN = sizeof(Header);
 static constexpr uint16_t USED ETHTYPE_ARP = 0x0806;
 static constexpr uint16_t USED ETHTYPE_IP = 0x0800;
 
-}}}
+}

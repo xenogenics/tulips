@@ -31,7 +31,7 @@
 #include <iomanip>
 #include <iostream>
 
-namespace tulips { namespace tools { namespace utils { namespace basic {
+namespace tulips::tools::utils::basic {
 
 /*
  * Quit.
@@ -104,4 +104,4 @@ populate(Commands& cmds)
   cmds["quit"] = new Quit;
 }
 
-}}}}
+}

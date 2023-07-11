@@ -31,7 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 class Segment
 {
@@ -75,4 +75,4 @@ private:
 
 static_assert(sizeof(Segment) == 16, "Invalid size for tcpv4::Segment");
 
-}}}
+}

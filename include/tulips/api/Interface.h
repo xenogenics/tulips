@@ -35,7 +35,7 @@
 #include <tulips/transport/Device.h>
 #include <cstdint>
 
-namespace tulips { namespace interface {
+namespace tulips::interface {
 
 /**
  * Generic delegate class definition.
@@ -268,4 +268,4 @@ public:
                       const uint8_t* const data, uint32_t& off) = 0;
 };
 
-}}
+}

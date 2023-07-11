@@ -31,7 +31,7 @@
 #include <tulips/api/Server.h>
 #include <tulips/ssl/Protocol.h>
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 class Server
   : public interface::Server
@@ -92,4 +92,4 @@ private:
   void* m_context;
 };
 
-}}
+}

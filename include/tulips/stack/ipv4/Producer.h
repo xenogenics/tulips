@@ -33,7 +33,7 @@
 #include <cstdint>
 #include <string>
 
-namespace tulips { namespace stack { namespace ipv4 {
+namespace tulips::stack::ipv4 {
 
 class Producer : public transport::Producer
 {
@@ -94,4 +94,4 @@ private:
   Statistics m_stats;
 };
 
-}}}
+}

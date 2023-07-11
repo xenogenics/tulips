@@ -39,7 +39,7 @@
 
 #define INTCP ((const Header*)data)
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 Processor::Processor(transport::Device& device, ethernet::Producer& eth,
                      ipv4::Producer& ip4, EventHandler& h, const size_t nconn)
@@ -992,4 +992,4 @@ Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
   return send(m_ipv4from->sourceAddress(), HEADER_LEN, mss, outdata);
 }
 
-}}}
+}

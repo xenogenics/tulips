@@ -36,7 +36,7 @@
 #include <string>
 #include <infiniband/verbs_exp.h>
 
-namespace tulips { namespace transport { namespace ofed {
+namespace tulips::transport::ofed {
 
 class Device : public transport::Device
 {
@@ -109,4 +109,4 @@ private:
   Filters m_filters;
 };
 
-}}}
+}

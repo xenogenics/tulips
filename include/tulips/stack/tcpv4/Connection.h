@@ -36,7 +36,7 @@
 #include <cstdint>
 #include <stdexcept>
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 /*
  * We rely on the compiler to wrap around the value of the next segment. We
@@ -156,7 +156,7 @@ private:
 
   inline void updateRttEstimation()
   {
-    int8_t m = (int8_t)m_rto - (int8_t)m_timer;
+    int8_t m = m_rto - m_timer;
     /*
      * This is taken directly from VJs original code in his paper
      */
@@ -234,4 +234,4 @@ private:
 static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 64,
               "Size of tcpv4::Connection is invalid");
 
-}}}
+}

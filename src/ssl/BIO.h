@@ -29,11 +29,11 @@
 
 #include <openssl/bio.h>
 
-namespace tulips { namespace ssl { namespace bio {
+namespace tulips::ssl::bio {
 
 BIO* allocate(const size_t size);
 
 const uint8_t* readAt(BIO* h);
 void skip(BIO* h, const size_t len);
 
-}}}
+}

@@ -37,7 +37,7 @@
 #include <arpa/inet.h>
 #endif
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 Status
 Processor::connect(ethernet::Address const& rhwaddr,
@@ -321,4 +321,4 @@ Processor::cookie(Connection::ID const& id) const
   return c.cookie();
 }
 
-}}}
+}

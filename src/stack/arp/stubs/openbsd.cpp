@@ -52,7 +52,7 @@
 #define ARP_LOG(...)
 #endif
 
-namespace tulips { namespace stack { namespace arp { namespace stub {
+namespace tulips::stack::arp::stub {
 
 static bool
 getinetaddr(std::string const& host, struct in_addr* inap)
@@ -160,4 +160,4 @@ lookup(std::string const& eth, ipv4::Address const& ip, ethernet::Address& hw)
   return get(ip.toString(), hw);
 }
 
-}}}}
+}

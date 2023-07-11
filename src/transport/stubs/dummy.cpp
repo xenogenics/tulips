@@ -30,7 +30,7 @@
 #include <tulips/transport/Utils.h>
 #include <string>
 
-namespace tulips { namespace transport { namespace utils {
+namespace tulips::transport::utils {
 
 bool
 getInterfaceInformation(UNUSED std::string const& ifn,
@@ -51,4 +51,4 @@ getInterfaceInformation(UNUSED std::string const& ifn,
   return false;
 }
 
-}}}
+}

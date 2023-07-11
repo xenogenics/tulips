@@ -33,7 +33,7 @@
 #include <limits>
 #include <unistd.h>
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 /*
  * The TCPv4 port type.
@@ -73,4 +73,4 @@ static constexpr size_t USED HEADER_LEN = sizeof(Header);
 static constexpr uint8_t USED RTO = 3;
 static constexpr uint16_t USED HEADER_OVERHEAD = ipv4::HEADER_LEN + HEADER_LEN;
 
-}}}
+}

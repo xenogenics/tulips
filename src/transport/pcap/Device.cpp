@@ -37,7 +37,7 @@
 #define PCAP_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace transport { namespace pcap {
+namespace tulips::transport::pcap {
 
 static void
 writePacket(pcap_dumper_t* const dumper, const void* const data,
@@ -140,4 +140,4 @@ Device::process(const uint16_t len, const uint8_t* const data)
   return m_proc->process(len, data);
 }
 
-}}}
+}

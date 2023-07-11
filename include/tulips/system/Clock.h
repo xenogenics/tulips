@@ -35,7 +35,7 @@
 
 #define CLOCK_SECOND tulips::system::Clock::get().cyclesPerSecond()
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 class Clock
 {
@@ -84,4 +84,4 @@ private:
 #endif
 };
 
-}}
+}

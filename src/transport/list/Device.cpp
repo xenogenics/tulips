@@ -38,7 +38,7 @@
 #define LIST_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace transport { namespace list {
+namespace tulips::transport::list {
 
 Device::Device(stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
@@ -150,4 +150,4 @@ Device::waitForInput(const uint64_t ns)
   return m_read.empty();
 }
 
-}}}
+}

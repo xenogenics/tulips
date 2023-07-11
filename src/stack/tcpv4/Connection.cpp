@@ -27,7 +27,7 @@
 
 #include <tulips/stack/tcpv4/Connection.h>
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 Connection::Connection()
   : m_id(-1)
@@ -58,4 +58,4 @@ Connection::Connection()
   , m_segments()
 {}
 
-}}}
+}

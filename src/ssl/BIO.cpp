@@ -30,7 +30,7 @@
 #include <tulips/system/CircularBuffer.h>
 #include <tulips/system/Compiler.h>
 
-namespace tulips { namespace ssl { namespace bio {
+namespace tulips::ssl::bio {
 
 static int
 s_write(BIO* h, const char* buf, int size)
@@ -191,4 +191,4 @@ skip(BIO* h, const size_t len)
   return b->skip(len);
 }
 
-}}}
+}

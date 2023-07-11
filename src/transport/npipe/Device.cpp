@@ -45,7 +45,7 @@
 #define NPIPE_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace transport { namespace npipe {
+namespace tulips::transport::npipe {
 
 /*
  * Base device class
@@ -261,4 +261,4 @@ ServerDevice::~ServerDevice()
   unlink(m_wf.c_str());
 }
 
-}}}
+}

@@ -30,7 +30,7 @@
 #include <tulips/system/Compiler.h>
 #include <cstdint>
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 class Connection;
 
@@ -46,4 +46,5 @@ static constexpr int USED WSC_LEN = 3; // Length of the TCP WSC option
 void parse(Connection& e, const uint16_t len, const uint8_t* const data);
 
 }
-}}}
+
+}

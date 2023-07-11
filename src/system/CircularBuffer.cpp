@@ -40,7 +40,7 @@
 #define BUFFER_LOG(...)
 #endif
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 CircularBuffer::CircularBuffer(const size_t size)
   : m_size(fit(size))
@@ -115,4 +115,4 @@ CircularBuffer::fit(const size_t size)
   return result;
 }
 
-}}
+}

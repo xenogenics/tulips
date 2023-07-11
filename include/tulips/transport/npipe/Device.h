@@ -33,7 +33,7 @@
 #include <tulips/system/Compiler.h>
 #include <string>
 
-namespace tulips { namespace transport { namespace npipe {
+namespace tulips::transport::npipe {
 
 class Device : public transport::Device
 {
@@ -123,4 +123,4 @@ private:
   std::string m_wf;
 };
 
-}}}
+}

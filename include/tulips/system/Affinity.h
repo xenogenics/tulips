@@ -27,8 +27,8 @@
 
 #pragma once
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 bool setCurrentThreadAffinity(const long cpuid);
 
-}}
+}

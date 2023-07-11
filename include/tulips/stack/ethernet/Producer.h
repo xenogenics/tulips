@@ -34,7 +34,7 @@
 #include <string>
 #include <unistd.h>
 
-namespace tulips { namespace stack { namespace ethernet {
+namespace tulips::stack::ethernet {
 
 class Producer : public transport::Producer
 {
@@ -68,4 +68,4 @@ private:
   uint16_t m_type;
 };
 
-}}}
+}

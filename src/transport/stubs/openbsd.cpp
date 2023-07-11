@@ -119,7 +119,7 @@ getDefaultRoute(tulips::stack::ipv4::Address const& ip,
 
 }
 
-namespace tulips { namespace transport { namespace utils {
+namespace tulips::transport::utils {
 
 bool
 getInterfaceInformation(std::string const& ifn,
@@ -216,4 +216,4 @@ getInterfaceInformation(std::string const& ifn, stack::ipv4::Address& ipaddr,
   return true;
 }
 
-}}}
+}

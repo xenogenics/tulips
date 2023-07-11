@@ -37,7 +37,7 @@
 #include <arpa/inet.h>
 #endif
 
-namespace tulips { namespace stack { namespace tcpv4 {
+namespace tulips::stack::tcpv4 {
 
 Status
 Processor::sendNagle(Connection& e, const uint32_t bound)
@@ -369,4 +369,4 @@ Processor::rexmit(Connection& e)
   return Status::Ok;
 }
 
-}}}
+}

@@ -29,7 +29,7 @@
 #include <tulips/stack/Utils.h>
 #include <arpa/inet.h>
 
-namespace tulips { namespace stack { namespace icmpv4 {
+namespace tulips::stack::icmpv4 {
 
 /**
  * ICMPv4 checksum.
@@ -41,4 +41,4 @@ checksum(const uint8_t* const data)
   return (sum == 0) ? 0xffff : htons(sum);
 }
 
-}}}
+}

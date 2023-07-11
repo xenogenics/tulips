@@ -43,8 +43,7 @@
 #include <tulips/system/Utils.h>
 #include <unistd.h>
 
-namespace tulips { namespace tools { namespace socket { namespace client {
-namespace connection {
+namespace tulips::tools::socket::client::connection {
 
 /*
  * Close.
@@ -402,4 +401,4 @@ populate(utils::Commands& cmds)
   cmds["write"] = new Write;
 }
 
-}}}}}
+}

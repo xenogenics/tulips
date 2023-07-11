@@ -38,7 +38,7 @@
 #define SERVER_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
                const size_t nconn, const ssl::Protocol type,
@@ -297,4 +297,4 @@ Server::flush(const ID id, void* const cookie)
   return Status::Ok;
 }
 
-}}
+}

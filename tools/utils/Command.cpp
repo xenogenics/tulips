@@ -29,7 +29,7 @@
 #include <utils/Command.h>
 #include <utils/State.h>
 
-namespace tulips { namespace tools { namespace utils {
+namespace tulips::tools::utils {
 
 Command::Command(std::string const& about) : m_about(about) {}
 
@@ -45,4 +45,4 @@ Command::hint(UNUSED State& s, UNUSED int* color, UNUSED int* bold)
   return nullptr;
 }
 
-}}}
+}

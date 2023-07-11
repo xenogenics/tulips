@@ -44,7 +44,7 @@
 #define ARP_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace stack { namespace arp { namespace stub {
+namespace tulips::stack::arp::stub {
 
 static bool
 send_dummy(const int sock, ipv4::Address const& ip)
@@ -128,4 +128,4 @@ lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
   return ret;
 }
 
-}}}}
+}

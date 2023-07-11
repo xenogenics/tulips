@@ -29,9 +29,8 @@
 
 #include <utils/Command.h>
 
-namespace tulips { namespace tools { namespace uspace { namespace client {
-namespace connection {
+namespace tulips::tools::uspace::client::connection {
 
 void populate(utils::Commands& cmds);
 
-}}}}}
+}

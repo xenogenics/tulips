@@ -29,7 +29,7 @@
 
 #include "Clock.h"
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 class Timer
 {
@@ -46,4 +46,4 @@ private:
   Clock::Value m_interval;
 };
 
-}}
+}

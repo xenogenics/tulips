@@ -30,7 +30,7 @@
 #include <tulips/api/Status.h>
 #include <cstdint>
 
-namespace tulips { namespace transport {
+namespace tulips::transport {
 
 class Processor
 {
@@ -60,4 +60,4 @@ public:
   virtual Status process(const uint16_t len, const uint8_t* const data) = 0;
 };
 
-}}
+}

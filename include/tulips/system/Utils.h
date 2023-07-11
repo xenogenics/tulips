@@ -33,7 +33,7 @@
 #include <string>
 #include <vector>
 
-namespace tulips { namespace system { namespace utils {
+namespace tulips::system::utils {
 
 #define likely(__x) __builtin_expect((__x), 1)
 #define unlikely(__x) __builtin_expect((__x), 0)
@@ -57,4 +57,4 @@ log2(const uint32_t x)
 void join(std::vector<std::string> const& r, const char d, std::string& s);
 void split(std::string const& s, const char d, std::vector<std::string>& r);
 
-}}}
+}

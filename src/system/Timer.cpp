@@ -27,7 +27,7 @@
 
 #include <tulips/system/Timer.h>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 Timer::Timer() : m_start(0), m_interval(0) {}
 
@@ -44,4 +44,4 @@ Timer::reset()
   m_start = Clock::read();
 }
 
-}}
+}

@@ -28,7 +28,7 @@
 #include <tulips/system/Clock.h>
 #include <ctime>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 Clock::Clock()
   : m_cps(0)
@@ -49,4 +49,4 @@ Clock::getCPS()
   return res;
 }
 
-}}
+}

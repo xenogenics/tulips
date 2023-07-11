@@ -40,7 +40,7 @@
 #define CLIENT_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
                const size_t nconn, const Protocol type, std::string const& cert,
@@ -410,4 +410,4 @@ Client::flush(const ID id, void* const cookie)
   return Status::Ok;
 }
 
-}}
+}

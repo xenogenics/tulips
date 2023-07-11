@@ -32,7 +32,7 @@
 #define INICMP ((const Header*)data)
 #define OUTICMP ((Header*)outdata)
 
-namespace tulips { namespace stack { namespace icmpv4 {
+namespace tulips::stack::icmpv4 {
 
 Processor::Processor(ethernet::Producer& eth, ipv4::Producer& ip4)
   : m_ethout(eth)
@@ -130,4 +130,4 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   return m_ip4out.commit(HEADER_LEN, outdata);
 }
 
-}}}
+}

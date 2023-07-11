@@ -28,7 +28,7 @@
 #include <tulips/apps/Options.h>
 #include <cstdint>
 
-namespace tulips { namespace apps {
+namespace tulips::apps {
 
 Options::Options(TCLAP::CmdLine& cmd)
   : usd("u", "us", "uS delay between sends", false, 1000, "DELAY", cmd)
@@ -67,4 +67,4 @@ Options::isSane() const
   return true;
 }
 
-}}
+}

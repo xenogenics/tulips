@@ -29,7 +29,7 @@
 #include <cstring>
 #include <new>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 Buffer*
 Buffer::allocate(const uint32_t size)
@@ -63,4 +63,4 @@ Buffer::append(const uint32_t len, const uint8_t* const data)
 
 Buffer::Buffer(const uint32_t size) : m_size(size), m_fill(0) {}
 
-}}
+}

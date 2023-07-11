@@ -30,7 +30,7 @@
 #include <cstdint>
 #include <pthread.h>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 class SpinLock
 {
@@ -56,4 +56,4 @@ private:
   volatile uint8_t m_lock;
 };
 
-}}
+}

@@ -36,7 +36,7 @@
 #define ETH_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace stack { namespace ethernet {
+namespace tulips::stack::ethernet {
 
 Producer::Producer(transport::Producer& prod, Address const& ha)
   : m_prod(prod), m_hostAddress(ha), m_destAddress(), m_type(0)
@@ -74,4 +74,4 @@ Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return m_prod.commit(len + HEADER_LEN, buf - HEADER_LEN, mss);
 }
 
-}}}
+}

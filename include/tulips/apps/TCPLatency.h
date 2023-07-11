@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-namespace tulips { namespace apps { namespace tcplatency {
+namespace tulips::apps::tcplatency {
 
 namespace Client {
 
@@ -46,4 +46,4 @@ int run(Options const& options, transport::Device& base_device);
 
 }
 
-}}}
+}

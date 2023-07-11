@@ -29,8 +29,8 @@
 
 #include <utils/Command.h>
 
-namespace tulips { namespace tools { namespace utils { namespace basic {
+namespace tulips::tools::utils::basic {
 
 void populate(Commands& cmds);
 
-}}}}
+}

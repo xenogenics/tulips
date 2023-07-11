@@ -29,7 +29,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-namespace tulips { namespace transport { namespace check {
+namespace tulips::transport::check {
 
 Device::Device(transport::Device& device)
   : transport::Device("check")
@@ -89,4 +89,4 @@ Device::check(const uint8_t* const data, const size_t len)
   return false;
 }
 
-}}}
+}

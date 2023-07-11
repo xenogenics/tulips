@@ -32,7 +32,7 @@
 #include <string>
 #include <cstdint>
 
-namespace tulips { namespace transport { namespace utils {
+namespace tulips::transport::utils {
 
 bool getInterfaceInformation(std::string const& ifn,
                              stack::ethernet::Address& hwaddr, uint32_t& mtu);
@@ -42,4 +42,4 @@ bool getInterfaceInformation(std::string const& ifn,
                              stack::ipv4::Address& ntmask,
                              stack::ipv4::Address& draddr);
 
-}}}
+}

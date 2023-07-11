@@ -30,7 +30,7 @@
 #include <tulips/system/Compiler.h>
 #include <cstdint>
 
-namespace tulips { namespace stack { namespace icmpv4 {
+namespace tulips::stack::icmpv4 {
 
 /**
  * The ICMPv4 header.
@@ -63,4 +63,4 @@ struct Statistics
  */
 uint16_t checksum(const uint8_t* const data);
 
-}}}
+}

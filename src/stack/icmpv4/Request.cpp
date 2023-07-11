@@ -29,7 +29,7 @@
 
 #define OUTICMP ((Header*)outdata)
 
-namespace tulips { namespace stack { namespace icmpv4 {
+namespace tulips::stack::icmpv4 {
 
 Request::Request(ethernet::Producer& eth, ipv4::Producer& ip4,
                  arp::Processor& arp, const ID id)
@@ -87,4 +87,4 @@ Request::operator()(ipv4::Address const& dst)
   return m_ip4.commit(HEADER_LEN, data);
 }
 
-}}}
+}

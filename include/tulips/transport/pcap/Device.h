@@ -36,7 +36,7 @@
 #include <pcap/pcap.h>
 #endif
 
-namespace tulips { namespace transport { namespace pcap {
+namespace tulips::transport::pcap {
 
 class Device
   : public transport::Device
@@ -100,4 +100,4 @@ private:
   Processor* m_proc;
 };
 
-}}}
+}

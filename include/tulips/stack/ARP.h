@@ -32,7 +32,7 @@
 #include <string>
 #include <cstdint>
 
-namespace tulips { namespace stack { namespace arp {
+namespace tulips::stack::arp {
 
 struct Header
 {
@@ -50,4 +50,4 @@ struct Header
 bool lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
             tulips::stack::ethernet::Address& hw);
 
-}}}
+}

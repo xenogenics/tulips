@@ -36,7 +36,7 @@
 #include <map>
 #include <cstdint>
 
-namespace tulips { namespace stack { namespace icmpv4 {
+namespace tulips::stack::icmpv4 {
 
 class Processor : public transport::Processor
 {
@@ -80,4 +80,4 @@ private:
   Request::ID m_ids;
 };
 
-}}}
+}

@@ -33,7 +33,7 @@
 #include <sched.h>
 #endif
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 bool
 setCurrentThreadAffinity(const long cpuid)
@@ -62,4 +62,4 @@ setCurrentThreadAffinity(const long cpuid)
 #endif
 }
 
-}}
+}

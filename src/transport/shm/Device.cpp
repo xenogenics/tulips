@@ -43,7 +43,7 @@
 
 #define RETRY_COUNT 1
 
-namespace tulips { namespace transport { namespace shm {
+namespace tulips::transport::shm {
 
 Device::Device(stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
@@ -188,4 +188,4 @@ Device::waitForInput(const uint64_t ns)
   return tulips_fifo_empty(read_fifo) == TULIPS_FIFO_YES;
 }
 
-}}}
+}

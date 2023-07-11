@@ -33,8 +33,7 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 
-namespace tulips { namespace tools { namespace uspace { namespace client {
-namespace connection {
+namespace tulips::tools::uspace::client::connection {
 
 /*
  * Close.
@@ -286,4 +285,4 @@ populate(utils::Commands& cmds)
   cmds["write"] = new Write;
 }
 
-}}}}}
+}

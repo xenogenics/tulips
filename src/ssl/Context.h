@@ -45,7 +45,7 @@
 
 #define AS_SSL(__c) (reinterpret_cast<SSL_CTX*>(__c))
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 /*
  * Utilities.
@@ -343,4 +343,4 @@ struct Context
   bool blocked;
 };
 
-}}
+}

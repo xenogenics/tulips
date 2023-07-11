@@ -29,7 +29,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace tulips { namespace transport { namespace erase {
+namespace tulips::transport::erase {
 
 Device::Device(transport::Device& device)
   : transport::Device("erase"), m_device(device)
@@ -63,4 +63,4 @@ Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return m_device.commit(len, buf, mss);
 }
 
-}}}
+}

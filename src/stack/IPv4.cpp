@@ -37,7 +37,7 @@
 #include <vector>
 #include <arpa/inet.h>
 
-namespace tulips { namespace stack { namespace ipv4 {
+namespace tulips::stack::ipv4 {
 
 const Address Address::BROADCAST(0xff, 0xff, 0xff, 0xff);
 
@@ -99,4 +99,4 @@ checksum(const uint8_t* const data)
 }
 #endif
 
-}}}
+}

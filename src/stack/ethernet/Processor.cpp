@@ -40,7 +40,7 @@
 #define ETH_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace stack { namespace ethernet {
+namespace tulips::stack::ethernet {
 
 Processor::Processor(Address const& ha)
   : m_hostAddress(ha)
@@ -146,4 +146,4 @@ Processor::process(const uint16_t len, const uint8_t* const data)
   return ret;
 }
 
-}}}
+}

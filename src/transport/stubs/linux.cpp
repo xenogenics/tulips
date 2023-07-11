@@ -100,7 +100,7 @@ getGateway(std::string const& dev, tulips::stack::ipv4::Address& gw)
 
 }
 
-namespace tulips { namespace transport { namespace utils {
+namespace tulips::transport::utils {
 
 bool
 getInterfaceInformation(std::string const& ifn,
@@ -184,4 +184,4 @@ getInterfaceInformation(std::string const& ifn, stack::ipv4::Address& ipaddr,
   return true;
 }
 
-}}}
+}

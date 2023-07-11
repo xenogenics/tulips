@@ -35,7 +35,7 @@
 #include <vector>
 #include <unistd.h>
 
-namespace tulips { namespace stack { namespace arp {
+namespace tulips::stack::arp {
 
 class Processor : public transport::Processor
 {
@@ -72,4 +72,4 @@ private:
   system::Timer m_timer;
 };
 
-}}}
+}

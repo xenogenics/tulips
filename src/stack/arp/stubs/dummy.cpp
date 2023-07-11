@@ -29,7 +29,7 @@
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
 
-namespace tulips { namespace stack { namespace arp { namespace stub {
+namespace tulips::stack::arp::stub {
 
 bool
 lookup(UNUSED std::string const& eth,
@@ -39,4 +39,4 @@ lookup(UNUSED std::string const& eth,
   return false;
 }
 
-}}}}
+}

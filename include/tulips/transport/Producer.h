@@ -30,7 +30,7 @@
 #include <tulips/api/Status.h>
 #include <cstdint>
 
-namespace tulips { namespace transport {
+namespace tulips::transport {
 
 class Producer
 {
@@ -65,4 +65,4 @@ public:
                         const uint16_t mss = 0) = 0;
 };
 
-}}
+}

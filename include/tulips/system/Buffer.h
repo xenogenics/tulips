@@ -30,7 +30,7 @@
 #include <tulips/stack/Utils.h>
 #include <cstdint>
 
-namespace tulips { namespace system {
+namespace tulips::system {
 
 class Buffer
 {
@@ -60,4 +60,4 @@ private:
   uint8_t m_data[];
 } __attribute__((aligned(16)));
 
-}}
+}

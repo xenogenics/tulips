@@ -38,7 +38,7 @@
 #include <string>
 #include <pthread.h>
 
-namespace tulips { namespace transport { namespace list {
+namespace tulips::transport::list {
 
 class Device : public transport::Device
 {
@@ -111,4 +111,4 @@ protected:
   pthread_cond_t m_cond;
 };
 
-}}}
+}

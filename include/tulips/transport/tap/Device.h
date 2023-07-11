@@ -35,7 +35,7 @@
 #include <memory>
 #include <string>
 
-namespace tulips { namespace transport { namespace tap {
+namespace tulips::transport::tap {
 
 class Device : public transport::Device
 {
@@ -80,4 +80,4 @@ protected:
   std::list<uint8_t*> m_buffers;
 };
 
-}}}
+}

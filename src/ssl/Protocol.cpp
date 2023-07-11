@@ -27,7 +27,7 @@
 
 #include <tulips/ssl/Protocol.h>
 
-namespace tulips { namespace ssl {
+namespace tulips::ssl {
 
 std::string
 toString(const Protocol type)
@@ -43,4 +43,4 @@ toString(const Protocol type)
 #endif
 }
 
-}}
+}

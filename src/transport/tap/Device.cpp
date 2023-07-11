@@ -55,7 +55,7 @@
 #define TAP_LOG(...) ((void)0)
 #endif
 
-namespace tulips { namespace transport { namespace tap {
+namespace tulips::transport::tap {
 
 Device::Device(std::string const& devname, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& nm, stack::ipv4::Address const& dr)
@@ -226,4 +226,4 @@ Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return Status::Ok;
 }
 
-}}}
+}

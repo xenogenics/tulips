@@ -27,8 +27,8 @@
 
 #include <socket/server/State.h>
 
-namespace tulips { namespace tools { namespace socket { namespace server {
+namespace tulips::tools::socket::server {
 
 State::State() : utils::State(), ports() {}
 
-}}}}
+}

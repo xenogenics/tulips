@@ -32,7 +32,7 @@
 #include <tulips/transport/Processor.h>
 #include <cstdint>
 
-namespace tulips { namespace stack {
+namespace tulips::stack {
 
 namespace ethernet {
 class Processor;
@@ -117,4 +117,4 @@ private:
 };
 
 }
-}}
+}

@@ -48,7 +48,7 @@
 #define MAX_AGE 120
 #define TABLE_SIZE 32
 
-namespace tulips { namespace stack { namespace arp {
+namespace tulips::stack::arp {
 
 Processor::Entry::Entry() : ipaddr(), ethaddr(), time(0) {}
 
@@ -318,4 +318,4 @@ Processor::hopAddress(ipv4::Address const& addr) const
   return addr;
 }
 
-}}}
+}

@@ -27,7 +27,7 @@
 
 #include <uspace/client/Poller.h>
 
-namespace tulips { namespace tools { namespace uspace { namespace client {
+namespace tulips::tools::uspace::client {
 
 Poller::Poller(const bool pcap)
   : m_capture(pcap)
@@ -273,4 +273,4 @@ Poller::run()
   }
 }
 
-}}}}
+}

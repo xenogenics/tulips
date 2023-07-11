@@ -69,7 +69,7 @@ alarm_handler(UNUSED int signal)
   alarm(alarm_delay);
 }
 
-namespace tulips { namespace apps { namespace tcplatency {
+namespace tulips::apps::tcplatency {
 
 namespace Client {
 
@@ -242,7 +242,7 @@ run(Options const& options, transport::Device& base_device)
             oss << delta;
             options.noDelay() ? oss << " round-trips/s" : oss << " sends/s";
             oss << ", hits: " << hits << "%, latency: ";
-            double lat = (double)client->averageLatency(id);
+            auto lat = (double)client->averageLatency(id);
             if (lat > 1e9L) {
               oss << (lat / 1e9L) << " s";
             } else if (lat > 1e6L) {
@@ -516,4 +516,4 @@ run(Options const& options, transport::Device& base_device)
 
 }
 
-}}}
+}

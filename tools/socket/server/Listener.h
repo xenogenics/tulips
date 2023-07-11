@@ -30,9 +30,8 @@
 #include <tulips/system/Compiler.h>
 #include <utils/Command.h>
 
-namespace tulips { namespace tools { namespace socket { namespace server {
-namespace listener {
+namespace tulips::tools::socket::server::listener {
 
 void populate(utils::Commands& cmds);
 
-}}}}}
+}

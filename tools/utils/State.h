@@ -29,7 +29,7 @@
 
 #include <utils/Command.h>
 
-namespace tulips { namespace tools { namespace utils {
+namespace tulips::tools::utils {
 
 struct State
 {
@@ -40,4 +40,4 @@ struct State
   Commands commands;
 };
 
-}}}
+}

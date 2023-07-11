@@ -28,7 +28,7 @@
 #include <tulips/api/Defaults.h>
 #include <tulips/system/Compiler.h>
 
-namespace tulips { namespace defaults {
+namespace tulips::defaults {
 
 void*
 ClientDelegate::onConnected(UNUSED Client::ID const& id,
@@ -118,4 +118,4 @@ void
 ServerDelegate::onClosed(UNUSED Server::ID const& id, UNUSED void* const cookie)
 {}
 
-}}
+}
