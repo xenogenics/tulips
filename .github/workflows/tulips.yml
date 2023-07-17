@@ -1,0 +1,46 @@
+name: Tulips CI/CD
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    container: 
+      image: xenogenics/tulips-builder
+      env:
+        CTEST_PARALLEL_LEVEL: 2
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: make debug
+      - name: build
+        run: make build
+      - name: test
+        run: make test
+  check-format:
+    runs-on: ubuntu-latest
+    container: 
+      image: xenogenics/tulips-builder
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: make debug
+      - name: format
+        run: make format-check
+  lint:
+    runs-on: ubuntu-latest
+    container: 
+      image: xenogenics/tulips-builder
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: make debug
+      - name: lint
+        run: make tidy

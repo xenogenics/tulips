@@ -216,6 +216,8 @@ foreach (SOURCE ${SOURCES})
   if (ClangFormat_FOUND)
     add_custom_target(${TARGET}_format COMMAND clang-format -i -style=file ${CMAKE_SOURCE_DIR}/${SOURCE})
     list(APPEND FORMAT_TARGETS ${TARGET}_format)
+    add_custom_target(${TARGET}_format_check COMMAND clang-format -n -Werror -style=file ${CMAKE_SOURCE_DIR}/${SOURCE})
+    list(APPEND FORMAT_CHECK_TARGETS ${TARGET}_format_check)
   endif ()
   #
   if (ClangTidy_FOUND)
@@ -226,6 +228,7 @@ endforeach ()
 
 if (ClangFormat_FOUND)
   add_custom_target(format DEPENDS ${FORMAT_TARGETS})
+  add_custom_target(format-check DEPENDS ${FORMAT_CHECK_TARGETS})
 endif ()
 
 if (ClangTidy_FOUND)

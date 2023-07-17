@@ -9,37 +9,46 @@ EXTFLAGS ?=
 default: release
 
 build:
-	@[ -e $(BUILDDIR) ] && make -s -C $(BUILDDIR) -j $(NPROCS)
+	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS)
 
 test:
-	@[ -e $(BUILDDIR) ] && make -s -C $(BUILDDIR) test
+	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) test
+
+format:
+	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) format
+
+format-check:
+	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) format-check
+
+tidy:
+	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) tidy
 
 debug:
-	@mkdir -p $(BUILDDIR);																																	\
-	 cd $(BUILDDIR);																																				\
-	 rm -rf *;																																							\
-	 GTEST_ROOT=$(HOME)/.local TCLAP_ROOT=$(HOME)/.local cmake $(DEBFLAGS) $(EXTFLAGS) ..;	\
+	@mkdir -p $(BUILDDIR);											\
+	 cd $(BUILDDIR);														\
+	 rm -rf *;																	\
+	 cmake -GNinja $(DEBFLAGS) $(EXTFLAGS) ..;	\
 	 cd ..
 
 release:
-	@mkdir -p $(BUILDDIR);																																	\
-	 cd $(BUILDDIR);																																				\
-	 rm -rf *;																																							\
-	 GTEST_ROOT=$(HOME)/.local TCLAP_ROOT=$(HOME)/.local cmake $(RELFLAGS) $(EXTFLAGS) ..;	\
+	@mkdir -p $(BUILDDIR);											\
+	 cd $(BUILDDIR);														\
+	 rm -rf *;																	\
+	 cmake -G Ninja $(RELFLAGS) $(EXTFLAGS) ..;	\
 	 cd ..
 
 release-arp:
-	@mkdir -p $(BUILDDIR);																																												\
-	 cd $(BUILDDIR);																																															\
-	 rm -rf *;																																																		\
-	 GTEST_ROOT=$(HOME)/.local TCLAP_ROOT=$(HOME)/.local cmake $(RELFLAGS) $(EXTFLAGS) -DTULIPS_ENABLE_ARP=ON ..;	\
+	@mkdir -p $(BUILDDIR);																						\
+	 cd $(BUILDDIR);																									\
+	 rm -rf *;																												\
+	 cmake -GNinja $(RELFLAGS) $(EXTFLAGS) -DTULIPS_ENABLE_ARP=ON ..;	\
 	 cd ..
 
 release-raw:
-	@mkdir -p $(BUILDDIR);																																												\
-	 cd $(BUILDDIR);																																															\
-	 rm -rf *;																																																		\
-	 GTEST_ROOT=$(HOME)/.local TCLAP_ROOT=$(HOME)/.local cmake $(RELFLAGS) $(EXTFLAGS) -DTULIPS_ENABLE_RAW=ON ..;	\
+	@mkdir -p $(BUILDDIR);																						\
+	 cd $(BUILDDIR);																									\
+	 rm -rf *;																												\
+	 cmake -GNinja $(RELFLAGS) $(EXTFLAGS) -DTULIPS_ENABLE_RAW=ON ..;	\
 	 cd ..
 
 clean:
