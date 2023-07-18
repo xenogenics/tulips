@@ -126,6 +126,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
 
+if (TULIPS_DEBUG)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+  add_link_options(-fsanitize=address)
+endif (TULIPS_DEBUG)
+
 #
 # Per-compiler options
 #
