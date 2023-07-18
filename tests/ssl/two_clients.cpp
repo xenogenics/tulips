@@ -137,6 +137,21 @@ public:
     ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   }
 
+  void abortClient(const Client::ID& id)
+  {
+    /*
+     * Client tries to close.
+     */
+    ASSERT_EQ(Status::Ok, m_client->abort(id));
+    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+    /*
+     * We are closed.
+     */
+    ASSERT_EQ(Status::NotConnected, m_client->close(id));
+    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  }
+
   void disconnectClient(const Client::ID& id)
   {
     /*
@@ -289,7 +304,7 @@ protected:
   ssl::Server* m_server;
 };
 
-TEST_F(SSL_TwoClients, ConnectTwo)
+TEST_F(SSL_TwoClients, ConnectTwoAndAbort)
 {
   Client::ID id[2] = { Client::DEFAULT_ID, Client::DEFAULT_ID };
   ipv4::Address dst_ip(10, 1, 0, 2);
@@ -299,9 +314,19 @@ TEST_F(SSL_TwoClients, ConnectTwo)
   connect1stClient(dst_ip, 12345, id[0]);
   connect2ndClient(dst_ip, 12345, id[1]);
   ASSERT_EQ(2, m_server_delegate.connections().size());
+  /*
+   * Abort the first connection.
+   */
+  abortClient(id[0]);
+  ASSERT_EQ(1, m_server_delegate.connections().size());
+  /*
+   * Abort the second connection.
+   */
+  abortClient(id[1]);
+  ASSERT_EQ(0, m_server_delegate.connections().size());
 }
 
-TEST_F(SSL_TwoClients, ConnectTwoAndDisconnect)
+TEST_F(SSL_TwoClients, ConnectTwoAndClose)
 {
   Client::ID id[2] = { Client::DEFAULT_ID, Client::DEFAULT_ID };
   ipv4::Address dst_ip(10, 1, 0, 2);
@@ -323,7 +348,7 @@ TEST_F(SSL_TwoClients, ConnectTwoAndDisconnect)
   ASSERT_EQ(0, m_server_delegate.connections().size());
 }
 
-TEST_F(SSL_TwoClients, ConnectTwoAndDisconnectFromServer)
+TEST_F(SSL_TwoClients, ConnectTwoAndCloseFromServer)
 {
   Client::ID id[2] = { Client::DEFAULT_ID, Client::DEFAULT_ID };
   ipv4::Address dst_ip(10, 1, 0, 2);
@@ -347,7 +372,7 @@ TEST_F(SSL_TwoClients, ConnectTwoAndDisconnectFromServer)
   ASSERT_EQ(0, m_server_delegate.connections().size());
 }
 
-TEST_F(SSL_TwoClients, ConnectSend)
+TEST_F(SSL_TwoClients, ConnectSendAndClose)
 {
   Client::ID id = Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
@@ -366,9 +391,14 @@ TEST_F(SSL_TwoClients, ConnectSend)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  /*
+   * Disconnect the client.
+   */
+  disconnectClient(id);
+  ASSERT_EQ(0, m_server_delegate.connections().size());
 }
 
-TEST_F(SSL_TwoClients, ConnectSendReceive)
+TEST_F(SSL_TwoClients, ConnectSendReceiveAndClose)
 {
   Client::ID id = Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
@@ -394,4 +424,9 @@ TEST_F(SSL_TwoClients, ConnectSendReceive)
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   ASSERT_TRUE(m_client_delegate.dataReceived());
+  /*
+   * Disconnect the client.
+   */
+  disconnectClient(id);
+  ASSERT_EQ(0, m_server_delegate.connections().size());
 }

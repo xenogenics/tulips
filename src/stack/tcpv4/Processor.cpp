@@ -324,7 +324,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
   /*
    * We do a very naive form of TCP reset processing; we just accept any RST and
    * kill our connection. We should in fact check if the sequence number of this
-   * reset is wihtin our advertised window before we accept the reset.
+   * reset is within our advertised window before we accept the reset.
    */
   if (INTCP->flags & Flag::RST) {
     TCP_LOG("connection aborted");
@@ -659,11 +659,16 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
             uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
             uint32_t alen = bound - e.m_slen;
             /*
-             * The application can send back some data.
+             * Notify the handler.
              */
-            switch (m_handler.onAcked(e, alen, e.m_sdat + HEADER_LEN + e.m_slen,
-                                      rlen)) {
+            auto* const buffer = e.m_sdat + HEADER_LEN + e.m_slen;
+            auto action = m_handler.onAcked(e, alen, buffer, rlen);
+            /*
+             * Process the action.
+             */
+            switch (action) {
               case Action::Abort:
+                m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
                 return sendClose(e);
@@ -686,8 +691,16 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
            * If we cannot send anything, just notify the application.
            */
           else {
-            switch (m_handler.onAcked(e)) {
+            /*
+             * Notify the handler.
+             */
+            auto action = m_handler.onAcked(e);
+            /*
+             * Process the action.
+             */
+            switch (action) {
               case Action::Abort:
+                m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
                 return sendClose(e);
@@ -733,6 +746,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
                                         e.m_sdat + HEADER_LEN + e.m_slen,
                                         rlen)) {
               case Action::Abort:
+                m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
                 return sendClose(e);
@@ -755,6 +769,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           else {
             switch (m_handler.onNewData(e, dataptr, datalen)) {
               case Action::Abort:
+                m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
                 return sendClose(e);
