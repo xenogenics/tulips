@@ -18,6 +18,7 @@ Device::Device(stack::ethernet::Address const& address,
                stack::ipv4::Address const& nm, const uint32_t mtu, List& rf,
                List& wf)
   : transport::Device("shm")
+  , m_packets()
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -34,6 +35,16 @@ Device::Device(stack::ethernet::Address const& address,
 
 Device::~Device()
 {
+  /*
+   * Deallocate any uncommitted packets.
+   */
+  for (auto p : m_packets) {
+    Packet::release(p);
+  }
+  m_packets.clear();
+  /*
+   * Clear resources.
+   */
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
 }
@@ -54,7 +65,7 @@ Device::poll(Processor& proc)
   LIST_LOG("processing packet: " << packet->len << "B, " << packet);
   Status ret = proc.process(packet->len, packet->data);
   m_read.pop_front();
-  delete packet;
+  Packet::release(packet);
   return ret;
 }
 
@@ -81,9 +92,10 @@ Device::wait(Processor& proc, const uint64_t ns)
 Status
 Device::prepare(uint8_t*& buf)
 {
-  Packet* packet = Packet::allocate(m_mtu);
+  auto* packet = Packet::allocate(m_mtu);
   LIST_LOG("preparing packet: " << mss() << "B, " << packet);
   buf = packet->data;
+  m_packets.push_back(packet);
   return Status::Ok;
 }
 
@@ -96,6 +108,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   packet->len = len;
   m_write.push_back(packet);
   pthread_cond_signal(&m_cond);
+  m_packets.remove(packet);
   return Status::Ok;
 }
 
@@ -107,7 +120,7 @@ Device::drop()
   }
   Packet* packet = m_read.front();
   m_read.pop_front();
-  delete packet;
+  Packet::release(packet);
   return Status::Ok;
 }
 
