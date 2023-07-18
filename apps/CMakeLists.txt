@@ -7,7 +7,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif ()
 
-if (IBVerbs_FOUND)
+if (LibIBVerbs_FOUND)
   add_executable(lat_ofed lat_ofed.cpp)
   target_link_libraries(lat_ofed
     PRIVATE
@@ -17,10 +17,10 @@ if (IBVerbs_FOUND)
     tulips_transport_stubs_static
     tulips_fifo_static
     PUBLIC
-    ${IBVerbs_LIBRARY})
-endif (IBVerbs_FOUND)
+    ${LibIBVerbs_LIBRARIES})
+endif (LibIBVerbs_FOUND)
 
-if (IBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
+if (LibIBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
   add_executable(raw_ofed raw_ofed.cpp)
   target_link_libraries(raw_ofed
     PRIVATE
@@ -32,14 +32,15 @@ if (IBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
     tulips_stack_static
     tulips_system_static
     PUBLIC
-    ${IBVerbs_LIBRARY}
-    ${PCAP_LIBRARY})
-endif (IBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
+    ${LibIBVerbs_LIBRARIES}
+    ${LibPCAP_LIBRARIES})
+endif (LibIBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
 
 if (NOT TULIPS_HAS_HW_CHECKSUM OR TULIPS_DISABLE_CHECKSUM_CHECK)
   if (TULIPS_ENABLE_ARP)
     add_executable(lat_pipe lat_pipe.cpp)
-    target_link_libraries(lat_pipe PRIVATE
+    target_link_libraries(lat_pipe
+      PRIVATE
       tulips_apps_static
       tulips_transport_npipe)
   endif (TULIPS_ENABLE_ARP)
@@ -48,7 +49,8 @@ if (NOT TULIPS_HAS_HW_CHECKSUM OR TULIPS_DISABLE_CHECKSUM_CHECK)
     tulips_api
     tulips_transport_shm)
   add_executable(ssl_fifo ssl_fifo.cpp)
-  target_link_libraries(ssl_fifo PRIVATE
+  target_link_libraries(ssl_fifo
+    PRIVATE
     tulips_api
     tulips_ssl
     tulips_transport_pcap
