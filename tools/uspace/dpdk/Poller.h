@@ -1,11 +1,11 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
-#include <tulips/transport/fabric/Device.h>
+#include <tulips/transport/dpdk/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <string>
 #include <pthread.h>
 
-namespace tulips::tools::uspace::fabric {
+namespace tulips::tools::uspace::dpdk {
 
 class Poller
 {
@@ -44,7 +44,7 @@ private:
   void run();
 
   const bool m_capture;
-  transport::fabric::Device m_fabric;
+  transport::dpdk::Device m_dpdk;
   transport::pcap::Device* m_pcap;
   transport::Device* m_device;
   defaults::ClientDelegate m_delegate;

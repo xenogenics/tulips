@@ -1,12 +1,12 @@
-#include <uspace/fabric/Connection.h>
-#include <uspace/fabric/State.h>
+#include <uspace/dpdk/Connection.h>
+#include <uspace/dpdk/State.h>
 #include <iostream>
 #include <sstream>
 #include <linenoise/linenoise.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 
-namespace tulips::tools::uspace::fabric::connection {
+namespace tulips::tools::uspace::dpdk::connection {
 
 /*
  * Close.

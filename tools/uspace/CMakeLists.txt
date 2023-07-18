@@ -1,6 +1,6 @@
-if (LibFabric_FOUND)
-  add_subdirectory(fabric)
-endif (LibFabric_FOUND)
+if (LibDPDK_FOUND)
+  add_subdirectory(dpdk)
+endif (LibDPDK_FOUND)
 
 if (LibIBVerbs_FOUND)
   add_subdirectory(ofed)

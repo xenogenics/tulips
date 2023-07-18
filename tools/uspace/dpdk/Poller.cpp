@@ -1,13 +1,13 @@
-#include <uspace/fabric/Poller.h>
+#include <uspace/dpdk/Poller.h>
 
-namespace tulips::tools::uspace::fabric {
+namespace tulips::tools::uspace::dpdk {
 
 Poller::Poller(const bool pcap)
   : m_capture(pcap)
-  , m_fabric(128)
-  , m_pcap(pcap ? new transport::pcap::Device(m_fabric, "packets.pcap")
+  , m_dpdk(128)
+  , m_pcap(pcap ? new transport::pcap::Device(m_dpdk, "packets.pcap")
                 : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_fabric)
+  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_dpdk)
   , m_delegate()
   , m_client(m_delegate, *m_device, 32)
   , m_run(true)
@@ -28,10 +28,10 @@ Poller::Poller(const bool pcap)
 
 Poller::Poller(std::string const& dev, const bool pcap)
   : m_capture(pcap)
-  , m_fabric(dev, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(m_fabric, "packets.pcap")
+  , m_dpdk(dev, 128)
+  , m_pcap(pcap ? new transport::pcap::Device(m_dpdk, "packets.pcap")
                 : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_fabric)
+  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_dpdk)
   , m_delegate()
   , m_client(m_delegate, *m_device, 32)
   , m_run(true)

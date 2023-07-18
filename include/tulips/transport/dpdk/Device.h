@@ -8,7 +8,7 @@
 #include <limits>
 #include <string>
 
-namespace tulips::transport::fabric {
+namespace tulips::transport::dpdk {
 
 class Device : public transport::Device
 {

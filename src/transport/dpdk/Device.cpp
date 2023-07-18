@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <tulips/transport/fabric/Device.h>
+#include <tulips/transport/dpdk/Device.h>
 #include <tulips/system/Compiler.h>
 #include <cstdlib>
 #include <ctime>
@@ -12,14 +12,14 @@
 #define FABRIC_LOG(...) ((void)0)
 #endif
 
-namespace tulips::transport::fabric {
+namespace tulips::transport::dpdk {
 
 Device::Device(UNUSED const uint16_t nbuf)
-  : transport::Device("fabric"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
+  : transport::Device("dpdk"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
 {}
 
 Device::Device(UNUSED std::string const& ifn, UNUSED const uint16_t nbuf)
-  : transport::Device("fabric"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
+  : transport::Device("dpdk"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
 {}
 
 Status

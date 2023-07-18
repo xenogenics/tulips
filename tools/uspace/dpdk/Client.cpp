@@ -1,6 +1,6 @@
 #include <tulips/system/Utils.h>
-#include <uspace/fabric/Connection.h>
-#include <uspace/fabric/State.h>
+#include <uspace/dpdk/Connection.h>
+#include <uspace/dpdk/State.h>
 #include <utils/Basic.h>
 #include <linenoise/linenoise.h>
 #include <cstring>
@@ -85,9 +85,9 @@ try {
   /*
    * Commands.
    */
-  fabric::State state(pcpA.isSet());
+  dpdk::State state(pcpA.isSet());
   basic::populate(state.commands);
-  fabric::connection::populate(state.commands);
+  dpdk::connection::populate(state.commands);
   /*
    * Main loop.
    */

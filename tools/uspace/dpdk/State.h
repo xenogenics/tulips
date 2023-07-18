@@ -1,11 +1,11 @@
 #pragma once
 
-#include <uspace/fabric/Poller.h>
+#include <uspace/dpdk/Poller.h>
 #include <utils/State.h>
 #include <set>
 #include <string>
 
-namespace tulips::tools::uspace::fabric {
+namespace tulips::tools::uspace::dpdk {
 
 using IDs = std::set<Client::ID>;
 

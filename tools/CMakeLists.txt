@@ -5,6 +5,6 @@ add_subdirectory(linenoise)
 add_subdirectory(socket)
 add_subdirectory(utils)
 
-if (LibFabric_FOUND OR LibIBVerbs_FOUND)
+if (LibDPDK_FOUND OR LibIBVerbs_FOUND)
   add_subdirectory(uspace)
-endif (LibFabric_FOUND OR LibIBVerbs_FOUND)
+endif (LibDPDK_FOUND OR LibIBVerbs_FOUND)
