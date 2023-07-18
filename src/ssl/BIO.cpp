@@ -5,6 +5,12 @@
 
 namespace tulips::ssl::bio {
 
+static const CircularBufferMethod CB_METHOD;
+
+/*
+ * Circular buffer BIO method.
+ */
+
 static int
 s_write(BIO* h, const char* buf, int size)
 {
@@ -98,42 +104,49 @@ s_create(BIO* h)
 static int
 s_destroy(BIO* h)
 {
+  /*
+   * Get the internal circular buffer.
+   */
   auto* b = reinterpret_cast<system::CircularBuffer*>(BIO_get_data(h));
   if (b == nullptr) {
     return 0;
   }
-  if (BIO_get_shutdown(h) && BIO_get_init(h)) {
-    delete b;
-    BIO_set_data(h, nullptr);
-  }
+  /*
+   * Delete the buffer and erase the internal data field.
+   */
+  delete b;
+  BIO_set_data(h, nullptr);
+  /*
+   * Done.
+   */
   return 1;
 }
+
+CircularBufferMethod::CircularBufferMethod()
+{
+  /*
+   * Allocate the method.
+   */
+  auto index = BIO_get_new_index();
+  m_method = BIO_meth_new(index, "circular memory buffer");
+  /*
+   * Populate the method.
+   */
+  BIO_meth_set_write(m_method, s_write);
+  BIO_meth_set_read(m_method, s_read);
+  BIO_meth_set_ctrl(m_method, s_ctrl);
+  BIO_meth_set_create(m_method, s_create);
+  BIO_meth_set_destroy(m_method, s_destroy);
+}
+
+/*
+ * Helpers.
+ */
 
 BIO*
 allocate(const size_t size)
 {
-  /*
-   * NOTE(xrg): this will leak.
-   *
-   * Before OpenSSL v3, this was declared as a statically allocated variable.
-   * Since OpenSSL v3, there is no proper way to deallocate a BIO_METHOD.
-   */
-  static BIO_METHOD* method = nullptr;
-  /*
-   * Allocate the BIO method.
-   */
-  if (method == nullptr) {
-    auto index = BIO_get_new_index();
-    method = BIO_meth_new(index, "circular memory buffer");
-  }
-  /*
-   * Populate the method.
-   */
-  BIO_meth_set_write(method, s_write);
-  BIO_meth_set_read(method, s_read);
-  BIO_meth_set_ctrl(method, s_ctrl);
-  BIO_meth_set_create(method, s_create);
-  BIO_meth_set_destroy(method, s_destroy);
+  auto* method = CB_METHOD.method();
   /*
    * Allocate a BIO.
    */
