@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.3)
-project("TULIPS" C CXX)
 
 #
 # Policies
@@ -13,8 +12,21 @@ cmake_policy(SET CMP0074 NEW)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+#
+# Compiler configuration
+#
+
+set(CMAKE_C_COMPILER_NAMES clang gcc)
+set(CMAKE_CXX_COMPILER_NAMES clang++ g++)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+#
+# Project definition
+#
+
+project("TULIPS" C CXX)
 
 #
 # Dependencies
@@ -129,6 +141,8 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
 if (TULIPS_DEBUG)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
   add_link_options(-fsanitize=address)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
+  add_link_options(-fsanitize=undefined)
 endif (TULIPS_DEBUG)
 
 #

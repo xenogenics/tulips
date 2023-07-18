@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/shm/Device.h>
@@ -20,7 +21,7 @@ public:
     if (m_do) {
       uint8_t* data;
       m_prod->prepare(data);
-      *(size_t*)data = m_value;
+      memcpy(data, &m_value, sizeof(size_t));
       m_do = false;
       return m_prod->commit(sizeof(m_value), data);
     }
@@ -29,7 +30,9 @@ public:
 
   Status process(const uint16_t len, const uint8_t* const data) override
   {
-    if (len == sizeof(m_value) && *(size_t*)data == m_value) {
+    size_t value;
+    memcpy(&value, data, sizeof(size_t));
+    if (len == sizeof(m_value) && value == m_value) {
       m_value += 1;
       m_do = true;
       return Status::Ok;
@@ -60,10 +63,10 @@ public:
 
   Status process(UNUSED const uint16_t len, const uint8_t* const data) override
   {
-    m_value = *(size_t*)data;
+    memcpy(&m_value, data, sizeof(size_t));
     uint8_t* outdata;
     m_prod->prepare(outdata);
-    *(size_t*)outdata = m_value;
+    memcpy(outdata, &m_value, sizeof(size_t));
     return m_prod->commit(sizeof(m_value), outdata);
   }
 
