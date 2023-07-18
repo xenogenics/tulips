@@ -7,6 +7,12 @@
 
 namespace tulips::stack::arp {
 
+enum OpCode : uint16_t
+{
+  Request = 1,
+  Reply = 2,
+};
+
 struct Header
 {
   uint16_t hwtype;

@@ -9,6 +9,22 @@
 namespace tulips::stack::tcpv4 {
 
 /*
+ * TCPv4 flags
+ */
+enum Flag : uint8_t
+{
+  FIN = 0x01,
+  SYN = 0x02,
+  RST = 0x04,
+  PSH = 0x08,
+  ACK = 0x10,
+  URG = 0x20,
+  ECE = 0x40,
+  CWR = 0x80,
+  CTL = 0x3f,
+};
+
+/*
  * The TCPv4 port type.
  */
 using Port = uint16_t;

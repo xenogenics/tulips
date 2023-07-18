@@ -25,7 +25,7 @@ using Arguments = std::vector<std::string>;
 class Command
 {
 public:
-  Command(std::string const& about);
+  Command(std::string about);
   virtual ~Command() = default;
 
   std::string const& about() const;

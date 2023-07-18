@@ -53,7 +53,7 @@ struct Options
 
 int
 main(int argc, char** argv)
-{
+try {
   TCLAP::CmdLine cmd("TULIPS SSL Tool", ' ', "1.0");
   Options opts(cmd);
   cmd.parse(argc, argv);
@@ -153,4 +153,7 @@ main(int argc, char** argv)
   tulips_fifo_destroy(&cfifo);
   tulips_fifo_destroy(&sfifo);
   return 0;
+} catch (std::exception const& e) {
+  std::cerr << e.what() << std::endl;
+  return -1;
 }

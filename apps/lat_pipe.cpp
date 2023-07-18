@@ -9,7 +9,7 @@ using namespace apps::tcplatency;
 
 int
 main(int argc, char** argv)
-{
+try {
   TCLAP::CmdLine cmd("TULIPS Pipe Test", ' ', "1.0");
   apps::Options opts(cmd);
   cmd.parse(argc, argv);
@@ -42,4 +42,7 @@ main(int argc, char** argv)
    */
   delete device;
   return res;
+} catch (std::exception const& e) {
+  std::cerr << e.what() << std::endl;
+  return -1;
 }

@@ -1,9 +1,11 @@
+#include <cstdint>
 #include <tulips/stack/ipv4/Producer.h>
 #include <cstring>
 #include <arpa/inet.h>
 
 #define OUTIP ((Header*)outdata)
-#define TTL 64
+
+constexpr const uint8_t TTL = 64;
 
 namespace tulips::stack::ipv4 {
 

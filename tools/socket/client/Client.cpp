@@ -38,7 +38,7 @@ completion(const char* buf, linenoiseCompletions* lc, void* cookie)
 {
   std::string e(buf);
   auto* state = reinterpret_cast<client::State*>(cookie);
-  Commands::const_iterator it = state->commands.lower_bound(e);
+  auto it = state->commands.lower_bound(e);
   while (it != state->commands.end() && it->first.length() >= e.length() &&
          it->first.substr(0, e.length()) == e) {
     linenoiseAddCompletion(lc, it->first.c_str());
@@ -71,7 +71,7 @@ execute(client::State& s, std::string const& line)
 
 int
 main(int argc, char** argv)
-{
+try {
   TCLAP::CmdLine cmdL("TULIPS connector", ' ', "1.0");
   TCLAP::ValueArg<std::string> iffA("I", "interface", "Network interface",
                                     false, "", "INTERFACE", cmdL);
@@ -103,4 +103,7 @@ main(int argc, char** argv)
    * Clean-up.
    */
   return 0;
+} catch (std::exception const& e) {
+  std::cerr << e.what() << std::endl;
+  return -1;
 }
