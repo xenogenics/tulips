@@ -17,7 +17,7 @@ Device::Device(stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
                stack::ipv4::Address const& nm, const uint32_t mtu, List& rf,
                List& wf)
-  : transport::Device("shm")
+  : transport::Device("list")
   , m_packets()
   , m_address(address)
   , m_ip(ip)

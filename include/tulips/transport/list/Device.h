@@ -71,7 +71,7 @@ public:
   Status drop();
 
 private:
-  std::list<Packet*> m_packets;
+  List m_packets;
 
 protected:
   bool waitForInput(const uint64_t ns);
