@@ -1,7 +1,9 @@
 #include "Utils.h"
+#include <infiniband/verbs.h>
 #include <tulips/fifo/errors.h>
 #include <tulips/transport/Utils.h>
 #include <tulips/stack/Ethernet.h>
+#include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <csignal>
@@ -23,7 +25,7 @@
  * debug large segment with the PCAP transport enabled as IP packets cannot be
  * larger than 64KB.
  */
-#define OFED_CAPTSOB 0
+#define OFED_CAPTSOB 0 // NOLINT
 
 #if OFED_VERBOSE
 #define OFED_LOG(__args) LOG("OFED", __args)
@@ -184,10 +186,8 @@ Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
   /*
    * Query the device for its MAC.
    */
-  struct ibv_exp_device_attr deva;
-  deva.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
-                   IBV_EXP_DEVICE_ATTR_TSO_CAPS;
-  res = ibv_exp_query_device(m_context, &deva);
+  struct ibv_device_attr_ex deva;
+  res = ibv_query_device_ex(m_context, nullptr, &deva);
   if (res != 0) {
     std::string error(strerror(res));
     throw std::runtime_error("Cannot query device: " + error);
@@ -195,32 +195,18 @@ Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
   /*
    * Find out the capabilities.
    */
-  PRINT_EXP_CAP(deva, IBV_EXP_DEVICE_MANAGED_FLOW_STEERING);
-  PRINT_EXP_CAP(deva, IBV_EXP_DEVICE_VXLAN_SUPPORT);
-  PRINT_EXP_CAP(deva, IBV_EXP_DEVICE_RX_CSUM_IP_PKT);
-  PRINT_EXP_CAP(deva, IBV_EXP_DEVICE_RX_CSUM_TCP_UDP_PKT);
+  PRINT_EXP_CAP(deva, IBV_DEVICE_MANAGED_FLOW_STEERING);
+  PRINT_EXP_CAP(deva, IBV_DEVICE_RAW_IP_CSUM);
   /*
    * In case we are compiled with HW checksum support, make sure it is
    * supported.
    */
 #ifdef TULIPS_HAS_HW_CHECKSUM
-  if (!(deva.exp_device_cap_flags & IBV_EXP_DEVICE_RX_CSUM_IP_PKT)) {
+  if (!(deva.device_cap_flags_ex & IBV_DEVICE_RAW_IP_CSUM)) {
 #ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    std::cerr << OFED_HEADER
-              << "IP checksum offload not supported by device, ignored"
-              << std::endl;
+    OFED_LOG("IP checksum offload not supported by device, ignored");
 #else
     throw std::runtime_error("Device does not support IP checksum offload");
-#endif
-  }
-  if (!(deva.exp_device_cap_flags & IBV_EXP_DEVICE_RX_CSUM_TCP_UDP_PKT)) {
-#ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    std::cerr << OFED_HEADER
-              << "TCP/UDP checksum offload not supported by device"
-              << std::endl;
-#else
-    throw std::runtime_error(
-      "Device does not support TCP/UDP checksum offload");
 #endif
   }
 #endif
@@ -239,8 +225,7 @@ Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
 #endif
   } else {
 #ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    std::cerr << OFED_HEADER << "TSO not supported by device, ignored"
-              << std::endl;
+    OFED_LOG("TSO not supported by device, ignored");
 #else
     throw std::runtime_error("Device does not support TSO");
 #endif
@@ -270,7 +255,7 @@ Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
   /*
    * Prepare the receive buffers.
    */
-  for (int i = 0; i < m_nbuf; i += 1) {
+  for (uint16_t i = 0; i < m_nbuf; i += 1) {
     if (postReceive(i) != Status::Ok) {
       throw std::runtime_error("Cannot post receive buffer");
     }
@@ -332,11 +317,11 @@ Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
 }
 
 Status
-Device::postReceive(const int id)
+Device::postReceive(const uint16_t id)
 {
   struct ibv_sge sge;
   struct ibv_recv_wr wr;
-  const uint8_t* addr = m_recvbuf + id * RECV_BUFLEN;
+  const uint8_t* addr = m_recvbuf + size_t(id) * RECV_BUFLEN;
   /*
    * SGE entry.
    */
@@ -367,7 +352,7 @@ Device::~Device()
    * Destroy dynamic flows.
    */
   for (auto& m_filter : m_filters) {
-    ibv_exp_destroy_flow(m_filter.second);
+    ibv_destroy_flow(m_filter.second);
   }
   m_filters.clear();
   /*
@@ -402,7 +387,7 @@ Device::~Device()
     ibv_dereg_mr(m_recvmr);
   }
   if (m_recvbuf) {
-    munmap(m_recvbuf, m_nbuf * RECV_BUFLEN);
+    munmap(m_recvbuf, size_t(m_nbuf) * RECV_BUFLEN);
   }
   /*
    * Destroy queue pair
@@ -435,10 +420,10 @@ Device::listen(const uint16_t port)
    */
   struct tcp_flow_attr
   {
-    struct ibv_exp_flow_attr atr;
-    struct ibv_exp_flow_spec_eth eth;
-    struct ibv_exp_flow_spec_ipv4 ip4;
-    struct ibv_exp_flow_spec_tcp_udp tcp;
+    struct ibv_flow_attr atr;
+    struct ibv_flow_spec_eth eth;
+    struct ibv_flow_spec_ipv4 ip4;
+    struct ibv_flow_spec_tcp_udp tcp;
   } __attribute__((packed));
   /*
    * Fill in the attributes.
@@ -446,29 +431,29 @@ Device::listen(const uint16_t port)
   struct tcp_flow_attr flow;
   memset(&flow, 0, sizeof(flow));
   //
-  flow.atr.type = IBV_EXP_FLOW_ATTR_NORMAL;
+  flow.atr.type = IBV_FLOW_ATTR_NORMAL;
   flow.atr.size = sizeof(flow);
   flow.atr.num_of_specs = 3;
   flow.atr.port = m_port + 1;
   //
-  flow.eth.type = IBV_EXP_FLOW_SPEC_ETH;
-  flow.eth.size = sizeof(struct ibv_exp_flow_spec_eth);
+  flow.eth.type = IBV_FLOW_SPEC_ETH;
+  flow.eth.size = sizeof(struct ibv_flow_spec_eth);
   memcpy(flow.eth.val.dst_mac, m_address.data(), 6);
   memset(flow.eth.mask.dst_mac, 0xFF, 6);
   //
-  flow.ip4.type = IBV_EXP_FLOW_SPEC_IPV4;
-  flow.ip4.size = sizeof(struct ibv_exp_flow_spec_ipv4);
+  flow.ip4.type = IBV_FLOW_SPEC_IPV4;
+  flow.ip4.size = sizeof(struct ibv_flow_spec_ipv4);
   memcpy(&flow.ip4.val.dst_ip, m_ip.data(), 4);
   memset(&flow.ip4.mask.dst_ip, 0xFF, 4);
   //
-  flow.tcp.type = IBV_EXP_FLOW_SPEC_TCP;
-  flow.tcp.size = sizeof(struct ibv_exp_flow_spec_tcp_udp);
+  flow.tcp.type = IBV_FLOW_SPEC_TCP;
+  flow.tcp.size = sizeof(struct ibv_flow_spec_tcp_udp);
   flow.tcp.val.dst_port = htons(port);
   flow.tcp.mask.dst_port = 0xFFFF;
   /*
    * Setup the TCP flow.
    */
-  ibv_exp_flow* f = ibv_exp_create_flow(m_qp, (ibv_exp_flow_attr*)&flow);
+  ibv_flow* f = ibv_create_flow(m_qp, (ibv_flow_attr*)&flow);
   if (f == nullptr) {
     OFED_LOG("cannot create TCP/UDP FLOW");
     return Status::HardwareError;
@@ -485,7 +470,7 @@ void
 Device::unlisten(const uint16_t port)
 {
   if (m_filters.count(port) > 0) {
-    ibv_exp_destroy_flow(m_filters[port]);
+    ibv_destroy_flow(m_filters[port]);
     m_filters.erase(port);
   }
 }
@@ -499,11 +484,11 @@ Status
 Device::poll(Processor& proc)
 {
   int cqn = 0;
-  struct ibv_exp_wc wc[m_nbuf];
+  struct ibv_wc wc[m_nbuf];
   /*
    * Process the incoming recv buffers.
    */
-  cqn = ibv_exp_poll_cq(m_recvcq, m_nbuf, wc, sizeof(struct ibv_exp_wc));
+  cqn = ibv_poll_cq(m_recvcq, m_nbuf, wc);
   if (cqn < 0) {
     OFED_LOG("polling recv completion queue failed");
     return Status::HardwareError;
@@ -520,7 +505,7 @@ Device::poll(Processor& proc)
   for (int i = 0; i < cqn; i += 1) {
     int id = wc[i].wr_id;
     size_t len = wc[i].byte_len;
-    const uint8_t* addr = m_recvbuf + id * RECV_BUFLEN;
+    const uint8_t* addr = m_recvbuf + size_t(id) * RECV_BUFLEN;
     OFED_LOG("processing id=" << id << " addr=" << (void*)addr
                               << " len=" << len);
 #if OFED_VERBOSE && OFED_HEXDUMP
@@ -530,15 +515,17 @@ Device::poll(Processor& proc)
      * Validate the IP checksums
      */
 #ifdef TULIPS_HAS_HW_CHECKSUM
-    if (wc[i].exp_wc_flags & IBV_EXP_WC_RX_IPV4_PACKET) {
+    if (wc[i].wc_flags & IBV_FLOW_SPEC_IPV4) {
       if (m_hints & Device::VALIDATE_IP_CSUM) {
-        if (!(wc[i].exp_wc_flags & IBV_EXP_WC_RX_IP_CSUM_OK)) {
+        if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
           OFED_LOG("invalid IP checksum, dropping packet");
           continue;
         }
       }
+    }
+    if (wc[i].wc_flags & IBV_FLOW_SPEC_TCP) {
       if (m_hints & Device::VALIDATE_TCP_CSUM) {
-        if (!(wc[i].exp_wc_flags & IBV_EXP_WC_RX_TCP_UDP_CSUM_OK)) {
+        if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
           OFED_LOG("invalid TCP/UDP checksum, dropping packet");
           continue;
         }
@@ -644,11 +631,11 @@ Status
 Device::prepare(uint8_t*& buf)
 {
   int cqn;
-  struct ibv_exp_wc wc[m_nbuf];
+  struct ibv_wc wc[m_nbuf];
   /*
    * Process the successfully sent buffers.
    */
-  cqn = ibv_exp_poll_cq(m_sendcq, m_nbuf, wc, sizeof(struct ibv_exp_wc));
+  cqn = ibv_poll_cq(m_sendcq, m_nbuf, wc);
   if (cqn < 0) {
     OFED_LOG("polling send completion queue failed");
     return Status::HardwareError;
@@ -657,7 +644,7 @@ Device::prepare(uint8_t*& buf)
    * Queue the sent buffers.
    */
   for (int i = 0; i < cqn; i += 1) {
-    auto* addr = (uint8_t*)wc[i].wr_id;
+    auto* addr = (uint8_t*)wc[i].wr_id; // NOLINT
     tulips_fifo_push(m_fifo, &addr);
   }
   /*
@@ -729,7 +716,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   /*
    * Prepare the WR.
    */
-  struct ibv_exp_send_wr wr;
+  struct ibv_send_wr wr;
   memset(&wr, 0, sizeof(wr));
   wr.wr_id = (uint64_t)buf;
   wr.sg_list = &sge;
@@ -739,23 +726,23 @@ Device::commit(const uint32_t len, uint8_t* const buf,
     wr.tso.mss = lmss;
     wr.tso.hdr = buf;
     wr.tso.hdr_sz = header_len;
-    wr.exp_opcode = IBV_EXP_WR_TSO;
+    wr.opcode = IBV_WR_TSO;
   } else {
-    wr.exp_opcode = IBV_EXP_WR_SEND;
+    wr.opcode = IBV_WR_SEND;
   }
 #else
-  wr.exp_opcode = IBV_EXP_WR_SEND;
+  wr.opcode = IBV_WR_SEND;
 #endif
-  wr.exp_send_flags = IBV_EXP_SEND_SIGNALED | IBV_EXP_SEND_IP_CSUM;
+  wr.send_flags = IBV_SEND_SIGNALED | IBV_SEND_IP_CSUM;
   /*
    * Mark the transaction inline.
    */
-  wr.exp_send_flags |= len <= INLINE_DATA_THRESHOLD ? IBV_SEND_INLINE : 0;
+  wr.send_flags |= len <= INLINE_DATA_THRESHOLD ? IBV_SEND_INLINE : 0;
   /*
    * Post the work request.
    */
-  struct ibv_exp_send_wr* bad_wr;
-  if (ibv_exp_post_send(m_qp, &wr, &bad_wr) != 0) {
+  struct ibv_send_wr* bad_wr;
+  if (ibv_post_send(m_qp, &wr, &bad_wr) != 0) {
     LOG("OFED",
         "post send of buffer len=" << len << " failed, " << strerror(errno));
     return Status::HardwareError;

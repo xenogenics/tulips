@@ -232,10 +232,10 @@ if (LINUX)
   list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
 endif (LINUX)
 
-if (NOT libibverbs_FOUND)
+if (NOT LibIBVerbs_FOUND)
   list(FILTER SOURCES EXCLUDE REGEX ".*ofed.*")
   list(FILTER SOURCES EXCLUDE REGEX ".*uspace.*")
-endif (NOT libibverbs_FOUND)
+endif (NOT LibIBVerbs_FOUND)
 
 foreach (SOURCE ${SOURCES})
   string(REGEX REPLACE "[/.]" "_" TARGET ${SOURCE})
