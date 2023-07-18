@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
-#include <infiniband/verbs_exp.h>
+#include <infiniband/verbs.h>
 
 namespace tulips::transport::ofed {
 
@@ -22,38 +22,42 @@ public:
 
   Device(const uint16_t nbuf);
   Device(std::string const& ifn, const uint16_t nbuf);
-  ~Device();
+  ~Device() override;
 
-  stack::ethernet::Address const& address() const { return m_address; }
+  stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const { return m_ip; }
+  stack::ipv4::Address const& ip() const override { return m_ip; }
 
-  stack::ipv4::Address const& gateway() const { return m_dr; }
+  stack::ipv4::Address const& gateway() const override { return m_dr; }
 
-  stack::ipv4::Address const& netmask() const { return m_nm; }
+  stack::ipv4::Address const& netmask() const override { return m_nm; }
 
-  uint32_t mtu() const { return m_mtu; }
+  uint32_t mtu() const override { return m_mtu; }
 
-  uint8_t receiveBufferLengthLog2() const { return 11; }
+  uint8_t receiveBufferLengthLog2() const override { return 11; }
 
-  uint16_t receiveBuffersAvailable() const { return m_nbuf - m_pending; }
+  uint16_t receiveBuffersAvailable() const override
+  {
+    return m_nbuf - m_pending;
+  }
 
-  Status listen(const uint16_t port);
-  void unlisten(const uint16_t port);
+  Status listen(const uint16_t port) override;
+  void unlisten(const uint16_t port) override;
 
-  Status poll(Processor& proc);
-  Status wait(Processor& proc, const uint64_t ns);
+  Status poll(Processor& proc) override;
+  Status wait(Processor& proc, const uint64_t ns) override;
 
-  uint32_t mss() const { return m_buflen; }
+  uint32_t mss() const override { return m_buflen; }
 
-  Status prepare(uint8_t*& buf);
-  Status commit(const uint32_t len, uint8_t* const buf, const uint16_t mss = 0);
+  Status prepare(uint8_t*& buf) override;
+  Status commit(const uint32_t len, uint8_t* const buf,
+                const uint16_t mss = 0) override;
 
 private:
-  using Filters = std::map<uint16_t, ibv_exp_flow*>;
+  using Filters = std::map<uint16_t, ibv_flow*>;
 
   void construct(std::string const& ifn, const uint16_t nbuf);
-  Status postReceive(const int id);
+  Status postReceive(const uint16_t id);
 
   uint16_t m_nbuf;
   uint16_t m_pending;

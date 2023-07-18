@@ -10,7 +10,7 @@ target_link_libraries(tulips_transport_ofed
   tulips_stack
   tulips_transport_stubs
   PUBLIC
-  ${IBVerbs_LIBRARY})
+  ${LibIBVerbs_LIBRARIES})
 
 add_library(tulips_transport_ofed_static STATIC ${SOURCES})
 

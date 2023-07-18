@@ -6,10 +6,10 @@ add_subdirectory(pcap)
 add_subdirectory(shm)
 add_subdirectory(stubs)
 
-if (IBVerbs_FOUND)
+if (LibIBVerbs_FOUND)
   message(STATUS "Found OFED: OFED transport will be built")
   add_subdirectory(ofed)
-endif (IBVerbs_FOUND)
+endif (LibIBVerbs_FOUND)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
   add_subdirectory(tap)

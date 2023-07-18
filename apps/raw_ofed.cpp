@@ -243,7 +243,7 @@ struct Options
 
 int
 main(int argc, char** argv)
-{
+try {
   TCLAP::CmdLine cmd("TULIPS OFED RAW TEST", ' ', "1.0");
   Options opts(cmd);
   cmd.parse(argc, argv);
@@ -265,4 +265,7 @@ main(int argc, char** argv)
   return main_raw(opts.snd.isSet(), opts.dly.getValue(), opts.pcp.isSet(),
                   opts.wai.isSet(), opts.iff.getValue(), opts.hwa.getValue(),
                   opts.usd.getValue(), opts.cpu.getValue());
+} catch (std::exception const& e) {
+  std::cerr << e.what() << std::endl;
+  return -1;
 }

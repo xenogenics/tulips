@@ -125,19 +125,27 @@ setup(ibv_context* context, ibv_pd* pd, const uint8_t port, const uint16_t nbuf,
     throw std::runtime_error("Cannot create receive completion channel");
   }
   /*
-   * Create a send/recv completion queues.
+   * Create a send completion queue.
    */
-  struct ibv_exp_cq_init_attr cq_attr = {
-    .comp_mask = IBV_EXP_CQ_INIT_ATTR_FLAGS,
-    .flags = IBV_EXP_CQ_TIMESTAMP,
-    .res_domain = nullptr,
-    .peer_direct_attrs = nullptr,
+  struct ibv_cq_init_attr_ex send_cq_attr = {
+    .cqe = nbuf,
+    .comp_mask = IBV_CQ_INIT_ATTR_MASK_FLAGS,
+    .flags = IBV_WC_EX_WITH_COMPLETION_TIMESTAMP,
   };
-  sendcq = ibv_exp_create_cq(context, nbuf, nullptr, nullptr, 0, &cq_attr);
+  sendcq = ibv_cq_ex_to_cq(ibv_create_cq_ex(context, &send_cq_attr));
   if (sendcq == nullptr) {
     throw std::runtime_error("Cannot create send completion queue");
   }
-  recvcq = ibv_exp_create_cq(context, nbuf, nullptr, comp, 0, &cq_attr);
+  /*
+   * Create a recv completion queue.
+   */
+  struct ibv_cq_init_attr_ex recv_cq_attr = {
+    .cqe = nbuf,
+    .channel = comp,
+    .comp_mask = IBV_CQ_INIT_ATTR_MASK_FLAGS,
+    .flags = IBV_WC_EX_WITH_COMPLETION_TIMESTAMP,
+  };
+  recvcq = ibv_cq_ex_to_cq(ibv_create_cq_ex(context, &recv_cq_attr));
   if (recvcq == nullptr) {
     throw std::runtime_error("Cannot create receive completion queue");
   }
@@ -151,8 +159,8 @@ setup(ibv_context* context, ibv_pd* pd, const uint8_t port, const uint16_t nbuf,
   /*
    * Setup the QP attributes.
    */
-  struct ibv_exp_qp_init_attr qp_init_attr;
-  qp_init_attr.comp_mask = IBV_EXP_QP_INIT_ATTR_PD;
+  struct ibv_qp_init_attr_ex qp_init_attr;
+  qp_init_attr.comp_mask = IBV_QP_INIT_ATTR_PD;
   qp_init_attr.qp_context = nullptr;
   qp_init_attr.send_cq = sendcq;
   qp_init_attr.recv_cq = recvcq;
@@ -164,7 +172,7 @@ setup(ibv_context* context, ibv_pd* pd, const uint8_t port, const uint16_t nbuf,
    * Setup the TSO header
    */
 #ifdef TULIPS_HAS_HW_TSO
-  qp_init_attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_MAX_TSO_HEADER;
+  qp_init_attr.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
   qp_init_attr.max_tso_header = 58;
 #endif
   /*
@@ -179,7 +187,7 @@ setup(ibv_context* context, ibv_pd* pd, const uint8_t port, const uint16_t nbuf,
   /*
    * Create the queue pair.
    */
-  qp = ibv_exp_create_qp(context, &qp_init_attr);
+  qp = ibv_create_qp_ex(context, &qp_init_attr);
   if (qp == nullptr) {
     throw std::runtime_error("Cannot create queue pair");
   }

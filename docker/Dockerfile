@@ -54,6 +54,7 @@ RUN apt install -y    \
       make            \
       ninja-build     \
       libgtest-dev    \
+      libibverbs-dev  \
       libpcap-dev     \
       libtclap-dev    \
       libssl-dev

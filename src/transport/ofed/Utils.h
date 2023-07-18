@@ -6,14 +6,14 @@
 #define PRINT_EXP_CAP(__flags, __cap)                                          \
   LOG("OFED",                                                                  \
       #__cap << " = " << std::boolalpha                                        \
-             << (bool)(((__flags).exp_device_cap_flags & (__cap)) == (__cap)))
+             << (bool)(((__flags).device_cap_flags_ex & (__cap)) == (__cap)))
 
 #define PRINT_WC_FLAG(__wc, __flag)                                            \
   LOG("OFED", #__flag << " = " << std::boolalpha                               \
                       << (bool)(((__wc).exp_wc_flags & (__flag)) == (__flag)))
 
 #define HAS_TSO(__caps)                                                        \
-  ((__caps).max_tso > 0 && ((__caps).supported_qpts | IBV_EXP_QPT_RAW_PACKET))
+  ((__caps).max_tso > 0 && ((__caps).supported_qpts | IBV_QPT_RAW_PACKET))
 
 bool getInterfaceDeviceAndPortIds(std::string const& ifn, std::string& name,
                                   int& portid);

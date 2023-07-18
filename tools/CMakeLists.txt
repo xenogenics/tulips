@@ -5,6 +5,6 @@ add_subdirectory(linenoise)
 add_subdirectory(socket)
 add_subdirectory(utils)
 
-if (IBVerbs_FOUND)
+if (LibIBVerbs_FOUND)
   add_subdirectory(uspace)
-endif (IBVerbs_FOUND)
+endif (LibIBVerbs_FOUND)

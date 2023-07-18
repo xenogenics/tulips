@@ -29,13 +29,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project("TULIPS" C CXX)
 
 #
-# Dependencies
+# Library dependencies
 #
 
-find_package(PCAP 1.10 REQUIRED)
-find_package(TCLAP 1.1 REQUIRED)
-find_package(OpenSSL 3.0 REQUIRED)
-find_package(IBVerbs)
+find_package(PkgConfig 1.8 REQUIRED)
+
+pkg_check_modules(LibPCAP REQUIRED libpcap>=1.10)
+pkg_check_modules(OpenSSL REQUIRED openssl>=3.0)
+pkg_check_modules(TCLAP REQUIRED tclap>=1.2)
+
+pkg_check_modules(LibFabric libfabric>=1.17)
+pkg_check_modules(LibIBVerbs libibverbs>=1.14)
+
+#
+# Tooling dependencies
+#
+
 find_package(ClangFormat)
 find_package(ClangTidy)
 
@@ -223,10 +232,10 @@ if (LINUX)
   list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
 endif (LINUX)
 
-if (NOT IBVerbs_FOUND)
+if (NOT LibIBVerbs_FOUND)
   list(FILTER SOURCES EXCLUDE REGEX ".*ofed.*")
   list(FILTER SOURCES EXCLUDE REGEX ".*uspace.*")
-endif (NOT IBVerbs_FOUND)
+endif (NOT LibIBVerbs_FOUND)
 
 foreach (SOURCE ${SOURCES})
   string(REGEX REPLACE "[/.]" "_" TARGET ${SOURCE})

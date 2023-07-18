@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-and-test:
+  build-debug-and-test:
     runs-on: ubuntu-latest
     container: 
       image: xenogenics/tulips-builder
@@ -22,6 +22,19 @@ jobs:
         run: make build
       - name: test
         run: make test
+  build-release:
+    runs-on: ubuntu-latest
+    container: 
+      image: xenogenics/tulips-builder
+      env:
+        CTEST_PARALLEL_LEVEL: 2
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: make release
+      - name: build
+        run: make build
   check-format:
     runs-on: ubuntu-latest
     container: 
