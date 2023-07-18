@@ -1,12 +1,12 @@
-#include <uspace/client/Connection.h>
-#include <uspace/client/State.h>
+#include <uspace/fabric/Connection.h>
+#include <uspace/fabric/State.h>
 #include <iostream>
 #include <sstream>
 #include <linenoise/linenoise.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 
-namespace tulips::tools::uspace::client::connection {
+namespace tulips::tools::uspace::fabric::connection {
 
 /*
  * Close.

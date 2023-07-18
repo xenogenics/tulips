@@ -5,7 +5,7 @@
 #include <string>
 #include <pthread.h>
 
-namespace tulips::tools::uspace::client {
+namespace tulips::tools::uspace::ofed {
 
 class Poller
 {

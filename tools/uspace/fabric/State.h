@@ -1,11 +1,11 @@
 #pragma once
 
-#include <uspace/client/Poller.h>
+#include <uspace/fabric/Poller.h>
 #include <utils/State.h>
 #include <set>
 #include <string>
 
-namespace tulips::tools::uspace::client {
+namespace tulips::tools::uspace::fabric {
 
 using IDs = std::set<Client::ID>;
 

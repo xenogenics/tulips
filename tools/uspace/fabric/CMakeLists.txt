@@ -10,12 +10,12 @@ endif ()
 
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.h)
 
-add_executable(client-uspace ${SOURCES}
+add_executable(fabric-uspace ${SOURCES}
   $<TARGET_OBJECTS:linenoise>
   $<TARGET_OBJECTS:utils>)
 
-target_link_libraries(client-uspace
+target_link_libraries(fabric-uspace
   PUBLIC
-  tulips_transport_ofed
+  tulips_transport_fabric
   tulips_transport_pcap
   tulips_api)

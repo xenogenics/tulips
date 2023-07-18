@@ -1,6 +1,6 @@
-#include <uspace/client/State.h>
+#include <uspace/fabric/State.h>
 
-namespace tulips::tools::uspace::client {
+namespace tulips::tools::uspace::fabric {
 
 State::State(const bool pcap) : utils::State(), poller(pcap), ids() {}
 

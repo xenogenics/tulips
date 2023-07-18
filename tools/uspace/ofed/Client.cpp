@@ -1,6 +1,6 @@
 #include <tulips/system/Utils.h>
-#include <uspace/client/Connection.h>
-#include <uspace/client/State.h>
+#include <uspace/ofed/Connection.h>
+#include <uspace/ofed/State.h>
 #include <utils/Basic.h>
 #include <linenoise/linenoise.h>
 #include <cstring>
@@ -85,9 +85,9 @@ try {
   /*
    * Commands.
    */
-  client::State state(pcpA.isSet());
+  ofed::State state(pcpA.isSet());
   basic::populate(state.commands);
-  client::connection::populate(state.commands);
+  ofed::connection::populate(state.commands);
   /*
    * Main loop.
    */

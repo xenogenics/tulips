@@ -1,6 +1,6 @@
-#include <uspace/client/Poller.h>
+#include <uspace/ofed/Poller.h>
 
-namespace tulips::tools::uspace::client {
+namespace tulips::tools::uspace::ofed {
 
 Poller::Poller(const bool pcap)
   : m_capture(pcap)

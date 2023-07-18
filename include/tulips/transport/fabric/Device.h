@@ -13,9 +13,8 @@ namespace tulips::transport::fabric {
 class Device : public transport::Device
 {
 public:
-  Device(stack::ethernet::Address const& address,
-         stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-         stack::ipv4::Address const& nm, const uint32_t mtu);
+  Device(const uint16_t nbuf);
+  Device(std::string const& ifn, const uint16_t nbuf);
   ~Device() override = default;
 
   stack::ethernet::Address const& address() const override { return m_address; }

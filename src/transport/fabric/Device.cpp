@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <tulips/transport/fabric/Device.h>
 #include <tulips/system/Compiler.h>
 #include <cstdlib>
@@ -13,15 +14,12 @@
 
 namespace tulips::transport::fabric {
 
-Device::Device(stack::ethernet::Address const& address,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-               stack::ipv4::Address const& nm, const uint32_t mtu)
-  : transport::Device("fabric")
-  , m_address(address)
-  , m_ip(ip)
-  , m_dr(dr)
-  , m_nm(nm)
-  , m_mtu(mtu)
+Device::Device(UNUSED const uint16_t nbuf)
+  : transport::Device("fabric"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
+{}
+
+Device::Device(UNUSED std::string const& ifn, UNUSED const uint16_t nbuf)
+  : transport::Device("fabric"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
 {}
 
 Status
