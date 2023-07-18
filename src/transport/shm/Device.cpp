@@ -14,7 +14,7 @@
 #define SHM_LOG(...) ((void)0)
 #endif
 
-#define RETRY_COUNT 1
+constexpr const size_t RETRY_COUNT = 1;
 
 namespace tulips::transport::shm {
 

@@ -22,7 +22,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
     Segment& seg = e.nextAvailableSegment();
     seg.set(e.m_slen, e.m_snd_nxt, e.m_sdat);
     e.resetSendBuffer();
-    return send(e, seg, TCP_PSH);
+    return send(e, seg, Flag::PSH);
   }
   /*
    * If there is data in flight, enqueue.
@@ -33,7 +33,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
   /*
    * Send the segment.
    */
-  return sendNoDelay(e, TCP_PSH);
+  return sendNoDelay(e, Flag::PSH);
 }
 
 Status
@@ -52,8 +52,8 @@ Processor::sendAbort(Connection& e)
   m_device.unlisten(e.m_lport);
   e.m_state = Connection::CLOSED;
   uint8_t* outdata = e.m_sdat;
-  OUTTCP->flags = TCP_RST;
-  OUTTCP->flags |= e.m_newdata ? TCP_ACK : 0;
+  OUTTCP->flags = Flag::RST;
+  OUTTCP->flags |= e.m_newdata ? Flag::ACK : 0;
   OUTTCP->offset = 5;
   return send(e);
 }
@@ -101,7 +101,7 @@ Processor::sendAck(Connection& e)
   /*
    * Prepare the frame for an ACK.
    */
-  OUTTCP->flags = TCP_ACK;
+  OUTTCP->flags = Flag::ACK;
   OUTTCP->offset = 5;
   return send(e);
 }
@@ -111,7 +111,7 @@ Processor::sendSyn(Connection& e, Segment& s)
 {
   uint8_t* outdata = s.m_dat;
   uint16_t len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
-  OUTTCP->flags |= TCP_SYN;
+  OUTTCP->flags |= Flag::SYN;
   OUTTCP->offset = len >> 2;
   /*
    * We send out the TCP Maximum Segment Size option with our SYNACK.
@@ -149,7 +149,7 @@ Processor::send(Connection& e)
    */
   if (e.m_state == Connection::STOPPED) {
     OUTTCP->wnd = 0;
-  } else if (OUTTCP->flags & TCP_SYN) {
+  } else if (OUTTCP->flags & Flag::SYN) {
     uint32_t window = m_device.receiveBuffersAvailable()
                       << m_device.receiveBufferLengthLog2();
     OUTTCP->wnd = htons(utils::cap(window));
@@ -200,7 +200,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    */
   if (e.m_state == Connection::STOPPED) {
     OUTTCP->wnd = 0;
-  } else if (OUTTCP->flags & TCP_SYN) {
+  } else if (OUTTCP->flags & Flag::SYN) {
     uint32_t window = m_device.receiveBuffersAvailable()
                       << m_device.receiveBufferLengthLog2();
     OUTTCP->wnd = htons(utils::cap(window));
@@ -311,7 +311,7 @@ Processor::rexmit(Connection& e)
       Segment& seg = e.segment();
       seg.swap(e.m_sdat);
       e.resetSendBuffer();
-      return send(e, seg, TCP_PSH);
+      return send(e, seg, Flag::PSH);
     }
     /*
      * In all these states we should retransmit a FINACK.

@@ -101,7 +101,7 @@ struct Options
 
 int
 main(int argc, char** argv)
-{
+try {
   TCLAP::CmdLine cmd("TULIPS Trace Tool", ' ', "1.0");
   Options opts(cmd);
   cmd.parse(argc, argv);
@@ -206,4 +206,7 @@ main(int argc, char** argv)
   tulips_fifo_destroy(&client_fifo);
   tulips_fifo_destroy(&server_fifo);
   return 0;
+} catch (std::exception const& e) {
+  std::cerr << e.what() << std::endl;
+  return -1;
 }

@@ -181,7 +181,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    * connection in LISTEN. If the SYN flag isn't set, it is an old packet and we
    * send a RST.
    */
-  if ((INTCP->flags & TCP_CTL) != TCP_SYN) {
+  if ((INTCP->flags & Flag::CTL) != Flag::SYN) {
     TCP_LOG("no connection waiting for a SYN/ACK");
     return reset(len, data);
   }
@@ -326,7 +326,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    * kill our connection. We should in fact check if the sequence number of this
    * reset is wihtin our advertised window before we accept the reset.
    */
-  if (INTCP->flags & TCP_RST) {
+  if (INTCP->flags & Flag::RST) {
     TCP_LOG("connection aborted");
     m_device.unlisten(e.m_lport);
     e.m_state = Connection::CLOSED;
@@ -349,11 +349,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    * expecting next, except if we are expecting a SYN/ACK.
    */
   if (!(e.m_state == Connection::SYN_SENT &&
-        (INTCP->flags & TCP_CTL) == (TCP_SYN | TCP_ACK))) {
+        (INTCP->flags & Flag::CTL) == (Flag::SYN | Flag::ACK))) {
     /*
      * If there is incoming data or is SYN or FIN is set.
      */
-    if (plen > 0 || (INTCP->flags & (TCP_SYN | TCP_FIN)) != 0) {
+    if (plen > 0 || (INTCP->flags & (Flag::SYN | Flag::FIN)) != 0) {
       /*
        * Send an ACK with the proper seqno if the received seqno is wrong.
        */
@@ -368,7 +368,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    * update the sequence number, reset the length of the outstanding data,
    * calculate RTT estimations, and reset the retransmission timer.
    */
-  if ((INTCP->flags & TCP_ACK) && e.hasOutstandingSegments()) {
+  if ((INTCP->flags & Flag::ACK) && e.hasOutstandingSegments()) {
     /*
      * Scan the segments.
      */
@@ -491,7 +491,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
         if (plen > 0) {
           e.m_rcv_nxt += plen;
           e.m_newdata = true;
-          e.m_pshdata = (INTCP->flags & TCP_PSH) == TCP_PSH;
+          e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
           m_handler.onNewData(e, data + tcpHdrLen, plen);
           return sendAck(e);
         }
@@ -507,7 +507,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       /*
        * Update the connection when established.
        */
-      if (e.m_ackdata && (INTCP->flags & TCP_CTL) == (TCP_SYN | TCP_ACK)) {
+      if (e.m_ackdata &&
+          (INTCP->flags & Flag::CTL) == (Flag::SYN | Flag::ACK)) {
         TCP_LOG("connection established");
         /*
          * Update the connection info
@@ -532,7 +533,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          */
         if (plen > 0) {
           e.m_newdata = true;
-          e.m_pshdata = (INTCP->flags & TCP_PSH) == TCP_PSH;
+          e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
           m_handler.onNewData(e, data + tcpHdrLen, plen);
         }
         return sendAck(e);
@@ -560,7 +561,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       /*
        * Check if we received a FIN request and process it.
        */
-      if (INTCP->flags & TCP_FIN && e.m_state != Connection::STOPPED) {
+      if (INTCP->flags & Flag::FIN && e.m_state != Connection::STOPPED) {
         /*
          * If some of our data is still in flight, ignore the FIN.
          */
@@ -594,7 +595,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * that we must pass to the application. NOTE: skip it for now.
        */
       uint16_t urglen = 0;
-      if ((INTCP->flags & TCP_URG) != 0) {
+      if ((INTCP->flags & Flag::URG) != 0) {
         urglen = ntohs(INTCP->urgp);
         plen -= urglen;
       }
@@ -606,7 +607,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        */
       if (plen > 0 && e.m_state != Connection::STOPPED) {
         e.m_newdata = true;
-        e.m_pshdata = (INTCP->flags & TCP_PSH) == TCP_PSH;
+        e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
         e.m_rcv_nxt += plen;
       }
       /*
@@ -767,7 +768,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          * an available segment before allocating one.
          */
         if (e.hasPendingSendData() && can_send) {
-          return sendNoDelay(e, TCP_PSH);
+          return sendNoDelay(e, Flag::PSH);
         }
         /*
          * If the connection supports DELAYED_ACK and could/dit not send
@@ -808,7 +809,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       /*
        * If we get a FIN, change the connection to TIME_WAIT or CLOSING.
        */
-      if (INTCP->flags & TCP_FIN) {
+      if (INTCP->flags & Flag::FIN) {
         if (e.m_ackdata) {
           TCP_LOG("connection time-wait");
           e.m_state = Connection::TIME_WAIT;
@@ -844,7 +845,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       /*
        * If we get a FIN, moved to TIME_WAIT.
        */
-      if (INTCP->flags & TCP_FIN) {
+      if (INTCP->flags & Flag::FIN) {
         TCP_LOG("connection time-wait");
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
@@ -887,7 +888,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        */
       if (plen > 0) {
         e.m_newdata = true;
-        e.m_pshdata = (INTCP->flags & TCP_PSH) == TCP_PSH;
+        e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
         e.m_rcv_nxt += plen;
       }
       /*
@@ -939,11 +940,11 @@ Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
   /*
    * We do not send resets in response to resets.
    */
-  if (INTCP->flags & TCP_RST) {
+  if (INTCP->flags & Flag::RST) {
     return Status::Ok;
   }
   m_stats.rst += 1;
-  OUTTCP->flags = TCP_RST;
+  OUTTCP->flags = Flag::RST;
   OUTTCP->offset = 5;
   /*
    * Flip the seqno and ackno fields in the TCP header. We also have to

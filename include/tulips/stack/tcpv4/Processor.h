@@ -18,16 +18,6 @@
 
 #define OUTTCP ((Header*)outdata)
 
-#define TCP_FIN 0x01
-#define TCP_SYN 0x02
-#define TCP_RST 0x04
-#define TCP_PSH 0x08
-#define TCP_ACK 0x10
-#define TCP_URG 0x20
-#define TCP_ECE 0x40
-#define TCP_CWR 0x80
-#define TCP_CTL 0x3f
-
 namespace tulips::stack::tcpv4 {
 
 /*
@@ -147,14 +137,14 @@ private:
   inline Status sendSynAck(Connection& e, Segment& s)
   {
     uint8_t* outdata = s.m_dat;
-    OUTTCP->flags = TCP_ACK;
+    OUTTCP->flags = Flag::ACK;
     return sendSyn(e, s);
   }
 
   inline Status sendFin(Connection& e, Segment& s)
   {
     uint8_t* outdata = s.m_dat;
-    OUTTCP->flags |= TCP_FIN;
+    OUTTCP->flags |= Flag::FIN;
     OUTTCP->offset = 5;
     return send(e, HEADER_LEN, s);
   }
@@ -162,7 +152,7 @@ private:
   inline Status sendFinAck(Connection& e, Segment& s)
   {
     uint8_t* outdata = s.m_dat;
-    OUTTCP->flags = TCP_ACK;
+    OUTTCP->flags = Flag::ACK;
     return sendFin(e, s);
   }
 
@@ -175,7 +165,7 @@ private:
      * Send PSH/ACK message. TCP does not require to send an ACK with PSH,
      * but Linux seems pretty bent on wanting one. So we play nice. Again.
      */
-    OUTTCP->flags = flags | TCP_ACK;
+    OUTTCP->flags = flags | Flag::ACK;
     OUTTCP->offset = 5;
     return send(e, s.m_len + HEADER_LEN, s);
   }

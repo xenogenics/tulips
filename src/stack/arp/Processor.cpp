@@ -1,3 +1,4 @@
+#include "tulips/stack/ARP.h"
 #include <tulips/stack/arp/Processor.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Utils.h>
@@ -13,13 +14,11 @@
 
 #define INARP ((const Header*)data)
 #define OUTARP ((Header*)outdata)
-
 #define HEADER_LEN sizeof(Header)
-#define REQUEST 1
-#define REPLY 2
-#define HWTYPE_ETH 1
-#define MAX_AGE 120
-#define TABLE_SIZE 32
+
+constexpr const uint16_t HWTYPE_ETH = 1;
+constexpr const uint8_t MAX_AGE = 120;
+constexpr const size_t TABLE_SIZE = 32;
 
 namespace tulips::stack::arp {
 
@@ -70,7 +69,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
     /*
      * ARP request. If it asked for our address, we send out a reply.
      */
-    case REQUEST: {
+    case OpCode::Request: {
       /*
        * Skip the request if it was not meant for us.
        */
@@ -100,7 +99,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       /*
        * The reply opcode is 2.
        */
-      OUTARP->opcode = htons(2);
+      OUTARP->opcode = htons(OpCode::Reply);
       OUTARP->hwtype = htons(HWTYPE_ETH);
       OUTARP->protocol = htons(ethernet::ETHTYPE_IP);
       OUTARP->hwlen = 6;
@@ -121,7 +120,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
     /*
      * ARP reply. We insert or update the ARP table if it was meant for us.
      */
-    case REPLY: {
+    case OpCode::Reply: {
       /*
        * Skip the request if it was not meant for us.
        */
@@ -181,7 +180,7 @@ Processor::discover(ipv4::Address const& destipaddr)
   OUTARP->shwaddr = m_eth.hostAddress();
   OUTARP->dipaddr = ipaddr;
   OUTARP->sipaddr = m_ipv4.hostAddress();
-  OUTARP->opcode = htons(REQUEST);
+  OUTARP->opcode = htons(OpCode::Request);
   OUTARP->hwtype = htons(HWTYPE_ETH);
   OUTARP->protocol = htons(ethernet::ETHTYPE_IP);
   OUTARP->hwlen = 6;

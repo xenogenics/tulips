@@ -70,7 +70,7 @@ execute(utils::State& s, std::string const& line)
 
 int
 main(int argc, char** argv)
-{
+try {
   TCLAP::CmdLine cmdL("TULIPS receptor", ' ', "1.0");
   cmdL.parse(argc, argv);
   /*
@@ -100,4 +100,7 @@ main(int argc, char** argv)
    * Clean-up.
    */
   return 0;
+} catch (std::exception const& e) {
+  std::cerr << e.what() << std::endl;
+  return -1;
 }

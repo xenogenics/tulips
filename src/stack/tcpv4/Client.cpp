@@ -253,7 +253,7 @@ Processor::send(Connection::ID const& id, const uint32_t len,
    * Send the segment.
    */
   if (HAS_NODELAY(c)) {
-    return sendNoDelay(c, off == len ? TCP_PSH : 0);
+    return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
   return sendNagle(c, bound);
 }

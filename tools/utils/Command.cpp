@@ -4,7 +4,7 @@
 
 namespace tulips::tools::utils {
 
-Command::Command(std::string const& about) : m_about(about) {}
+Command::Command(std::string about) : m_about(std::move(about)) {}
 
 std::string const&
 Command::about() const
