@@ -137,12 +137,12 @@ message(STATUS "[ TULIPS OPTIONS END ]")
 # Flags preferences
 #
 
-set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
 set(CMAKE_C_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-g3 -O3")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")

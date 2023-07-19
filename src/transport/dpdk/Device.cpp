@@ -1,41 +1,46 @@
 #include "rte_flow.h"
 #include "rte_mbuf.h"
+#include "rte_mbuf_core.h"
 #include "rte_mempool.h"
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/dpdk/Device.h>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <thread>
 #include <dpdk/rte_dev.h>
 #include <dpdk/rte_eal.h>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_flow.h>
 
-#define FABRIC_VERBOSE 1
+#define DPDK_VERBOSE 1
 
-#if FABRIC_VERBOSE
-#define FABRIC_LOG(__args) LOG("FABRIC", __args)
+#if DPDK_VERBOSE
+#define DPDK_LOG(__args) LOG("DPDK", __args)
 #else
-#define FABRIC_LOG(...) ((void)0)
+#define DPDK_LOG(...) ((void)0)
 #endif
 
 namespace tulips::transport::dpdk {
 
 AbstractionLayer Device::s_eal;
 
-Device::Device(UNUSED const uint16_t nbuf)
-  : transport::Device("dpdk")
-  , m_portid(0)
+Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
+               const uint16_t nbuf)
+  : transport::Device(ifn)
+  , m_portid(0xFFFF)
   , m_mempool(nullptr)
   , m_ethconf()
   , m_rxqconf()
   , m_txqconf()
   , m_address()
-  , m_ip()
-  , m_dr()
-  , m_nm()
+  , m_ip(ip)
+  , m_dr(dr)
+  , m_nm(nm)
   , m_mtu(1500)
 {
   int ret = 0;
@@ -48,7 +53,6 @@ Device::Device(UNUSED const uint16_t nbuf)
   {
     pids.push_back(pid);
   }
-  FABRIC_LOG("Found " << pids.size() << " ports");
   /*
    * Use the first port.
    */
@@ -60,19 +64,32 @@ Device::Device(UNUSED const uint16_t nbuf)
     throw std::runtime_error("No available ports");
   }
   /*
-   * Get the device info for the first port.
+   * Find the appropriate port.
    */
   struct rte_eth_dev_info dev_info;
-  ret = rte_eth_dev_info_get(m_portid, &dev_info);
-  if (ret < 0) {
-    throw std::runtime_error("Failed to get device info");
+  for (auto pid : pids) {
+    ret = rte_eth_dev_info_get(pid, &dev_info);
+    if (ret < 0) {
+      throw std::runtime_error("Failed to get device info");
+    }
+    auto dev_name = std::string(rte_dev_name(dev_info.device));
+    if (ifn == dev_name) {
+      m_portid = pid;
+      break;
+    }
+  }
+  /*
+   * Check that we found the port.
+   */
+  if (m_portid == 0xFFFF) {
+    throw std::runtime_error("Interface not found");
   }
   /*
    * Print some device information.
    */
-  FABRIC_LOG("Device driver: " << dev_info.driver_name);
-  FABRIC_LOG("Device name: " << rte_dev_name(dev_info.device));
-  FABRIC_LOG("Device NUMA node: " << rte_dev_numa_node(dev_info.device));
+  DPDK_LOG("Device driver: " << dev_info.driver_name);
+  DPDK_LOG("Device name: " << rte_dev_name(dev_info.device));
+  DPDK_LOG("Device NUMA node: " << rte_dev_numa_node(dev_info.device));
   /*
    * Erase the configurations.
    */
@@ -131,20 +148,6 @@ Device::Device(UNUSED const uint16_t nbuf)
     throw std::runtime_error("Failed to start the device");
   }
 }
-
-Device::Device(UNUSED std::string const& ifn, UNUSED const uint16_t nbuf)
-  : transport::Device("dpdk")
-  , m_portid(0)
-  , m_mempool(nullptr)
-  , m_ethconf()
-  , m_rxqconf()
-  , m_txqconf()
-  , m_address()
-  , m_ip()
-  , m_dr()
-  , m_nm()
-  , m_mtu()
-{}
 
 Device::~Device()
 {
@@ -214,7 +217,7 @@ Device::listen(const uint16_t UNUSED port)
   ret = rte_flow_validate(m_portid, &flow_attr, flow_pattern, flow_action,
                           &flow_error);
   if (ret != 0) {
-    FABRIC_LOG("Invalid local MAC flow: " << flow_error.message);
+    DPDK_LOG("Invalid local MAC flow: " << flow_error.message);
     throw std::runtime_error("Failed to validate the local MAC flow");
   }
   /*
@@ -231,15 +234,40 @@ Device::unlisten(const uint16_t UNUSED port)
 {}
 
 Status
-Device::poll(UNUSED Processor& proc)
+Device::poll(Processor& proc)
 {
-  return Status::UnsupportedOperation;
+  /*
+   * Process the incoming receive buffers.
+   */
+  struct rte_mbuf* mbufs[32];
+  auto nbrx = rte_eth_rx_burst(m_portid, 0, mbufs, 32);
+  /*
+   * Check if there are any buffer.
+   */
+  if (nbrx == 0) {
+    return Status::NoDataAvailable;
+  }
+  /*
+   * Process the buffers.
+   */
+  for (auto i = 0; i < nbrx; i += 1) {
+    auto* buf = mbufs[i];
+    auto* dat = rte_pktmbuf_mtod(buf, const uint8_t*);
+    auto len = rte_pktmbuf_pkt_len(buf);
+    proc.process(len, dat);
+    rte_pktmbuf_free(buf);
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Status
 Device::wait(UNUSED Processor& proc, UNUSED const uint64_t ns)
 {
-  return Status::UnsupportedOperation;
+  std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
+  return Device::poll(proc);
 }
 
 Status
