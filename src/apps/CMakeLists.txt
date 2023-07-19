@@ -1,4 +1,4 @@
-include_directories(${TCLAP_INCLUDE_DIR})
+include_directories(${TCLAP_INCLUDE_DIRS})
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 

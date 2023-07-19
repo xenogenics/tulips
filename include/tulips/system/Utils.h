@@ -8,9 +8,6 @@
 
 namespace tulips::system::utils {
 
-#define likely(__x) __builtin_expect((__x), 1)
-#define unlikely(__x) __builtin_expect((__x), 0)
-
 #ifdef TULIPS_DEBUG
 #define LOG(__hdr, __msg)                                                      \
   std::cout << "[ " << std::setw(8) << /* NOLINT */ __hdr << " ] "             \

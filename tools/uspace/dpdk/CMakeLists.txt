@@ -1,7 +1,8 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
 include_directories(${CMAKE_SOURCE_DIR/tools})
-include_directories(${TCLAP_INCLUDE_DIR})
+include_directories(${LibDPDK_INCLUDE_DIRS})
+include_directories(${TCLAP_INCLUDE_DIRS})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
