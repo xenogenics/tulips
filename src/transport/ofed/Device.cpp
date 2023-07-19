@@ -1,21 +1,21 @@
 #include "Utils.h"
-#include <infiniband/verbs.h>
 #include <tulips/fifo/errors.h>
-#include <tulips/transport/Utils.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
+#include <tulips/transport/Utils.h>
 #include <csignal>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <fcntl.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <infiniband/verbs.h>
 
 #define OFED_VERBOSE 0
 #define OFED_HEXDUMP 0

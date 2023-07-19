@@ -1,7 +1,7 @@
 #pragma once
 
-#include <tulips/stack/IPv4.h>
 #include <tulips/stack/Ethernet.h>
+#include <tulips/stack/IPv4.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
 

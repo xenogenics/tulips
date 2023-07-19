@@ -1,10 +1,10 @@
-#include <cstdint>
-#include <sstream>
-#include <tulips/transport/dpdk/Device.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
+#include <tulips/transport/dpdk/Device.h>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
+#include <sstream>
 #include <dpdk/rte_dev.h>
 #include <dpdk/rte_eal.h>
 #include <dpdk/rte_ethdev.h>

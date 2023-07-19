@@ -1,8 +1,8 @@
 #pragma once
 
-#include <utils/State.h>
 #include <cstdint>
 #include <set>
+#include <utils/State.h>
 
 namespace tulips::tools::socket::server {
 

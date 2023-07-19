@@ -1,13 +1,13 @@
 #pragma once
 
-#include <tulips/stack/icmpv4/Request.h>
 #include <tulips/stack/ICMPv4.h>
 #include <tulips/stack/arp/Processor.h>
 #include <tulips/stack/ethernet/Processor.h>
+#include <tulips/stack/icmpv4/Request.h>
 #include <tulips/stack/ipv4/Processor.h>
 #include <tulips/transport/Processor.h>
-#include <map>
 #include <cstdint>
+#include <map>
 
 namespace tulips::stack::icmpv4 {
 

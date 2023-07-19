@@ -1,13 +1,13 @@
-#include <socket/client/Connection.h>
-#include <socket/client/State.h>
-#include <utils/Basic.h>
-#include <linenoise/linenoise.h>
 #include <tulips/system/Utils.h>
 #include <cstring>
 #include <map>
 #include <string>
 #include <vector>
+#include <linenoise/linenoise.h>
+#include <socket/client/Connection.h>
+#include <socket/client/State.h>
 #include <tclap/CmdLine.h>
+#include <utils/Basic.h>
 
 using namespace tulips;
 using namespace tools;

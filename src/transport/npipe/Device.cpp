@@ -1,13 +1,13 @@
-#include <tulips/transport/npipe/Device.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
-#include <stdexcept>
+#include <tulips/transport/npipe/Device.h>
 #include <cerrno>
-#include <cstring>
 #include <csignal>
+#include <cstring>
+#include <stdexcept>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #define NPIPE_VERBOSE 0
 #define NPIPE_HEXDUMP 0

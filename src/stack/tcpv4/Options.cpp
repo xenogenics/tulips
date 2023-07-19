@@ -1,5 +1,5 @@
-#include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Connection.h>
+#include <tulips/stack/tcpv4/Options.h>
 #include <tulips/system/Utils.h>
 #include <cstdint>
 #include <ostream>

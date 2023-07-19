@@ -1,9 +1,9 @@
 #pragma once
 
 #include <tulips/transport/dpdk/Device.h>
-#include <utils/State.h>
 #include <set>
 #include <string>
+#include <utils/State.h>
 
 namespace tulips::tools::uspace::dpdk {
 

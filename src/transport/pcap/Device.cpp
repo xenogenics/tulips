@@ -1,6 +1,6 @@
-#include <tulips/transport/pcap/Device.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/system/Clock.h>
+#include <tulips/transport/pcap/Device.h>
 
 #define PCAP_VERBOSE 0
 

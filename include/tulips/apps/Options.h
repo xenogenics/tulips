@@ -1,7 +1,7 @@
 #pragma once
 
-#include <tclap/CmdLine.h>
 #include <cstdint>
+#include <tclap/CmdLine.h>
 
 namespace tulips::apps {
 

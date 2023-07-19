@@ -1,9 +1,9 @@
 #pragma once
 
-#include <tulips/transport/Device.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/transport/Device.h>
 #include <string>
 
 namespace tulips::transport::npipe {

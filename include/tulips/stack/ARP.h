@@ -2,8 +2,8 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
-#include <string>
 #include <cstdint>
+#include <string>
 
 namespace tulips::stack::arp {
 

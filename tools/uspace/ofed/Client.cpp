@@ -1,12 +1,12 @@
 #include <tulips/system/Utils.h>
-#include <uspace/ofed/Connection.h>
-#include <uspace/ofed/State.h>
-#include <utils/Basic.h>
-#include <linenoise/linenoise.h>
 #include <cstring>
 #include <map>
 #include <string>
+#include <linenoise/linenoise.h>
 #include <tclap/CmdLine.h>
+#include <uspace/ofed/Connection.h>
+#include <uspace/ofed/State.h>
+#include <utils/Basic.h>
 
 using namespace tulips;
 using namespace tools;

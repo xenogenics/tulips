@@ -1,5 +1,5 @@
-#include <tulips/transport/list/Device.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/transport/list/Device.h>
 #include <cstdlib>
 #include <ctime>
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <uspace/ofed/Poller.h>
-#include <utils/State.h>
 #include <set>
 #include <string>
+#include <uspace/ofed/Poller.h>
+#include <utils/State.h>
 
 namespace tulips::tools::uspace::ofed {
 

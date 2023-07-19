@@ -1,6 +1,4 @@
-#include <socket/server/Listener.h>
-#include <socket/server/State.h>
-#include <utils/State.h>
+#include <tulips/system/Compiler.h>
 #include <cerrno>
 #include <cstring>
 #include <iomanip>
@@ -8,15 +6,17 @@
 #include <map>
 #include <sstream>
 #include <stdexcept>
-#include <linenoise/linenoise.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <tulips/system/Compiler.h>
 #include <unistd.h>
+#include <linenoise/linenoise.h>
+#include <socket/server/Listener.h>
+#include <socket/server/State.h>
+#include <sys/ioctl.h>
+#include <utils/State.h>
 
 #ifdef __linux__
 #include <sys/timerfd.h>

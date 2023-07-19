@@ -1,8 +1,8 @@
-#include <cstddef>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/system/Compiler.h>
-#include <tulips/transport/shm/Device.h>
 #include <tulips/transport/Processor.h>
+#include <tulips/transport/shm/Device.h>
+#include <cstddef>
 #include <gtest/gtest.h>
 
 using namespace tulips;

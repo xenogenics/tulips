@@ -3,11 +3,11 @@
 #include <tulips/system/Utils.h>
 #include <cerrno>
 #include <cstring>
-#include <net/if_arp.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <net/if_arp.h>
 #include <netinet/ether.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #define ARP_VERBOSE 1
 

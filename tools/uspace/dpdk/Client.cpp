@@ -1,12 +1,12 @@
 #include <tulips/system/Utils.h>
-#include <uspace/dpdk/Connection.h>
-#include <uspace/dpdk/State.h>
-#include <utils/Basic.h>
-#include <linenoise/linenoise.h>
 #include <cstring>
 #include <map>
 #include <string>
+#include <linenoise/linenoise.h>
 #include <tclap/CmdLine.h>
+#include <uspace/dpdk/Connection.h>
+#include <uspace/dpdk/State.h>
+#include <utils/Basic.h>
 
 using namespace tulips;
 using namespace tools;

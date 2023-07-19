@@ -1,8 +1,8 @@
 #include <tulips/system/Compiler.h>
-#include <utils/Basic.h>
-#include <utils/State.h>
 #include <iomanip>
 #include <iostream>
+#include <utils/Basic.h>
+#include <utils/State.h>
 
 namespace tulips::tools::utils::basic {
 
