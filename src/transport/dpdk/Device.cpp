@@ -1,3 +1,4 @@
+#include "rte_flow.h"
 #include "rte_mbuf.h"
 #include "rte_mempool.h"
 #include <tulips/system/Compiler.h>
@@ -10,6 +11,7 @@
 #include <dpdk/rte_dev.h>
 #include <dpdk/rte_eal.h>
 #include <dpdk/rte_ethdev.h>
+#include <dpdk/rte_flow.h>
 
 #define FABRIC_VERBOSE 1
 
@@ -96,7 +98,8 @@ Device::Device(UNUSED const uint16_t nbuf)
    * Allocate the mempool.
    */
   uint16_t buflen = m_mtu + stack::ethernet::HEADER_LEN;
-  m_mempool = rte_pktmbuf_pool_create("SOME_NAME", nbuf, 0, 0, buflen, 0);
+  m_mempool = rte_pktmbuf_pool_create("SOME_NAME", nbuf, 0, 0, buflen,
+                                      rte_eth_dev_socket_id(m_portid));
   if (m_mempool == nullptr) {
     throw std::runtime_error("Failed to create a mempool");
   }
@@ -107,14 +110,16 @@ Device::Device(UNUSED const uint16_t nbuf)
   /*
    * Setup the RX queue.
    */
-  rte_eth_rx_queue_setup(m_portid, 0, nbuf, 0, &m_rxqconf, m_mempool);
+  rte_eth_rx_queue_setup(m_portid, 0, nbuf, rte_eth_dev_socket_id(m_portid),
+                         &m_rxqconf, m_mempool);
   if (ret != 0) {
     throw std::runtime_error("Failed to setup the RX queue");
   }
   /*
    * Setup the TX queue.
    */
-  rte_eth_tx_queue_setup(m_portid, 0, nbuf, 0, &m_txqconf);
+  rte_eth_tx_queue_setup(m_portid, 0, nbuf, rte_eth_dev_socket_id(m_portid),
+                         &m_txqconf);
   if (ret != 0) {
     throw std::runtime_error("Failed to setup the TX queue");
   }
@@ -123,14 +128,7 @@ Device::Device(UNUSED const uint16_t nbuf)
    */
   ret = rte_eth_dev_start(m_portid);
   if (ret != 0) {
-    throw std::runtime_error("Failed start the device");
-  }
-  /*
-   * FIXME(xrg): enable promiscuous mode.
-   */
-  ret = rte_eth_promiscuous_enable(m_portid);
-  if (ret != 0) {
-    throw std::runtime_error("Failed to set promiscuous mode");
+    throw std::runtime_error("Failed to start the device");
   }
 }
 
@@ -151,6 +149,11 @@ Device::Device(UNUSED std::string const& ifn, UNUSED const uint16_t nbuf)
 Device::~Device()
 {
   /*
+   * Delete the local MAC flow.
+   */
+  struct rte_flow_error flow_error;
+  rte_flow_flush(m_portid, &flow_error);
+  /*
    * Stop the device.
    */
   rte_eth_dev_stop(m_portid);
@@ -161,6 +164,71 @@ Device::~Device()
     rte_mempool_free(m_mempool);
   }
 }
+
+Status
+Device::listen(const uint16_t UNUSED port)
+{
+#if 0
+  /*
+   * Define the local MAC flow attributes.
+   */
+  struct rte_flow_attr flow_attr;
+  memset(&flow_attr, 0, sizeof(flow_attr));
+  flow_attr.ingress = 1;
+  /*
+   * Define the local MAC flow queue.
+   */
+  struct rte_flow_action_queue flow_queue = { .index = 0 };
+  /*
+   * Define the local MAC flow actions.
+   */
+  struct rte_flow_action flow_action[2];
+  memset(flow_action, 0, sizeof(flow_action));
+  flow_action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+  flow_action[0].conf = &flow_queue;
+  flow_action[1].type = RTE_FLOW_ACTION_TYPE_END;
+  /*
+   * Define the local MAC flow ETH pattern.
+   */
+  struct rte_flow_item_eth flow_eth_spec;
+  memset(&flow_eth_spec, 0, sizeof(flow_eth_spec));
+  memcpy(&flow_eth_spec.hdr.dst_addr, &m_macaddr, sizeof(m_macaddr));
+  struct rte_flow_item_eth flow_eth_mask;
+  memset(&flow_eth_mask, 0, sizeof(flow_eth_mask));
+  memset(&flow_eth_mask.hdr.dst_addr, 0xFF, sizeof(m_macaddr));
+  /*
+   * Define the local MAC flow pattern stack.
+   */
+  struct rte_flow_item flow_pattern[2] = { { .type = RTE_FLOW_ITEM_TYPE_ETH,
+                                             .spec = &flow_eth_spec,
+                                             .last = nullptr,
+                                             .mask = &flow_eth_mask },
+                                           { .type = RTE_FLOW_ITEM_TYPE_END,
+                                             .spec = nullptr,
+                                             .last = nullptr,
+                                             .mask = nullptr } };
+  /*
+   * Validate the local MAC flow.
+   */
+  struct rte_flow_error flow_error;
+  ret = rte_flow_validate(m_portid, &flow_attr, flow_pattern, flow_action,
+                          &flow_error);
+  if (ret != 0) {
+    FABRIC_LOG("Invalid local MAC flow: " << flow_error.message);
+    throw std::runtime_error("Failed to validate the local MAC flow");
+  }
+  /*
+   * Create the local MAC flow.
+   */
+  m_ethflow = rte_flow_create(m_portid, &flow_attr, flow_pattern, flow_action,
+                              &flow_error);
+#endif
+  return Status::UnsupportedOperation;
+}
+
+void
+Device::unlisten(const uint16_t UNUSED port)
+{}
 
 Status
 Device::poll(UNUSED Processor& proc)
