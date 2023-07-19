@@ -2,10 +2,10 @@
 
 namespace tulips::tools::uspace::dpdk {
 
-State::State(const bool pcap) : utils::State(), poller(pcap), ids() {}
+State::State(UNUSED const bool pcap) : utils::State() {}
 
-State::State(std::string const& dev, const bool pcap)
-  : utils::State(), poller(dev, pcap), ids()
+State::State(UNUSED std::string const& dev, UNUSED const bool pcap)
+  : utils::State(), device(nullptr)
 {}
 
 }

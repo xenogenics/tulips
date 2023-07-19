@@ -15,7 +15,7 @@ class Device : public transport::Device
 public:
   Device(const uint16_t nbuf);
   Device(std::string const& ifn, const uint16_t nbuf);
-  ~Device() override = default;
+  ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }
 

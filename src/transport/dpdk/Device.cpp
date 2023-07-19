@@ -1,8 +1,13 @@
 #include <cstdint>
+#include <sstream>
 #include <tulips/transport/dpdk/Device.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Utils.h>
 #include <cstdlib>
 #include <ctime>
+#include <dpdk/rte_dev.h>
+#include <dpdk/rte_eal.h>
+#include <dpdk/rte_ethdev.h>
 
 #define FABRIC_VERBOSE 1
 
@@ -16,11 +21,56 @@ namespace tulips::transport::dpdk {
 
 Device::Device(UNUSED const uint16_t nbuf)
   : transport::Device("dpdk"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
-{}
+{
+  const char* const arguments[] = { "dpdk", "--in-memory", "--no-telemetry",
+                                    "-c",   "1",           "--log-level=*:8" };
+  int ret = 0;
+  /*
+   * Initialize the EAL.
+   */
+  ret = rte_eal_init(6, (char**)arguments);
+  if (ret < 0) {
+    throw std::runtime_error("Failed to initialize EAL");
+  }
+  /*
+   * Print the available ports.
+   */
+  std::vector<uint16_t> pids;
+  uint16_t pid;
+  RTE_ETH_FOREACH_DEV(pid)
+  {
+    pids.push_back(pid);
+  }
+  FABRIC_LOG("Found " << pids.size() << " ports");
+  /*
+   * Check that there is at least one available port.
+   */
+  if (pids.size() == 0) {
+    throw std::runtime_error("No available ports");
+  }
+  /*
+   * Get the device info for the first port.
+   */
+  struct rte_eth_dev_info dev_info;
+  ret = rte_eth_dev_info_get(pids.front(), &dev_info);
+  if (ret < 0) {
+    throw std::runtime_error("Failed to get device info");
+  }
+
+  /*
+   * Print some device information.
+   */
+  FABRIC_LOG("Device name: " << rte_dev_name(dev_info.device));
+}
 
 Device::Device(UNUSED std::string const& ifn, UNUSED const uint16_t nbuf)
   : transport::Device("dpdk"), m_address(), m_ip(), m_dr(), m_nm(), m_mtu()
 {}
+
+Device::~Device()
+{
+  rte_eal_cleanup();
+}
 
 Status
 Device::poll(UNUSED Processor& proc)
