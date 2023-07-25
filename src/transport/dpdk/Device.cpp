@@ -1,3 +1,5 @@
+#include "rte_config.h"
+#include "rte_ether.h"
 #include "rte_flow.h"
 #include "rte_mbuf.h"
 #include "rte_mbuf_core.h"
@@ -15,6 +17,7 @@
 #include <dpdk/rte_eal.h>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_flow.h>
+#include <net/ethernet.h>
 
 #define DPDK_VERBOSE 1
 
@@ -33,10 +36,12 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
                const uint16_t nbuf)
   : transport::Device(ifn)
   , m_portid(0xFFFF)
-  , m_mempool(nullptr)
+  , m_rxqpool(nullptr)
+  , m_txqpool(nullptr)
   , m_ethconf()
   , m_rxqconf()
   , m_txqconf()
+  , m_buflen(16384)
   , m_address()
   , m_ip(ip)
   , m_dr(dr)
@@ -94,7 +99,6 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
    * Erase the configurations.
    */
   memset(&m_ethconf, 0, sizeof(m_ethconf));
-  memset(&m_macaddr, 0, sizeof(m_macaddr));
   memset(&m_rxqconf, 0, sizeof(m_rxqconf));
   memset(&m_txqconf, 0, sizeof(m_txqconf));
   /*
@@ -107,18 +111,24 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
   /*
    * Fetch the MAC address.
    */
-  ret = rte_eth_macaddr_get(m_portid, &m_macaddr);
+  struct rte_ether_addr mac;
+  ret = rte_eth_macaddr_get(m_portid, &mac);
   if (ret != 0) {
     throw std::runtime_error("Failed to fetch device's MAC address");
   }
+  memcpy(m_address.data(), mac.addr_bytes, ETHER_ADDR_LEN);
   /*
-   * Allocate the mempool.
+   * Allocate the mempools.
    */
-  uint16_t buflen = m_mtu + stack::ethernet::HEADER_LEN;
-  m_mempool = rte_pktmbuf_pool_create("SOME_NAME", nbuf, 0, 0, buflen,
+  m_rxqpool = rte_pktmbuf_pool_create("RX", nbuf, 0, 0, m_buflen,
                                       rte_eth_dev_socket_id(m_portid));
-  if (m_mempool == nullptr) {
-    throw std::runtime_error("Failed to create a mempool");
+  if (m_rxqpool == nullptr) {
+    throw std::runtime_error("Failed to create the RX mempool");
+  }
+  m_txqpool = rte_pktmbuf_pool_create("TX", nbuf, 0, 8, m_buflen,
+                                      rte_eth_dev_socket_id(m_portid));
+  if (m_txqpool == nullptr) {
+    throw std::runtime_error("Failed to create the TX mempool");
   }
   /*
    * Update the RX configuration.
@@ -128,7 +138,7 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
    * Setup the RX queue.
    */
   rte_eth_rx_queue_setup(m_portid, 0, nbuf, rte_eth_dev_socket_id(m_portid),
-                         &m_rxqconf, m_mempool);
+                         &m_rxqconf, m_rxqpool);
   if (ret != 0) {
     throw std::runtime_error("Failed to setup the RX queue");
   }
@@ -161,77 +171,31 @@ Device::~Device()
    */
   rte_eth_dev_stop(m_portid);
   /*
-   * Clear the mempool.
+   * Clear the mempools.
    */
-  if (m_mempool != nullptr) {
-    rte_mempool_free(m_mempool);
-  }
+  rte_mempool_free(m_txqpool);
+  rte_mempool_free(m_rxqpool);
 }
 
 Status
 Device::listen(const uint16_t UNUSED port)
 {
-#if 0
   /*
-   * Define the local MAC flow attributes.
+   * NOTE(xrg): by default, the ETH dev will get all the packets associated with
+   * its MAC address. Some drivers don't allow masking the EtherType field of
+   * the ETH mask (eg. Intel drivers) so we can't disable that behavior with a
+   * low priority flow. Therefore, we simply let all traffic pass.
    */
-  struct rte_flow_attr flow_attr;
-  memset(&flow_attr, 0, sizeof(flow_attr));
-  flow_attr.ingress = 1;
-  /*
-   * Define the local MAC flow queue.
-   */
-  struct rte_flow_action_queue flow_queue = { .index = 0 };
-  /*
-   * Define the local MAC flow actions.
-   */
-  struct rte_flow_action flow_action[2];
-  memset(flow_action, 0, sizeof(flow_action));
-  flow_action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
-  flow_action[0].conf = &flow_queue;
-  flow_action[1].type = RTE_FLOW_ACTION_TYPE_END;
-  /*
-   * Define the local MAC flow ETH pattern.
-   */
-  struct rte_flow_item_eth flow_eth_spec;
-  memset(&flow_eth_spec, 0, sizeof(flow_eth_spec));
-  memcpy(&flow_eth_spec.hdr.dst_addr, &m_macaddr, sizeof(m_macaddr));
-  struct rte_flow_item_eth flow_eth_mask;
-  memset(&flow_eth_mask, 0, sizeof(flow_eth_mask));
-  memset(&flow_eth_mask.hdr.dst_addr, 0xFF, sizeof(m_macaddr));
-  /*
-   * Define the local MAC flow pattern stack.
-   */
-  struct rte_flow_item flow_pattern[2] = { { .type = RTE_FLOW_ITEM_TYPE_ETH,
-                                             .spec = &flow_eth_spec,
-                                             .last = nullptr,
-                                             .mask = &flow_eth_mask },
-                                           { .type = RTE_FLOW_ITEM_TYPE_END,
-                                             .spec = nullptr,
-                                             .last = nullptr,
-                                             .mask = nullptr } };
-  /*
-   * Validate the local MAC flow.
-   */
-  struct rte_flow_error flow_error;
-  ret = rte_flow_validate(m_portid, &flow_attr, flow_pattern, flow_action,
-                          &flow_error);
-  if (ret != 0) {
-    DPDK_LOG("Invalid local MAC flow: " << flow_error.message);
-    throw std::runtime_error("Failed to validate the local MAC flow");
-  }
-  /*
-   * Create the local MAC flow.
-   */
-  m_ethflow = rte_flow_create(m_portid, &flow_attr, flow_pattern, flow_action,
-                              &flow_error);
-#endif
-  return Status::UnsupportedOperation;
+  return Status::Ok;
 }
 
 void
 Device::unlisten(const uint16_t UNUSED port)
-{}
+{
+  /*
+   * NOTE(xrg): no-op, see above.
+   */
+}
 
 Status
 Device::poll(Processor& proc)
@@ -271,16 +235,76 @@ Device::wait(UNUSED Processor& proc, UNUSED const uint64_t ns)
 }
 
 Status
-Device::prepare(UNUSED uint8_t*& buf)
+Device::prepare(uint8_t*& buf)
 {
-  return Status::UnsupportedOperation;
+  /*
+   * Allocate a new buffer in the TX pool.
+   */
+  auto* mbuf = rte_pktmbuf_alloc(m_txqpool);
+  if (mbuf == nullptr) {
+    return Status::NoMoreResources;
+  }
+  /*
+   * Grab the data region.
+   */
+  buf = rte_pktmbuf_mtod(mbuf, uint8_t*);
+  /*
+   * Update the private data with the mbuf address.
+   */
+  *reinterpret_cast<struct rte_mbuf**>(buf - 8) = mbuf;
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Status
-Device::commit(UNUSED const uint32_t len, UNUSED uint8_t* const buf,
+Device::commit(const uint32_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
-  return Status::UnsupportedOperation;
+  uint16_t res = 0;
+  /*
+   * Grab the packet buffer.
+   */
+  auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
+  /*
+   * Update the packet buffer length.
+   */
+  mbuf->data_len = len;
+  mbuf->pkt_len = len;
+  /*
+   * Prepare the packet.
+   */
+  res = rte_eth_tx_prepare(m_portid, 0, &mbuf, 1);
+  if (res != 1) {
+    DPDK_LOG("Packet preparation for TX failed: " << rte_strerror(rte_errno));
+    return Status::HardwareError;
+  }
+  /*
+   * Send the packet.
+   */
+  res = rte_eth_tx_burst(m_portid, 0, &mbuf, 1);
+  if (res != 1) {
+    DPDK_LOG("Sending packet failed");
+    return Status::HardwareError;
+  }
+  /*
+   * Free the buffer.
+   */
+  rte_pktmbuf_free(mbuf);
+  /*
+   * Print the stats.
+   */
+  struct rte_eth_stats stats;
+  res = rte_eth_stats_get(m_portid, &stats);
+  if (res != 0) {
+    return Status::HardwareError;
+  }
+  DPDK_LOG("Stats: IN=" << stats.ipackets << ", OUT=" << stats.opackets);
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 }

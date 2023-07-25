@@ -1,11 +1,12 @@
 #include <tulips/stack/ethernet/Processor.h>
+#include <tulips/system/Utils.h>
 #ifdef TULIPS_ENABLE_ARP
 #include <tulips/stack/arp/Processor.h>
 #endif
 #include <tulips/stack/ipv4/Processor.h>
 #include <arpa/inet.h>
 
-#define ETH_VERBOSE 0
+#define ETH_VERBOSE 1
 
 #if ETH_VERBOSE
 #define ETH_LOG(__args) LOG("ETH", __args)

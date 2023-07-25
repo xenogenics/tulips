@@ -11,7 +11,7 @@ namespace tulips::system::utils {
 #ifdef TULIPS_DEBUG
 #define LOG(__hdr, __msg)                                                      \
   std::cout << "[ " << std::setw(8) << /* NOLINT */ __hdr << " ] "             \
-            << /* NOLINT */ __msg << std::endl
+            << /* NOLINT */ __msg << '\r' << std::endl
 #else
 #define LOG(__hdr, __msg) ((void)0)
 #endif

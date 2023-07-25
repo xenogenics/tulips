@@ -86,8 +86,8 @@ try {
   /*
    * FIXME.
    */
-  stack::ipv4::Address ip(10, 1, 0, 1);
-  stack::ipv4::Address dr(10, 1, 0, 254);
+  stack::ipv4::Address ip(10, 107, 59, 172);
+  stack::ipv4::Address dr(10, 107, 59, 254);
   stack::ipv4::Address nm(255, 255, 0, 0);
   /*
    * Commands.

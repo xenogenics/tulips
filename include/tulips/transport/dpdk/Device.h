@@ -58,11 +58,12 @@ private:
   static AbstractionLayer s_eal;
 
   uint16_t m_portid;
-  struct rte_mempool* m_mempool;
+  struct rte_mempool* m_rxqpool;
+  struct rte_mempool* m_txqpool;
   struct rte_eth_conf m_ethconf;
-  struct rte_ether_addr m_macaddr;
   struct rte_eth_rxconf m_rxqconf;
   struct rte_eth_txconf m_txqconf;
+  uint16_t m_buflen;
 
 protected:
   stack::ethernet::Address m_address;
