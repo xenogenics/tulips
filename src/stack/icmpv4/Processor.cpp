@@ -37,13 +37,13 @@ Processor::detach(Request& req)
 }
 
 Status
-Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
+Processor::process(const uint16_t len, const uint8_t* const data)
 {
-  /**
+  /*
    * Process the ICMP packet.
    */
   ++m_stats.recv;
-  /**
+  /*
    * Check if the message is valid.
    */
   if (INICMP->type != ECHO && INICMP->type != ECHO_REPLY) {
@@ -85,22 +85,26 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
     return ret;
   }
   /*
-   * ICMP echo (i.e., ping) processing. This is simple, we only change the
-   * ICMP type from ECHO to ECHO_REPLY and adjust the ICMP checksum before we
-   * return the packet.
+   * Copy the entire payload.
    */
-  *OUTICMP = *INICMP;
+  memcpy(outdata, data, len);
+  /*
+   * Change the ICMP type from ECHO to ECHO_REPLY.
+   */
   OUTICMP->type = ECHO_REPLY;
+  /*
+   * Adjust the ICMP checksum.
+   */
   if (INICMP->icmpchksum >= htons(0xffff - (ECHO << 8))) {
     OUTICMP->icmpchksum += htons(ECHO << 8) + 1;
   } else {
     OUTICMP->icmpchksum += htons(ECHO << 8);
   }
-  /**
+  /*
    * Send the packet
    */
   ++m_stats.sent;
-  return m_ip4out.commit(HEADER_LEN, outdata);
+  return m_ip4out.commit(len, outdata);
 }
 
 }
