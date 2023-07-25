@@ -1,7 +1,7 @@
 #include "Debug.h"
+#include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
-#include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <cstring>

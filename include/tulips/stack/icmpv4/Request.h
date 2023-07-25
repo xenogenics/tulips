@@ -1,9 +1,9 @@
 #pragma once
 
 #include <tulips/stack/ICMPv4.h>
+#include <tulips/stack/arp/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
-#include <tulips/stack/arp/Processor.h>
 #include <cstdint>
 
 namespace tulips::stack::icmpv4 {

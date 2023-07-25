@@ -1,21 +1,21 @@
 #include "Utils.h"
-#include <infiniband/verbs.h>
 #include <tulips/fifo/errors.h>
-#include <tulips/transport/Utils.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
+#include <tulips/transport/Utils.h>
 #include <csignal>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <string>
-#include <fcntl.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <infiniband/verbs.h>
 
 #define OFED_VERBOSE 0
 #define OFED_HEXDUMP 0
@@ -524,7 +524,7 @@ Device::poll(Processor& proc)
       }
     }
     if (wc[i].wc_flags & IBV_FLOW_SPEC_TCP) {
-      if (m_hints & Device::VALIDATE_TCP_CSUM) {
+      if (m_hints & Device::VALIDATE_L4_CSUM) {
         if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
           OFED_LOG("invalid TCP/UDP checksum, dropping packet");
           continue;

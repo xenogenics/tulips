@@ -1,5 +1,5 @@
-#include <cassert>
 #include <tulips/fifo/fifo.h>
+#include <cassert>
 #include <gtest/gtest.h>
 
 namespace {

@@ -1,4 +1,5 @@
 #include <tulips/stack/ethernet/Processor.h>
+#include <tulips/system/Utils.h>
 #ifdef TULIPS_ENABLE_ARP
 #include <tulips/stack/arp/Processor.h>
 #endif

@@ -1,12 +1,12 @@
 #include <tulips/stack/arp/Processor.h>
-#include <tulips/stack/icmpv4/Processor.h>
-#include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ethernet/Processor.h>
-#include <tulips/stack/ipv4/Producer.h>
+#include <tulips/stack/ethernet/Producer.h>
+#include <tulips/stack/icmpv4/Processor.h>
 #include <tulips/stack/ipv4/Processor.h>
+#include <tulips/stack/ipv4/Producer.h>
+#include <tulips/transport/Processor.h>
 #include <tulips/transport/pcap/Device.h>
 #include <tulips/transport/shm/Device.h>
-#include <tulips/transport/Processor.h>
 #include <gtest/gtest.h>
 
 using namespace tulips;

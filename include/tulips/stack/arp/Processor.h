@@ -3,8 +3,8 @@
 #include <tulips/stack/ARP.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
-#include <tulips/transport/Processor.h>
 #include <tulips/system/Timer.h>
+#include <tulips/transport/Processor.h>
 #include <vector>
 #include <unistd.h>
 

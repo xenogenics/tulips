@@ -1,7 +1,7 @@
 #include "BIO.h"
-#include <openssl/bio.h>
 #include <tulips/system/CircularBuffer.h>
 #include <tulips/system/Compiler.h>
+#include <openssl/bio.h>
 
 namespace tulips::ssl::bio {
 

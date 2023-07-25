@@ -1,12 +1,13 @@
+#include "tulips/stack/IPv4.h"
 #include <tulips/system/Utils.h>
-#include <uspace/client/Connection.h>
-#include <uspace/client/State.h>
-#include <utils/Basic.h>
-#include <linenoise/linenoise.h>
 #include <cstring>
 #include <map>
 #include <string>
+#include <linenoise/linenoise.h>
 #include <tclap/CmdLine.h>
+#include <uspace/dpdk/Connection.h>
+#include <uspace/dpdk/State.h>
+#include <utils/Basic.h>
 
 using namespace tulips;
 using namespace tools;
@@ -72,8 +73,8 @@ int
 main(int argc, char** argv)
 try {
   TCLAP::CmdLine cmdL("TULIPS connector", ' ', "1.0");
-  TCLAP::ValueArg<std::string> iffA("I", "interface", "Network interface",
-                                    false, "", "INTERFACE", cmdL);
+  TCLAP::ValueArg<std::string> iffA("I", "interface", "Network interface", true,
+                                    "", "INTERFACE", cmdL);
   TCLAP::SwitchArg pcpA("P", "pcap", "Capture packets", cmdL);
   cmdL.parse(argc, argv);
   /*
@@ -83,11 +84,17 @@ try {
   linenoiseSetHintsCallback(hints);
   linenoiseHistorySetMaxLen(1000);
   /*
+   * FIXME.
+   */
+  stack::ipv4::Address ip(10, 107, 59, 172);
+  stack::ipv4::Address dr(10, 107, 59, 254);
+  stack::ipv4::Address nm(255, 255, 0, 0);
+  /*
    * Commands.
    */
-  client::State state(pcpA.isSet());
+  dpdk::State state(iffA.getValue(), ip, dr, nm, pcpA.isSet());
   basic::populate(state.commands);
-  client::connection::populate(state.commands);
+  dpdk::connection::populate(state.commands);
   /*
    * Main loop.
    */

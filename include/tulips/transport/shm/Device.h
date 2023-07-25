@@ -1,11 +1,11 @@
 #pragma once
 
-#include <tulips/transport/Device.h>
+#include <tulips/fifo/fifo.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
-#include <tulips/fifo/fifo.h>
+#include <tulips/transport/Device.h>
 #include <limits>
 #include <string>
 #include <pthread.h>

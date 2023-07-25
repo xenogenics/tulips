@@ -1,5 +1,5 @@
-#include <cstdint>
 #include <tulips/stack/ipv4/Producer.h>
+#include <cstdint>
 #include <cstring>
 #include <arpa/inet.h>
 

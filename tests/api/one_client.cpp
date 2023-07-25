@@ -1,11 +1,11 @@
-#include <tulips/api/Defaults.h>
 #include <tulips/api/Client.h>
+#include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
 #include <tulips/fifo/fifo.h>
 #include <tulips/system/Compiler.h>
-#include <tulips/transport/pcap/Device.h>
-#include <tulips/transport/list/Device.h>
 #include <tulips/transport/Processor.h>
+#include <tulips/transport/list/Device.h>
+#include <tulips/transport/pcap/Device.h>
 #include <gtest/gtest.h>
 
 using namespace tulips;

@@ -60,7 +60,7 @@ Client::Client(Delegate& dlg, transport::Device& device, const size_t nconn)
    */
 #ifdef TULIPS_DISABLE_CHECKSUM_CHECK
   m_dev.hint(transport::Device::VALIDATE_IP_CSUM);
-  m_dev.hint(transport::Device::VALIDATE_TCP_CSUM);
+  m_dev.hint(transport::Device::VALIDATE_L4_CSUM);
 #endif
   /*
    * Connect the stack.

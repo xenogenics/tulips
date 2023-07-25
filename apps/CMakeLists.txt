@@ -1,6 +1,6 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
-include_directories(${TCLAP_INCLUDE_DIR})
+include_directories(${TCLAP_INCLUDE_DIRS})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")

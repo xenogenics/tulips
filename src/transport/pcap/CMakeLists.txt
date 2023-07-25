@@ -1,5 +1,5 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
-include_directories(${LibPCAP_INCLUDE_DIR})
+include_directories(${LibPCAP_INCLUDE_DIRS})
 
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.h)
 

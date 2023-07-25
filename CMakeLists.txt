@@ -38,7 +38,7 @@ pkg_check_modules(LibPCAP REQUIRED libpcap>=1.10)
 pkg_check_modules(OpenSSL REQUIRED openssl>=3.0)
 pkg_check_modules(TCLAP REQUIRED tclap>=1.2)
 
-pkg_check_modules(LibFabric libfabric>=1.17)
+pkg_check_modules(LibDPDK libdpdk>=22.11)
 pkg_check_modules(LibIBVerbs libibverbs>=1.14)
 
 #
@@ -137,12 +137,12 @@ message(STATUS "[ TULIPS OPTIONS END ]")
 # Flags preferences
 #
 
-set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
 set(CMAKE_C_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-g3 -O3")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")

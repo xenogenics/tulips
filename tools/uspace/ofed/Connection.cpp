@@ -1,12 +1,12 @@
-#include <uspace/client/Connection.h>
-#include <uspace/client/State.h>
+#include <tulips/system/Compiler.h>
+#include <tulips/system/Utils.h>
 #include <iostream>
 #include <sstream>
 #include <linenoise/linenoise.h>
-#include <tulips/system/Compiler.h>
-#include <tulips/system/Utils.h>
+#include <uspace/ofed/Connection.h>
+#include <uspace/ofed/State.h>
 
-namespace tulips::tools::uspace::client::connection {
+namespace tulips::tools::uspace::ofed::connection {
 
 /*
  * Close.

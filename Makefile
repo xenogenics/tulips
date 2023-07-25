@@ -12,7 +12,7 @@ build:
 	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS)
 
 test:
-	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) test
+	@[ -e $(BUILDDIR) ] && CTEST_PARALLEL_LEVEL=$(NPROCS) ninja -C $(BUILDDIR) test
 
 format:
 	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) format

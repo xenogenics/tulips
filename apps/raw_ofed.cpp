@@ -1,12 +1,12 @@
-#include <tulips/transport/ofed/Device.h>
-#include <tulips/transport/pcap/Device.h>
-#include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ethernet/Processor.h>
+#include <tulips/stack/ethernet/Producer.h>
 #include <tulips/system/Affinity.h>
 #include <tulips/system/Clock.h>
+#include <tulips/transport/ofed/Device.h>
+#include <tulips/transport/pcap/Device.h>
 #include <csignal>
-#include <tclap/CmdLine.h>
 #include <pthread.h>
+#include <tclap/CmdLine.h>
 
 using namespace tulips;
 using namespace stack;

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <tulips/transport/Device.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/transport/Device.h>
 #include <cstdlib>
 #include <limits>
 #include <list>
@@ -71,7 +71,7 @@ public:
   Status drop();
 
 private:
-  std::list<Packet*> m_packets;
+  List m_packets;
 
 protected:
   bool waitForInput(const uint64_t ns);

@@ -8,9 +8,9 @@
 #include <vector>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <netinet/ether.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #define TRANS_VERBOSE 1
 

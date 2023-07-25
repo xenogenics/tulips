@@ -1,13 +1,13 @@
 #pragma once
 
-#include <tulips/system/Buffer.h>
+#include <tulips/stack/TCPv4.h>
+#include <tulips/stack/ethernet/Processor.h>
+#include <tulips/stack/ethernet/Producer.h>
+#include <tulips/stack/ipv4/Processor.h>
+#include <tulips/stack/ipv4/Producer.h>
 #include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/EventHandler.h>
-#include <tulips/stack/TCPv4.h>
-#include <tulips/stack/ethernet/Producer.h>
-#include <tulips/stack/ethernet/Processor.h>
-#include <tulips/stack/ipv4/Producer.h>
-#include <tulips/stack/ipv4/Processor.h>
+#include <tulips/system/Buffer.h>
 #include <tulips/system/Timer.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/Processor.h>

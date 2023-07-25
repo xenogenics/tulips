@@ -51,6 +51,7 @@ RUN apt install -y    \
       clang-format-15 \
       clang-tidy-15   \
       cmake           \
+      dpdk-dev        \
       make            \
       ninja-build     \
       libgtest-dev    \
