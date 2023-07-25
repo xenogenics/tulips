@@ -24,7 +24,7 @@ public:
   enum Hint
   {
     VALIDATE_IP_CSUM = 0x1,
-    VALIDATE_TCP_CSUM = 0x2,
+    VALIDATE_L4_CSUM = 0x2,
   };
 
   /*

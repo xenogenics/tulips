@@ -524,7 +524,7 @@ Device::poll(Processor& proc)
       }
     }
     if (wc[i].wc_flags & IBV_FLOW_SPEC_TCP) {
-      if (m_hints & Device::VALIDATE_TCP_CSUM) {
+      if (m_hints & Device::VALIDATE_L4_CSUM) {
         if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
           OFED_LOG("invalid TCP/UDP checksum, dropping packet");
           continue;

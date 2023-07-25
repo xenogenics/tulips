@@ -1,6 +1,7 @@
 #include "rte_config.h"
 #include "rte_ether.h"
 #include "rte_flow.h"
+#include "rte_ip.h"
 #include "rte_mbuf.h"
 #include "rte_mbuf_core.h"
 #include "rte_mempool.h"
@@ -101,6 +102,35 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
   memset(&m_ethconf, 0, sizeof(m_ethconf));
   memset(&m_rxqconf, 0, sizeof(m_rxqconf));
   memset(&m_txqconf, 0, sizeof(m_txqconf));
+  /*
+   * Update the device RX configuration presets.
+   */
+#ifdef TULIPS_HAS_HW_CHECKSUM
+  if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) {
+    m_ethconf.txmode.offloads |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
+  }
+  if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_UDP_CKSUM) {
+    m_ethconf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_UDP_CKSUM;
+  }
+  if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_TCP_CKSUM) {
+    m_ethconf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
+  }
+#endif
+  /*
+   * Update the device TX configuration presets.
+   */
+  m_ethconf.txmode.offloads = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+#ifdef TULIPS_HAS_HW_CHECKSUM
+  if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) {
+    m_ethconf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
+  }
+  if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) {
+    m_ethconf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_UDP_CKSUM;
+  }
+  if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) {
+    m_ethconf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
+  }
+#endif
   /*
    * Configure the device.
    */
@@ -216,9 +246,44 @@ Device::poll(Processor& proc)
    */
   for (auto i = 0; i < nbrx; i += 1) {
     auto* buf = mbufs[i];
+    /*
+     * Validate the IP checksum.
+     */
+#ifdef TULIPS_HAS_HW_CHECKSUM
+    if (buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK) {
+      if (m_hints & Device::VALIDATE_IP_CSUM) {
+        auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
+        if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
+          DPDK_LOG("invalid IP checksum, dropping packet");
+          continue;
+        }
+      }
+    }
+    /*
+     * Validate the L4 checksum.
+     */
+    if (buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK) {
+      if (m_hints & Device::VALIDATE_L4_CSUM) {
+        auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
+        if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
+          DPDK_LOG("invalid L4 checksum, dropping packet");
+          continue;
+        }
+      }
+    }
+#endif
+    /*
+     * Grab the packet data and length.
+     */
     auto* dat = rte_pktmbuf_mtod(buf, const uint8_t*);
     auto len = rte_pktmbuf_pkt_len(buf);
+    /*
+     * Process the packet.
+     */
     proc.process(len, dat);
+    /*
+     * Free the packet.
+     */
     rte_pktmbuf_free(buf);
   }
   /*
@@ -273,6 +338,30 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   mbuf->data_len = len;
   mbuf->pkt_len = len;
   /*
+   * Update the IP offload flags.
+   */
+  DPDK_LOG(std::hex << mbuf->ol_flags << std::dec);
+#ifdef TULIPS_HAS_HW_CHECKSUM
+  auto* ether_hdr = reinterpret_cast<const struct rte_ether_hdr*>(buf);
+  if (ether_hdr->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
+    mbuf->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM;
+  }
+#endif
+  /*
+   * Update the L4 offload flags.
+   */
+#ifdef TULIPS_HAS_HW_CHECKSUM
+  auto offset = sizeof(struct rte_ether_hdr);
+  auto* ip_hdr = reinterpret_cast<const struct rte_ipv4_hdr*>(buf + offset);
+  if (ip_hdr->next_proto_id == IPPROTO_UDP) {
+    mbuf->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
+  }
+  if (ip_hdr->next_proto_id == IPPROTO_TCP) {
+    mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
+  }
+#endif
+  DPDK_LOG(std::hex << mbuf->ol_flags << std::dec);
+  /*
    * Prepare the packet.
    */
   res = rte_eth_tx_prepare(m_portid, 0, &mbuf, 1);
@@ -306,5 +395,4 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   return Status::Ok;
 }
-
 }

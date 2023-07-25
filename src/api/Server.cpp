@@ -37,7 +37,7 @@ Server::Server(Delegate& delegate, transport::Device& device,
    */
 #ifdef TULIPS_DISABLE_CHECKSUM_CHECK
   device.hint(transport::Device::VALIDATE_IP_CSUM);
-  device.hint(transport::Device::VALIDATE_TCP_CSUM);
+  device.hint(transport::Device::VALIDATE_L4_CSUM);
 #endif
   /*
    * Connect the stack.
