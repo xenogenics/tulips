@@ -276,6 +276,7 @@ Device::poll(Processor& proc)
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
           DPDK_LOG("invalid IP checksum, dropping packet");
+          rte_pktmbuf_free(buf);
           continue;
         }
       }
@@ -288,6 +289,7 @@ Device::poll(Processor& proc)
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
           DPDK_LOG("invalid L4 checksum, dropping packet");
+          rte_pktmbuf_free(buf);
           continue;
         }
       }
