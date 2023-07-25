@@ -360,28 +360,34 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   mbuf->data_len = len;
   mbuf->pkt_len = len;
+  mbuf->l2_len = sizeof(struct rte_ether_hdr);
   /*
    * Update the IP offload flags.
    */
-#ifdef TULIPS_HAS_HW_CHECKSUM
   auto* ether_hdr = reinterpret_cast<const struct rte_ether_hdr*>(buf);
   if (ether_hdr->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
+    mbuf->l3_len = sizeof(struct rte_ipv4_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
     mbuf->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM;
-  }
 #endif
+  }
   /*
    * Update the L4 offload flags.
    */
-#ifdef TULIPS_HAS_HW_CHECKSUM
   auto offset = sizeof(struct rte_ether_hdr);
   auto* ip_hdr = reinterpret_cast<const struct rte_ipv4_hdr*>(buf + offset);
   if (ip_hdr->next_proto_id == IPPROTO_UDP) {
+    mbuf->l4_len = sizeof(struct rte_udp_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
     mbuf->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
+#endif
   }
   if (ip_hdr->next_proto_id == IPPROTO_TCP) {
+    mbuf->l4_len = sizeof(struct rte_tcp_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
     mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
-  }
 #endif
+  }
   /*
    * Prepare the packet. NOTE(xrg): we can probably skip this.
    */

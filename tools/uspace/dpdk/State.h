@@ -8,6 +8,8 @@
 
 namespace tulips::tools::uspace::dpdk {
 
+using IDs = std::set<Client::ID>;
+
 struct State : public utils::State
 {
   State(std::string const& dev, stack::ipv4::Address const& ip,
@@ -15,6 +17,7 @@ struct State : public utils::State
         const bool pcap = false);
 
   Poller poller;
+  IDs ids;
 };
 
 }
