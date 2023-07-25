@@ -6,7 +6,7 @@
 #include <tulips/stack/ipv4/Processor.h>
 #include <arpa/inet.h>
 
-#define ETH_VERBOSE 1
+#define ETH_VERBOSE 0
 
 #if ETH_VERBOSE
 #define ETH_LOG(__args) LOG("ETH", __args)

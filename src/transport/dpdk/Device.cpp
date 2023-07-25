@@ -1,10 +1,3 @@
-#include "rte_config.h"
-#include "rte_ether.h"
-#include "rte_flow.h"
-#include "rte_ip.h"
-#include "rte_mbuf.h"
-#include "rte_mbuf_core.h"
-#include "rte_mempool.h"
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/dpdk/Device.h>
@@ -14,13 +7,20 @@
 #include <ctime>
 #include <sstream>
 #include <thread>
+#include <dpdk/rte_config.h>
 #include <dpdk/rte_dev.h>
 #include <dpdk/rte_eal.h>
 #include <dpdk/rte_ethdev.h>
+#include <dpdk/rte_ether.h>
 #include <dpdk/rte_flow.h>
+#include <dpdk/rte_ip.h>
+#include <dpdk/rte_mbuf.h>
+#include <dpdk/rte_mbuf_core.h>
+#include <dpdk/rte_mempool.h>
 #include <net/ethernet.h>
 
 #define DPDK_VERBOSE 1
+#define DPDK_CAPTSOB 0 // NOLINT
 
 #if DPDK_VERBOSE
 #define DPDK_LOG(__args) LOG("DPDK", __args)
@@ -42,12 +42,12 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
   , m_ethconf()
   , m_rxqconf()
   , m_txqconf()
-  , m_buflen(16384)
+  , m_buflen(0)
   , m_address()
   , m_ip(ip)
   , m_dr(dr)
   , m_nm(nm)
-  , m_mtu(1500)
+  , m_mtu(0)
 {
   int ret = 0;
   /*
@@ -91,11 +91,45 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
     throw std::runtime_error("Interface not found");
   }
   /*
+   * Get the NUMA node.
+   */
+  auto node = rte_eth_dev_socket_id(m_portid);
+  /*
+   * Fetch the MAC address.
+   */
+  struct rte_ether_addr mac;
+  ret = rte_eth_macaddr_get(m_portid, &mac);
+  if (ret != 0) {
+    throw std::runtime_error("Failed to fetch device's MAC address");
+  }
+  memcpy(m_address.data(), mac.addr_bytes, ETHER_ADDR_LEN);
+  /*
+   * Get the MTU.
+   */
+  uint16_t hwmtu = 0;
+  ret = rte_eth_dev_get_mtu(m_portid, &hwmtu);
+  if (ret < 0) {
+    throw std::runtime_error("Failed to get device MTU");
+  }
+  m_mtu = hwmtu;
+  /*
+   * Compute the buffer length.
+   */
+  m_buflen = hwmtu + stack::ethernet::HEADER_LEN + RTE_PKTMBUF_HEADROOM;
+  if (m_buflen < dev_info.min_rx_bufsize) {
+    m_buflen = dev_info.min_rx_bufsize;
+  }
+  /*
    * Print some device information.
    */
-  DPDK_LOG("Device driver: " << dev_info.driver_name);
-  DPDK_LOG("Device name: " << rte_dev_name(dev_info.device));
-  DPDK_LOG("Device NUMA node: " << rte_dev_numa_node(dev_info.device));
+  DPDK_LOG("driver: " << dev_info.driver_name);
+  DPDK_LOG("name: " << rte_dev_name(dev_info.device));
+  DPDK_LOG("NUMA node: " << node);
+  DPDK_LOG("hardware address: " << m_address.toString());
+  DPDK_LOG("MTU: " << m_mtu);
+  DPDK_LOG("ip address: " << m_ip.toString());
+  DPDK_LOG("netmask: " << m_nm.toString());
+  DPDK_LOG("router address: " << m_dr.toString());
   /*
    * Erase the configurations.
    */
@@ -139,24 +173,13 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
     throw std::runtime_error("Failed to configure the device");
   }
   /*
-   * Fetch the MAC address.
-   */
-  struct rte_ether_addr mac;
-  ret = rte_eth_macaddr_get(m_portid, &mac);
-  if (ret != 0) {
-    throw std::runtime_error("Failed to fetch device's MAC address");
-  }
-  memcpy(m_address.data(), mac.addr_bytes, ETHER_ADDR_LEN);
-  /*
    * Allocate the mempools.
    */
-  m_rxqpool = rte_pktmbuf_pool_create("RX", nbuf, 0, 0, m_buflen,
-                                      rte_eth_dev_socket_id(m_portid));
+  m_rxqpool = rte_pktmbuf_pool_create("RX", nbuf, 0, 0, m_buflen, node);
   if (m_rxqpool == nullptr) {
     throw std::runtime_error("Failed to create the RX mempool");
   }
-  m_txqpool = rte_pktmbuf_pool_create("TX", nbuf, 0, 8, m_buflen,
-                                      rte_eth_dev_socket_id(m_portid));
+  m_txqpool = rte_pktmbuf_pool_create("TX", nbuf, 0, 8, m_buflen, node);
   if (m_txqpool == nullptr) {
     throw std::runtime_error("Failed to create the TX mempool");
   }
@@ -167,16 +190,14 @@ Device::Device(std::string const& ifn, stack::ipv4::Address const& ip,
   /*
    * Setup the RX queue.
    */
-  rte_eth_rx_queue_setup(m_portid, 0, nbuf, rte_eth_dev_socket_id(m_portid),
-                         &m_rxqconf, m_rxqpool);
+  ret = rte_eth_rx_queue_setup(m_portid, 0, nbuf, node, &m_rxqconf, m_rxqpool);
   if (ret != 0) {
     throw std::runtime_error("Failed to setup the RX queue");
   }
   /*
    * Setup the TX queue.
    */
-  rte_eth_tx_queue_setup(m_portid, 0, nbuf, rte_eth_dev_socket_id(m_portid),
-                         &m_txqconf);
+  ret = rte_eth_tx_queue_setup(m_portid, 0, nbuf, node, &m_txqconf);
   if (ret != 0) {
     throw std::runtime_error("Failed to setup the TX queue");
   }
@@ -340,7 +361,6 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   /*
    * Update the IP offload flags.
    */
-  DPDK_LOG(std::hex << mbuf->ol_flags << std::dec);
 #ifdef TULIPS_HAS_HW_CHECKSUM
   auto* ether_hdr = reinterpret_cast<const struct rte_ether_hdr*>(buf);
   if (ether_hdr->ether_type == htons(RTE_ETHER_TYPE_IPV4)) {
@@ -360,7 +380,6 @@ Device::commit(const uint32_t len, uint8_t* const buf,
     mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
   }
 #endif
-  DPDK_LOG(std::hex << mbuf->ol_flags << std::dec);
   /*
    * Prepare the packet.
    */
