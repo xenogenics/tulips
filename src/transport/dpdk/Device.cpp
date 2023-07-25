@@ -383,7 +383,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   }
 #endif
   /*
-   * Prepare the packet.
+   * Prepare the packet. NOTE(xrg): we can probably skip this.
    */
   res = rte_eth_tx_prepare(m_portid, 0, &mbuf, 1);
   if (res != 1) {
@@ -403,17 +403,9 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   rte_pktmbuf_free(mbuf);
   /*
-   * Print the stats.
-   */
-  struct rte_eth_stats stats;
-  res = rte_eth_stats_get(m_portid, &stats);
-  if (res != 0) {
-    return Status::HardwareError;
-  }
-  DPDK_LOG("Stats: IN=" << stats.ipackets << ", OUT=" << stats.opackets);
-  /*
    * Done.
    */
   return Status::Ok;
 }
+
 }
