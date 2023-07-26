@@ -54,6 +54,7 @@ find_package(ClangTidy)
 
 option(TULIPS_TESTS "Enable tests" OFF)
 option(TULIPS_DEBUG "Enable debug log" OFF)
+option(TULIPS_SANITIZERS "Enable code sanitizers" OFF)
 option(TULIPS_HAS_HW_CHECKSUM "Target has hardware checksum" OFF)
 option(TULIPS_DISABLE_CHECKSUM_CHECK "Disable checksum checks" OFF)
 option(TULIPS_HAS_HW_TSO "Target has hardware TSO" OFF)
@@ -68,6 +69,7 @@ message(STATUS "[ TULIPS OPTIONS BEGIN ]")
 if (TULIPS_TESTS)
 
   set(TULIPS_DEBUG ON)
+  set(TULIPS_SANITIZERS ON)
   set(TULIPS_ENABLE_ARP ON)
   set(TULIPS_ENABLE_ICMP ON)
   set(TULIPS_ENABLE_RAW ON)
@@ -89,6 +91,10 @@ if (TULIPS_DEBUG)
   add_definitions(-DTULIPS_DEBUG)
   message(STATUS "Debug mode: ON")
 endif (TULIPS_DEBUG)
+
+if (TULIPS_SANITIZERS)
+  message(STATUS "Sanitizers: ON")
+endif (TULIPS_SANITIZERS)
 
 if (TULIPS_HAS_HW_CHECKSUM)
   add_definitions(-DTULIPS_HAS_HW_CHECKSUM)
@@ -147,12 +153,12 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
 
-if (TULIPS_DEBUG)
+if (TULIPS_SANITIZERS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
   add_link_options(-fsanitize=address)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
   add_link_options(-fsanitize=undefined)
-endif (TULIPS_DEBUG)
+endif (TULIPS_SANITIZERS)
 
 #
 # Per-compiler options
