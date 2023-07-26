@@ -29,17 +29,17 @@ Poller::Poller(transport::Device::Ref dev, const bool pcap)
   , m_id()
   , m_status()
 {
-  pthread_create(&m_thread, nullptr, &Poller::entrypoint, this);
   pthread_mutex_init(&m_mutex, nullptr);
   pthread_cond_init(&m_cond, nullptr);
+  pthread_create(&m_thread, nullptr, &Poller::entrypoint, this);
 }
 
 Poller::~Poller()
 {
+  m_run = false;
   /*
    * Clean-up runtime variables.
    */
-  m_run = false;
   pthread_join(m_thread, nullptr);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
@@ -271,7 +271,7 @@ public:
     /*
      * Create a new poller.
      */
-    s.pollers.emplace_back(s.port.next(ip, dr, nm), s.with_pcap);
+    s.pollers.emplace_back(new Poller(s.port.next(ip, dr, nm), s.with_pcap));
     /*
      * Print the poller ID.
      */

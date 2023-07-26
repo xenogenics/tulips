@@ -59,7 +59,7 @@ public:
      * Create a connection.
      */
     Client::ID id;
-    switch (s.pollers[poller].connect(ip, port, id)) {
+    switch (s.pollers[poller]->connect(ip, port, id)) {
       case Status::Ok: {
         std::cout << "OK - " << id << std::endl;
         s.ids[id] = poller;
@@ -127,7 +127,7 @@ public:
     /*
      * Grab and close the connection.
      */
-    switch (s.pollers[poller].close(c)) {
+    switch (s.pollers[poller]->close(c)) {
       case Status::Ok: {
         std::cout << "Connection closed." << std::endl;
         s.ids.erase(c);
@@ -190,7 +190,7 @@ public:
        * Print the connections.
        */
       for (auto [key, value] : s.ids) {
-        s.pollers[value].get(key, ip, lport, rport);
+        s.pollers[value]->get(key, ip, lport, rport);
         std::cout << std::setw(7) << std::left << key << std::setw(16)
                   << std::left << ip.toString() << std::setw(12) << std::left
                   << lport << std::setw(11) << std::left << rport << std::right
@@ -244,7 +244,7 @@ public:
     std::string data;
     std::vector<std::string> rest(args.begin() + 2, args.end());
     system::utils::join(rest, ' ', data);
-    switch (s.pollers[poller].write(id, data)) {
+    switch (s.pollers[poller]->write(id, data)) {
       case Status::Ok: {
         std::cout << "OK - " << data.length() << "." << std::endl;
         break;

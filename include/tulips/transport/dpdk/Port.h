@@ -28,6 +28,8 @@ private:
   stack::ethernet::Address m_address;
   uint32_t m_mtu;
   struct rte_eth_conf m_ethconf;
+  size_t m_hlen;
+  uint8_t* m_hkey;
   std::vector<struct rte_mempool*> m_rxpools;
   std::vector<struct rte_mempool*> m_txpools;
   std::list<uint16_t> m_free;

@@ -18,7 +18,7 @@ struct State : public utils::State
   std::string interface;
   transport::dpdk::Port port;
   bool with_pcap;
-  std::vector<poller::Poller> pollers;
+  std::vector<poller::Poller::Ref> pollers;
   IDs ids;
 };
 

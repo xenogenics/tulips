@@ -5,6 +5,7 @@
 #include <tulips/transport/Device.h>
 #include <tulips/transport/dpdk/Device.h>
 #include <tulips/transport/pcap/Device.h>
+#include <memory>
 #include <string>
 #include <pthread.h>
 #include <utils/Command.h>
@@ -14,6 +15,8 @@ namespace tulips::tools::uspace::dpdk::poller {
 class Poller
 {
 public:
+  using Ref = std::unique_ptr<Poller>;
+
   Poller(transport::Device::Ref dev, const bool pcap);
   Poller(Poller&&) = default;
   ~Poller();

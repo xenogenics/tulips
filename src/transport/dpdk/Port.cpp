@@ -1,11 +1,27 @@
+#include <tulips/stack/Utils.h>
 #include <tulips/transport/dpdk/Device.h>
 #include <tulips/transport/dpdk/Port.h>
 #include <tulips/transport/dpdk/Utils.h>
+#include <cstdint>
 #include <cstring>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <dpdk/rte_ethdev.h>
 #include <net/ethernet.h>
+
+namespace {
+
+static inline uint64_t
+log2(const uint64_t x)
+{
+  uint64_t y;
+  asm("\tbsr %1, %0\n" : "=r"(y) : "r"(x));
+  return y;
+}
+
+}
 
 namespace tulips::transport::dpdk {
 
@@ -16,6 +32,8 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   , m_address()
   , m_mtu()
   , m_ethconf()
+  , m_hlen(0)
+  , m_hkey(nullptr)
   , m_rxpools()
   , m_txpools()
   , m_free()
@@ -149,7 +167,9 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   /*
    * Update the device receive-side scaling (RSS) configuration.
    */
+#if 1
   m_ethconf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
+#endif
   /*
    * Configure the device.
    */
@@ -157,6 +177,29 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   if (ret != 0) {
     throw std::runtime_error("Failed to configure the device");
   }
+  /*
+   * Get the RSS configuration.
+   */
+  m_hlen = dev_info.hash_key_size;
+  m_hkey = new uint8_t[m_hlen];
+  struct rte_eth_rss_conf rss_conf = { .rss_key = m_hkey };
+  ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
+  if (ret != 0) {
+    throw std::runtime_error("Failed to get the RSS hashing configuration");
+  }
+  /*
+   * Print the RSS configuration.
+   */
+#ifdef DPDK_VERBOSE
+  std::ostringstream oss;
+  for (size_t i = 0; i < m_hlen; i += 1) {
+    oss << std::setw(2) << std::setfill('0') << std::hex << uint16_t(m_hkey[i]);
+    oss << ((i + 1 < m_hlen) ? ":" : "");
+  }
+#endif
+  DPDK_LOG("hash key length: " << size_t(rss_conf.rss_key_len));
+  DPDK_LOG("hash key: " << oss.str());
+  DPDK_LOG("reta log size: " << log2(dev_info.reta_size));
   /*
    * Configure the RX queues.
    */
