@@ -1,6 +1,5 @@
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Utils.h>
-#include <tulips/transport/dpdk/Port.h>
 #include <cstring>
 #include <map>
 #include <string>
@@ -85,18 +84,12 @@ try {
   linenoiseSetHintsCallback(hints);
   linenoiseHistorySetMaxLen(1000);
   /*
-   * FIXME.
-   */
-  stack::ipv4::Address ip(10, 107, 59, 172);
-  stack::ipv4::Address dr(10, 107, 59, 254);
-  stack::ipv4::Address nm(255, 255, 0, 0);
-  /*
    * Commands.
    */
-  auto port = transport::dpdk::Port(iffA.getValue(), 8, 32);
-  dpdk::State state(port.next(ip, dr, nm), pcpA.isSet());
+  dpdk::State state(iffA.getValue(), pcpA.isSet());
   basic::populate(state.commands);
   dpdk::connection::populate(state.commands);
+  dpdk::poller::populate(state.commands);
   /*
    * Main loop.
    */

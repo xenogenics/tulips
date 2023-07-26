@@ -1,20 +1,24 @@
 #pragma once
 
 #include <tulips/transport/dpdk/Device.h>
-#include <set>
+#include <tulips/transport/dpdk/Port.h>
+#include <map>
 #include <string>
 #include <uspace/dpdk/Poller.h>
 #include <utils/State.h>
 
 namespace tulips::tools::uspace::dpdk {
 
-using IDs = std::set<Client::ID>;
+using IDs = std::map<Client::ID, size_t>;
 
 struct State : public utils::State
 {
-  State(transport::Device::Ref device, const bool pcap = false);
+  State(std::string const& iff, const bool pcap = false);
 
-  Poller poller;
+  std::string interface;
+  transport::dpdk::Port port;
+  bool with_pcap;
+  std::vector<poller::Poller> pollers;
   IDs ids;
 };
 

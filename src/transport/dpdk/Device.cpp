@@ -35,6 +35,8 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   , m_nm(nm)
   , m_mtu(mtu)
 {
+  DPDK_LOG("port id: " << port_id);
+  DPDK_LOG("queue id: " << queue_id);
   DPDK_LOG("ip address: " << m_ip.toString());
   DPDK_LOG("netmask: " << m_nm.toString());
   DPDK_LOG("router address: " << m_dr.toString());
@@ -203,7 +205,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   /*
    * Prepare the packet. NOTE(xrg): we can probably skip this.
    */
-  res = rte_eth_tx_prepare(m_portid, 0, &mbuf, 1);
+  res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
     DPDK_LOG("Packet preparation for TX failed: " << rte_strerror(rte_errno));
     return Status::HardwareError;

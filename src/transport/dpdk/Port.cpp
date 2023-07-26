@@ -147,6 +147,10 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   }
 #endif
   /*
+   * Update the device receive-side scaling (RSS) configuration.
+   */
+  m_ethconf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
+  /*
    * Configure the device.
    */
   ret = rte_eth_dev_configure(m_portid, nqus, nqus, &m_ethconf);

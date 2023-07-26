@@ -1,17 +1,21 @@
-#include "tulips/transport/Device.h"
+#pragma once
+
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
+#include <tulips/transport/Device.h>
 #include <tulips/transport/dpdk/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <string>
 #include <pthread.h>
+#include <utils/Command.h>
 
-namespace tulips::tools::uspace::dpdk {
+namespace tulips::tools::uspace::dpdk::poller {
 
 class Poller
 {
 public:
   Poller(transport::Device::Ref dev, const bool pcap);
+  Poller(Poller&&) = default;
   ~Poller();
 
   Status connect(stack::ipv4::Address const& ripaddr,
@@ -61,5 +65,7 @@ private:
   Status m_status;
   std::string m_data;
 };
+
+void populate(utils::Commands& cmds);
 
 }

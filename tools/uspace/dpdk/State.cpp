@@ -2,8 +2,8 @@
 
 namespace tulips::tools::uspace::dpdk {
 
-State::State(transport::Device::Ref device, const bool pcap)
-  : utils::State(), poller(std::move(device), pcap)
+State::State(std::string const& iff, const bool pcap)
+  : utils::State(), interface(iff), port(iff, 8, 32), with_pcap(pcap), pollers()
 {}
 
 }
