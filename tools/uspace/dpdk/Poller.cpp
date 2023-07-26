@@ -1,14 +1,14 @@
+#include "tulips/transport/Device.h"
 #include <uspace/dpdk/Poller.h>
 
 namespace tulips::tools::uspace::dpdk {
 
-Poller::Poller(std::string const& dev, stack::ipv4::Address const& ip,
-               stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-               const bool pcap)
+Poller::Poller(transport::Device::Ref dev, const bool pcap)
   : m_capture(pcap)
-  , m_dpdk(dev, ip, dr, nm, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(m_dpdk, "packets.pcap") : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_dpdk)
+  , m_dev(std::move(dev))
+  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, "packets.pcap") : nullptr)
+  , m_device(pcap ? (transport::Device*)m_pcap
+                  : (transport::Device*)m_dev.get())
   , m_delegate()
   , m_client(m_delegate, *m_device, 32)
   , m_run(true)

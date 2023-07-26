@@ -12,9 +12,7 @@ using IDs = std::set<Client::ID>;
 
 struct State : public utils::State
 {
-  State(std::string const& dev, stack::ipv4::Address const& ip,
-        stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-        const bool pcap = false);
+  State(transport::Device::Ref device, const bool pcap = false);
 
   Poller poller;
   IDs ids;

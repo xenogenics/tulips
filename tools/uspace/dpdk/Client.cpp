@@ -1,5 +1,6 @@
-#include "tulips/stack/IPv4.h"
+#include <tulips/stack/IPv4.h>
 #include <tulips/system/Utils.h>
+#include <tulips/transport/dpdk/Port.h>
 #include <cstring>
 #include <map>
 #include <string>
@@ -92,7 +93,8 @@ try {
   /*
    * Commands.
    */
-  dpdk::State state(iffA.getValue(), ip, dr, nm, pcpA.isSet());
+  auto port = transport::dpdk::Port(iffA.getValue(), 8, 32);
+  dpdk::State state(port.next(ip, dr, nm), pcpA.isSet());
   basic::populate(state.commands);
   dpdk::connection::populate(state.commands);
   /*

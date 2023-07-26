@@ -17,10 +17,7 @@ namespace tulips::transport::dpdk {
 class Device : public transport::Device
 {
 public:
-  Device(std::string const& ifn, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-         const uint16_t nbuf);
-  ~Device() override;
+  ~Device() override = default;
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
@@ -55,15 +52,16 @@ public:
   }
 
 private:
-  static AbstractionLayer s_eal;
+  Device(const uint16_t port_id, const uint16_t queue_id,
+         stack::ethernet::Address const& m_address, const uint32_t m_mtu,
+         struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
+         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
 
   uint16_t m_portid;
-  struct rte_mempool* m_rxqpool;
-  struct rte_mempool* m_txqpool;
-  struct rte_eth_conf m_ethconf;
-  struct rte_eth_rxconf m_rxqconf;
-  struct rte_eth_txconf m_txqconf;
-  uint16_t m_buflen;
+  uint16_t m_queueid;
+  struct rte_mempool* m_txpool;
+
+  friend class Port;
 
 protected:
   stack::ethernet::Address m_address;

@@ -1,3 +1,4 @@
+#include "tulips/transport/Device.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/transport/dpdk/Device.h>
@@ -10,9 +11,7 @@ namespace tulips::tools::uspace::dpdk {
 class Poller
 {
 public:
-  Poller(std::string const& dev, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-         const bool pcap);
+  Poller(transport::Device::Ref dev, const bool pcap);
   ~Poller();
 
   Status connect(stack::ipv4::Address const& ripaddr,
@@ -45,7 +44,7 @@ private:
   void run();
 
   const bool m_capture;
-  transport::dpdk::Device m_dpdk;
+  transport::Device::Ref m_dev;
   transport::pcap::Device* m_pcap;
   transport::Device* m_device;
   defaults::ClientDelegate m_delegate;

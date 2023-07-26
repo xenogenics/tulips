@@ -3,6 +3,7 @@
 #include <tulips/api/Status.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/Producer.h>
+#include <memory>
 #include <string>
 #include <unistd.h>
 
@@ -26,6 +27,8 @@ public:
     VALIDATE_IP_CSUM = 0x1,
     VALIDATE_L4_CSUM = 0x2,
   };
+
+  using Ref = std::unique_ptr<Device>;
 
   /*
    * The DEFAULT_MTU takes the value of the maximum size for the payload of an
