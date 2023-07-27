@@ -99,10 +99,6 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   }
   m_mtu = hwmtu;
   /*
-   * Get the NUMA node.
-   */
-  auto node = rte_eth_dev_socket_id(m_portid);
-  /*
    * Compute the buffer length.
    */
   auto buflen = hwmtu + stack::ethernet::HEADER_LEN + RTE_PKTMBUF_HEADROOM;
@@ -131,6 +127,84 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   DPDK_LOG("queues: " << nqus);
   DPDK_LOG("descriptors: " << ndsc);
   DPDK_LOG("buffer length: " << buflen);
+  /*
+   * Configure the device.
+   */
+  configure(dev_info, nqus);
+  /*
+   * Setup the pools and queues.
+   */
+  setupPoolsAndQueues(buflen, nqus, ndsc);
+  /*
+   * Start the port.
+   */
+  ret = rte_eth_dev_start(m_portid);
+  if (ret != 0) {
+    throw std::runtime_error("Failed to start the device");
+  }
+  /*
+   * Update the RSS state.
+   */
+  setupReceiveSideScaling(dev_info);
+}
+
+Port::~Port()
+{
+  /*
+   * Stop the device.
+   */
+  rte_eth_dev_stop(m_portid);
+  /*
+   * Clear the TX mempools.
+   */
+  for (auto mp : m_txpools) {
+    rte_mempool_free(mp);
+  }
+  m_txpools.clear();
+  /*
+   * Clear the RX mempools.
+   */
+  for (auto mp : m_rxpools) {
+    rte_mempool_free(mp);
+  }
+  m_rxpools.clear();
+  /*
+   * Delete the RETA.
+   */
+  delete[] m_reta;
+  m_reta = nullptr;
+}
+
+Device::Ref
+Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+           stack::ipv4::Address const& nm)
+{
+  /*
+   * Return if there is no more queue available.
+   */
+  if (m_free.empty()) {
+    return nullptr;
+  }
+  /*
+   * Grab the next free queue ID.
+   */
+  auto qid = m_free.front();
+  m_free.pop_front();
+  /*
+   * Grab the TX pool.
+   */
+  auto* txpool = m_txpools[qid];
+  /*
+   * Done.
+   */
+  auto* dev = new Device(m_portid, qid, m_address, m_mtu, txpool, ip, dr, nm);
+  return Device::Ref(dev);
+}
+
+void
+Port::configure(UNUSED struct rte_eth_dev_info const& dev_info,
+                const uint16_t nqus)
+{
   /*
    * Erase the configurations.
    */
@@ -167,39 +241,24 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   /*
    * Update the device receive-side scaling (RSS) configuration.
    */
-#if 1
   m_ethconf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
-#endif
   /*
    * Configure the device.
    */
-  ret = rte_eth_dev_configure(m_portid, nqus, nqus, &m_ethconf);
+  auto ret = rte_eth_dev_configure(m_portid, nqus, nqus, &m_ethconf);
   if (ret != 0) {
     throw std::runtime_error("Failed to configure the device");
   }
+}
+
+void
+Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
+                          const uint16_t ndsc)
+{
   /*
-   * Get the RSS configuration.
+   * Get the NUMA node.
    */
-  m_hlen = dev_info.hash_key_size;
-  m_hkey = new uint8_t[m_hlen];
-  struct rte_eth_rss_conf rss_conf = { .rss_key = m_hkey };
-  ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
-  if (ret != 0) {
-    throw std::runtime_error("Failed to get the RSS hashing configuration");
-  }
-  /*
-   * Print the RSS configuration.
-   */
-#ifdef DPDK_VERBOSE
-  std::ostringstream oss;
-  for (size_t i = 0; i < m_hlen; i += 1) {
-    oss << std::setw(2) << std::setfill('0') << std::hex << uint16_t(m_hkey[i]);
-    oss << ((i + 1 < m_hlen) ? ":" : "");
-  }
-#endif
-  DPDK_LOG("hash key length: " << size_t(rss_conf.rss_key_len));
-  DPDK_LOG("hash key: " << oss.str());
-  DPDK_LOG("reta log size: " << log2(dev_info.reta_size));
+  auto node = rte_eth_dev_socket_id(m_portid);
   /*
    * Configure the RX queues.
    */
@@ -217,7 +276,7 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
     /*
      * Setup the queue.
      */
-    ret = rte_eth_rx_queue_setup(m_portid, i, ndsc, node, nullptr, rxpool);
+    auto ret = rte_eth_rx_queue_setup(m_portid, i, ndsc, node, nullptr, rxpool);
     if (ret != 0) {
       throw std::runtime_error("Failed to setup a RX queue");
     }
@@ -239,7 +298,7 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
     /*
      * Setup the queue.
      */
-    ret = rte_eth_tx_queue_setup(m_portid, i, ndsc, node, nullptr);
+    auto ret = rte_eth_tx_queue_setup(m_portid, i, ndsc, node, nullptr);
     if (ret != 0) {
       throw std::runtime_error("Failed to setup a TX queue");
     }
@@ -250,66 +309,49 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   for (size_t i = 0; i < nqus; i += 1) {
     m_free.push_back(i);
   }
+}
+
+void
+Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
+{
   /*
-   * Start the port.
+   * Get the RSS configuration.
    */
-  ret = rte_eth_dev_start(m_portid);
+  m_hlen = dev_info.hash_key_size;
+  m_hkey = new uint8_t[m_hlen];
+  struct rte_eth_rss_conf rss_conf = { .rss_key = m_hkey };
+  auto ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
   if (ret != 0) {
-    throw std::runtime_error("Failed to start the device");
-  }
-}
-
-Port::~Port()
-{
-  /*
-   * Delete the local MAC flow.
-   */
-  struct rte_flow_error flow_error;
-  rte_flow_flush(m_portid, &flow_error);
-  /*
-   * Stop the device.
-   */
-  rte_eth_dev_stop(m_portid);
-  /*
-   * Clear the TX mempools.
-   */
-  for (auto mp : m_txpools) {
-    rte_mempool_free(mp);
-  }
-  m_txpools.clear();
-  /*
-   * Clear the RX mempools.
-   */
-  for (auto mp : m_rxpools) {
-    rte_mempool_free(mp);
-  }
-  m_rxpools.clear();
-}
-
-auto
-Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-           stack::ipv4::Address const& nm) -> Device::Ref
-{
-  /*
-   * Return if there is no more queue available.
-   */
-  if (m_free.empty()) {
-    return nullptr;
+    throw std::runtime_error("Failed to get the RSS hashing configuration");
   }
   /*
-   * Grab the next free queue ID.
+   * Print the RSS configuration.
    */
-  auto qid = m_free.front();
-  m_free.pop_front();
+  m_retasz = dev_info.reta_size;
+  size_t retasz_log2 = log2(m_retasz);
+#ifdef DPDK_VERBOSE
+  std::ostringstream oss;
+  for (size_t i = 0; i < m_hlen; i += 1) {
+    oss << std::setw(2) << std::setfill('0') << std::hex << uint16_t(m_hkey[i]);
+    oss << ((i + 1 < m_hlen) ? ":" : "");
+  }
+#endif
+  DPDK_LOG("hash key length: " << size_t(rss_conf.rss_key_len));
+  DPDK_LOG("hash key: " << oss.str());
+  DPDK_LOG("reta size log2: " << retasz_log2);
   /*
-   * Grab the TX pool.
+   * Reset the RETA to point all entries to the 0th queue.
    */
-  auto* txpool = m_txpools[qid];
-  /*
-   * Done.
-   */
-  auto* dev = new Device(m_portid, qid, m_address, m_mtu, txpool, ip, dr, nm);
-  return Device::Ref(dev);
+  size_t count = 1 << (retasz_log2 < 6 ? retasz_log2 : retasz_log2 - 6);
+  m_reta = new struct rte_eth_rss_reta_entry64[count];
+  for (size_t i = 0; i < count; i += 1) {
+    m_reta[i].mask = uint64_t(-1);
+    memset(m_reta[i].reta, 0, sizeof(m_reta[i].reta));
+  }
+  ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, dev_info.reta_size);
+  if (ret != 0) {
+    throw std::runtime_error("Failed to reset the RETA to the 0th queue");
+  }
 }
 
 }

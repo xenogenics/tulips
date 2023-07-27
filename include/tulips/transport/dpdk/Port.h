@@ -18,10 +18,24 @@ public:
   Port(std::string const& ifn, const size_t width, const size_t depth);
   ~Port();
 
-  auto next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-            stack::ipv4::Address const& nm) -> Device::Ref;
+  Device::Ref next(stack::ipv4::Address const& ip,
+                   stack::ipv4::Address const& dr,
+                   stack::ipv4::Address const& nm);
 
 private:
+  /*
+   * Private methods.
+   */
+  void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);
+
+  void setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
+                           const uint16_t ndsc);
+
+  void setupReceiveSideScaling(UNUSED struct rte_eth_dev_info const& dev_info);
+
+  /*
+   * Members.
+   */
   static AbstractionLayer s_eal;
 
   uint16_t m_portid;
@@ -33,6 +47,8 @@ private:
   std::vector<struct rte_mempool*> m_rxpools;
   std::vector<struct rte_mempool*> m_txpools;
   std::list<uint16_t> m_free;
+  size_t m_retasz;
+  struct rte_eth_rss_reta_entry64* m_reta;
 };
 
 }
