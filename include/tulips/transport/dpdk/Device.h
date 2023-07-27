@@ -27,8 +27,13 @@ public:
 
   stack::ipv4::Address const& netmask() const override { return m_nm; }
 
-  Status listen(const uint16_t port) override;
-  void unlisten(const uint16_t port) override;
+  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+                stack::ipv4::Address const& raddr,
+                const uint16_t rport) override;
+
+  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+                stack::ipv4::Address const& raddr,
+                const uint16_t rport) override;
 
   Status poll(Processor& proc) override;
   Status wait(Processor& proc, const uint64_t ns) override;

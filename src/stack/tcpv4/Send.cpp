@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "tulips/stack/IPv4.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -49,7 +50,7 @@ Status
 Processor::sendAbort(Connection& e)
 {
   TCP_LOG("connection RST");
-  m_device.unlisten(e.m_lport);
+  m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
   e.m_state = Connection::CLOSED;
   uint8_t* outdata = e.m_sdat;
   OUTTCP->flags = Flag::RST;
@@ -171,7 +172,7 @@ Processor::send(Connection& e)
   /*
    * Update IP and Ethernet attributes
    */
-  m_ipv4to.setProtocol(ipv4::PROTO_TCP);
+  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(e.m_ripaddr);
   m_ethto.setDestinationAddress(e.m_rethaddr);
   /*
@@ -235,7 +236,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   /*
    * Update IP and Ethernet attributes
    */
-  m_ipv4to.setProtocol(ipv4::PROTO_TCP);
+  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(e.m_ripaddr);
   m_ethto.setDestinationAddress(e.m_rethaddr);
   /*

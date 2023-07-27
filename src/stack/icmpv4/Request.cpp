@@ -34,7 +34,7 @@ Request::operator()(ipv4::Address const& dst)
    * Setup the IP protocol
    */
   m_ip4.setDestinationAddress(dst);
-  m_ip4.setProtocol(ipv4::PROTO_ICMP);
+  m_ip4.setProtocol(ipv4::Protocol::ICMP);
   /*
    * Grab a send buffer
    */

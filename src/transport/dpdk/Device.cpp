@@ -43,24 +43,20 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
 }
 
 Status
-Device::listen(const uint16_t UNUSED port)
+Device::listen(UNUSED const stack::ipv4::Protocol proto,
+               UNUSED const uint16_t lport,
+               UNUSED stack::ipv4::Address const& raddr,
+               UNUSED const uint16_t rport)
 {
-  /*
-   * NOTE(xrg): by default, the ETH dev will get all the packets associated with
-   * its MAC address. Some drivers don't allow masking the EtherType field of
-   * the ETH mask (eg. Intel drivers) so we can't disable that behavior with a
-   * low priority flow. Therefore, we simply let all traffic pass.
-   */
   return Status::Ok;
 }
 
 void
-Device::unlisten(const uint16_t UNUSED port)
-{
-  /*
-   * NOTE(xrg): no-op, see above.
-   */
-}
+Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
+                 UNUSED const uint16_t lport,
+                 UNUSED stack::ipv4::Address const& raddr,
+                 UNUSED const uint16_t rport)
+{}
 
 Status
 Device::poll(Processor& proc)

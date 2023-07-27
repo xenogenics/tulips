@@ -46,9 +46,19 @@ public:
 
   stack::ipv4::Address const& netmask() const override { return m_nm; }
 
-  Status listen(const uint16_t UNUSED port) override { return Status::Ok; }
+  Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED const uint16_t lport,
+                UNUSED stack::ipv4::Address const& raddr,
+                UNUSED const uint16_t rport) override
+  {
+    return Status::Ok;
+  }
 
-  void unlisten(const uint16_t UNUSED port) override {}
+  void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED const uint16_t lport,
+                UNUSED stack::ipv4::Address const& raddr,
+                UNUSED const uint16_t rport) override
+  {}
 
   Status poll(Processor& proc) override;
   Status wait(Processor& proc, const uint64_t ns) override;

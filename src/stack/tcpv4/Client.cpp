@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "tulips/stack/IPv4.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -22,7 +23,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
   /*
    * Update IP and Ethernet attributes
    */
-  m_ipv4to.setProtocol(ipv4::PROTO_TCP);
+  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(ripaddr);
   m_ethto.setDestinationAddress(rhwaddr);
   /*
@@ -73,7 +74,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
   /*
    * Add the filter to the device.
    */
-  ret = m_device.listen(lport);
+  ret = m_device.listen(ipv4::Protocol::TCP, lport, ipv4::Address::ANY, 0);
   if (ret != Status::Ok) {
     TCP_LOG("registering client-side filter failed");
     return ret;
@@ -115,7 +116,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
    */
   OUTTCP->flags = 0;
   if (sendSyn(*e, seg) != Status::Ok) {
-    m_device.unlisten(lport);
+    m_device.unlisten(ipv4::Protocol::TCP, lport, ipv4::Address::ANY, 0);
     e->m_state = Connection::CLOSED;
     return ret;
   }
@@ -136,7 +137,7 @@ Processor::abort(Connection::ID const& id)
   /*
    * Abort the connection
    */
-  m_device.unlisten(c.m_lport);
+  m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, ipv4::Address::ANY, 0);
   c.m_state = Connection::CLOSED;
   m_handler.onAborted(c);
   /*

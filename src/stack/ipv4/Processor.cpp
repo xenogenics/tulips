@@ -1,3 +1,4 @@
+#include "tulips/stack/IPv4.h"
 #include <tulips/stack/ipv4/Processor.h>
 #ifdef TULIPS_ENABLE_ICMP
 #include <tulips/stack/icmpv4/Processor.h>
@@ -114,8 +115,8 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   /*
    * Call the processors
    */
-  switch (m_proto) {
-    case PROTO_TCP: {
+  switch (Protocol(m_proto)) {
+    case Protocol::TCP: {
 #ifdef TULIPS_STACK_RUNTIME_CHECK
       if (!m_tcp) {
         ret = Status::UnsupportedProtocol;
@@ -126,7 +127,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
       break;
     }
 #ifdef TULIPS_ENABLE_ICMP
-    case PROTO_ICMP: {
+    case Protocol::ICMP: {
 #ifdef TULIPS_STACK_RUNTIME_CHECK
       if (!m_icmp) {
         ret = Status::UnsupportedProtocol;
@@ -138,7 +139,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
     }
 #endif
 #ifdef TULIPS_ENABLE_RAW
-    case PROTO_TEST: {
+    case Protocol::TEST: {
 #ifdef TULIPS_STACK_RUNTIME_CHECK
       if (!m_raw) {
         ret = Status::UnsupportedProtocol;

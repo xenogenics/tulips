@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include "tulips/stack/IPv4.h"
 #include <tulips/fifo/errors.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/Utils.h>
@@ -413,17 +414,31 @@ Device::~Device()
 }
 
 Status
-Device::listen(const uint16_t port)
+Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+               UNUSED stack::ipv4::Address const& raddr,
+               UNUSED const uint16_t rport)
 {
+  /*
+   * Skip if the protocol is ICMP.
+   */
+  if (proto == stack::ipv4::Protocol::ICMP) {
+    return Status::Ok;
+  }
+  /*
+   * Only TCP is supported for now.
+   */
+  if (proto != stack::ipv4::Protocol::TCP) {
+    return Status::UnsupportedProtocol;
+  }
   /*
    * Define the TCP flow attribute structure.
    */
   struct tcp_flow_attr
   {
     struct ibv_flow_attr atr;
-    struct ibv_flow_spec_eth eth;
-    struct ibv_flow_spec_ipv4 ip4;
-    struct ibv_flow_spec_tcp_udp tcp;
+    struct ibv_flow_spec_eth l2;
+    struct ibv_flow_spec_ipv4 l3;
+    struct ibv_flow_spec_tcp_udp l4;
   } __attribute__((packed));
   /*
    * Fill in the attributes.
@@ -436,20 +451,20 @@ Device::listen(const uint16_t port)
   flow.atr.num_of_specs = 3;
   flow.atr.port = m_port + 1;
   //
-  flow.eth.type = IBV_FLOW_SPEC_ETH;
-  flow.eth.size = sizeof(struct ibv_flow_spec_eth);
-  memcpy(flow.eth.val.dst_mac, m_address.data(), 6);
-  memset(flow.eth.mask.dst_mac, 0xFF, 6);
+  flow.l2.type = IBV_FLOW_SPEC_ETH;
+  flow.l2.size = sizeof(struct ibv_flow_spec_eth);
+  memcpy(flow.l2.val.dst_mac, m_address.data(), 6);
+  memset(flow.l2.mask.dst_mac, 0xFF, 6);
   //
-  flow.ip4.type = IBV_FLOW_SPEC_IPV4;
-  flow.ip4.size = sizeof(struct ibv_flow_spec_ipv4);
-  memcpy(&flow.ip4.val.dst_ip, m_ip.data(), 4);
-  memset(&flow.ip4.mask.dst_ip, 0xFF, 4);
+  flow.l3.type = IBV_FLOW_SPEC_IPV4;
+  flow.l3.size = sizeof(struct ibv_flow_spec_ipv4);
+  memcpy(&flow.l3.val.dst_ip, m_ip.data(), 4);
+  memset(&flow.l3.mask.dst_ip, 0xFF, 4);
   //
-  flow.tcp.type = IBV_FLOW_SPEC_TCP;
-  flow.tcp.size = sizeof(struct ibv_flow_spec_tcp_udp);
-  flow.tcp.val.dst_port = htons(port);
-  flow.tcp.mask.dst_port = 0xFFFF;
+  flow.l4.type = IBV_FLOW_SPEC_TCP;
+  flow.l4.size = sizeof(struct ibv_flow_spec_tcp_udp);
+  flow.l4.val.dst_port = htons(lport);
+  flow.l4.mask.dst_port = 0xFFFF;
   /*
    * Setup the TCP flow.
    */
@@ -462,16 +477,18 @@ Device::listen(const uint16_t port)
    * Register the flow.
    */
   OFED_LOG("TCP/UDP flow for port " << port << " created");
-  m_filters[port] = f;
+  m_filters[lport] = f;
   return Status::Ok;
 }
 
 void
-Device::unlisten(const uint16_t port)
+Device::unlisten(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
+                 UNUSED stack::ipv4::Address const& raddr,
+                 UNUSED const uint16_t rport)
 {
-  if (m_filters.count(port) > 0) {
-    ibv_destroy_flow(m_filters[port]);
-    m_filters.erase(port);
+  if (m_filters.count(lport) > 0) {
+    ibv_destroy_flow(m_filters[lport]);
+    m_filters.erase(lport);
   }
 }
 

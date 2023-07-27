@@ -12,6 +12,7 @@
 
 namespace tulips::stack::ipv4 {
 
+const Address Address::ANY(0x0, 0x0, 0x0, 0x0);
 const Address Address::BROADCAST(0xff, 0xff, 0xff, 0xff);
 
 /*
