@@ -17,7 +17,7 @@ namespace tulips::transport::dpdk {
 class Device : public transport::Device
 {
 public:
-  ~Device() override = default;
+  ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
@@ -57,14 +57,19 @@ public:
   }
 
 private:
-  Device(const uint16_t port_id, const uint16_t queue_id,
+  Device(const uint16_t port_id, const uint16_t queue_id, const size_t htsz,
+         const size_t hlen, const uint8_t* const hkey,
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
          struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
          stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
 
   uint16_t m_portid;
   uint16_t m_queueid;
+  size_t m_htsz;
+  size_t m_hlen;
+  const uint8_t* m_hkey;
   struct rte_mempool* m_txpool;
+  struct rte_eth_rss_reta_entry64* m_reta;
 
   friend class Port;
 

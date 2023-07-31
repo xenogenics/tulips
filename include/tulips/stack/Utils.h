@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/stack/IPv4.h>
 #include <cstdint>
 #include <iomanip>
 #include <limits>
@@ -21,5 +22,10 @@ cap(const uint32_t length)
   using uint16_limits = std::numeric_limits<uint16_t>;
   return length > uint16_limits::max() ? uint16_limits::max() : length;
 }
+
+uint32_t toeplitz(stack::ipv4::Address const& saddr,
+                  stack::ipv4::Address const& daddr, const uint16_t sport,
+                  const uint16_t dport, const size_t key_len,
+                  const uint8_t* const key);
 
 }

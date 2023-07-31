@@ -48,7 +48,6 @@ private:
   std::vector<struct rte_mempool*> m_txpools;
   std::list<uint16_t> m_free;
   size_t m_retasz;
-  struct rte_eth_rss_reta_entry64* m_reta;
 };
 
 }

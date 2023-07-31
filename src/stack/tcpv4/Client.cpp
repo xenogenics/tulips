@@ -74,7 +74,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
   /*
    * Add the filter to the device.
    */
-  ret = m_device.listen(ipv4::Protocol::TCP, lport, ipv4::Address::ANY, 0);
+  ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
   if (ret != Status::Ok) {
     TCP_LOG("registering client-side filter failed");
     return ret;
@@ -116,7 +116,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
    */
   OUTTCP->flags = 0;
   if (sendSyn(*e, seg) != Status::Ok) {
-    m_device.unlisten(ipv4::Protocol::TCP, lport, ipv4::Address::ANY, 0);
+    m_device.unlisten(ipv4::Protocol::TCP, lport, ripaddr, rport);
     e->m_state = Connection::CLOSED;
     return ret;
   }
@@ -137,7 +137,7 @@ Processor::abort(Connection::ID const& id)
   /*
    * Abort the connection
    */
-  m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, ipv4::Address::ANY, 0);
+  m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, c.m_ripaddr, c.m_rport);
   c.m_state = Connection::CLOSED;
   m_handler.onAborted(c);
   /*

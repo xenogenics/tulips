@@ -168,11 +168,6 @@ Port::~Port()
     rte_mempool_free(mp);
   }
   m_rxpools.clear();
-  /*
-   * Delete the RETA.
-   */
-  delete[] m_reta;
-  m_reta = nullptr;
 }
 
 Device::Ref
@@ -197,7 +192,8 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
   /*
    * Done.
    */
-  auto* dev = new Device(m_portid, qid, m_address, m_mtu, txpool, ip, dr, nm);
+  auto* dev = new Device(m_portid, qid, m_retasz, m_hlen, m_hkey, m_address,
+                         m_mtu, txpool, ip, dr, nm);
   return Device::Ref(dev);
 }
 
@@ -304,7 +300,7 @@ Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
     }
   }
   /*
-   * Update the free list.
+   * Update the free list. We reserve the 0th queue.
    */
   for (size_t i = 0; i < nqus; i += 1) {
     m_free.push_back(i);
@@ -343,12 +339,12 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
    * Reset the RETA to point all entries to the 0th queue.
    */
   size_t count = 1 << (retasz_log2 < 6 ? retasz_log2 : retasz_log2 - 6);
-  m_reta = new struct rte_eth_rss_reta_entry64[count];
+  struct rte_eth_rss_reta_entry64 reta[count];
   for (size_t i = 0; i < count; i += 1) {
-    m_reta[i].mask = uint64_t(-1);
-    memset(m_reta[i].reta, 0, sizeof(m_reta[i].reta));
+    reta[i].mask = uint64_t(-1);
+    memset(reta[i].reta, 0, sizeof(reta[i].reta));
   }
-  ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, dev_info.reta_size);
+  ret = rte_eth_dev_rss_reta_update(m_portid, reta, dev_info.reta_size);
   if (ret != 0) {
     throw std::runtime_error("Failed to reset the RETA to the 0th queue");
   }

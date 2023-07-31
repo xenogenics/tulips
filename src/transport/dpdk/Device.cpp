@@ -1,7 +1,10 @@
+#include <tulips/stack/IPv4.h>
+#include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/dpdk/Device.h>
 #include <tulips/transport/dpdk/Utils.h>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
@@ -17,18 +20,24 @@
 #include <dpdk/rte_mbuf.h>
 #include <dpdk/rte_mbuf_core.h>
 #include <dpdk/rte_mempool.h>
+#include <dpdk/rte_thash.h>
 #include <net/ethernet.h>
 
 namespace tulips::transport::dpdk {
 
 Device::Device(const uint16_t port_id, const uint16_t queue_id,
+               const size_t htsz, const size_t hlen, const uint8_t* const hkey,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
   : transport::Device()
   , m_portid(port_id)
   , m_queueid(queue_id)
+  , m_htsz(htsz)
+  , m_hlen(hlen)
+  , m_hkey(hkey)
   , m_txpool(txpool)
+  , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 7])
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -42,12 +51,67 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   DPDK_LOG("router address: " << m_dr.toString());
 }
 
-Status
-Device::listen(UNUSED const stack::ipv4::Protocol proto,
-               UNUSED const uint16_t lport,
-               UNUSED stack::ipv4::Address const& raddr,
-               UNUSED const uint16_t rport)
+Device::~Device()
 {
+  delete[] m_reta;
+  m_reta = nullptr;
+}
+
+Status
+Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
+               stack::ipv4::Address const& raddr, const uint16_t rport)
+{
+  /*
+   * Hash the payload and get the table index.
+   */
+  auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
+  auto indx = hash % m_htsz;
+  auto slot = indx >> 6;
+  auto eidx = indx & 0x3F;
+  /*
+   * Query the RETA.
+   */
+  auto ret = rte_eth_dev_rss_reta_query(m_portid, m_reta, m_htsz);
+  if (ret < 0) {
+    DPDK_LOG("failed to query the RETA");
+    return Status::HardwareError;
+  }
+  /*
+   * Print the existing configuration for the index.
+   */
+  auto preq = m_reta[slot].reta[eidx];
+  DPDK_LOG("LS hash/index: " << std::hex << hash << std::dec << "/" << indx);
+  DPDK_LOG("RETA queue: " << preq);
+  /*
+   * Check the configuration.
+   */
+  if (preq != 0 && preq != m_queueid) {
+    DPDK_LOG("RETA queue allocation conflict: " << preq);
+    return Status::HardwareError;
+  }
+  /*
+   * Skip if the existing queue allocation matches our queue.
+   */
+  if (preq == m_queueid) {
+    return Status::Ok;
+  }
+  /*
+   * Prepare the RETA for an update.
+   */
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
+  m_reta[slot].mask = 1 << eidx;
+  m_reta[slot].reta[eidx] = m_queueid;
+  /*
+   * Update the RETA.
+   */
+  ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
+  if (ret != 0) {
+    DPDK_LOG("failed to update the RETA");
+    return Status::HardwareError;
+  }
+  /*
+   * Done.
+   */
   return Status::Ok;
 }
 
@@ -56,7 +120,25 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
                  UNUSED const uint16_t lport,
                  UNUSED stack::ipv4::Address const& raddr,
                  UNUSED const uint16_t rport)
-{}
+{
+  /*
+   * Hash the payload and get the table index.
+   */
+  auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
+  auto indx = hash % m_htsz;
+  auto slot = indx >> 6;
+  auto eidx = indx & 0x3F;
+  /*
+   * Prepare the RETA for an update.
+   */
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
+  m_reta[slot].mask = 1 << eidx;
+  m_reta[slot].reta[eidx] = m_queueid;
+  /*
+   * Update the RETA.
+   */
+  rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
+}
 
 Status
 Device::poll(Processor& proc)
@@ -77,6 +159,7 @@ Device::poll(Processor& proc)
    */
   for (auto i = 0; i < nbrx; i += 1) {
     auto* buf = mbufs[i];
+    DPDK_LOG("RX hash : " << std::hex << buf->hash.rss << std::dec);
     /*
      * Validate the IP checksum.
      */
@@ -223,5 +306,4 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   return Status::Ok;
 }
-
 }
