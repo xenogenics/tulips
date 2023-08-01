@@ -69,6 +69,11 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
   auto slot = indx >> 6;
   auto eidx = indx & 0x3F;
   /*
+   * Clear the RETA.
+   */
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
+  m_reta[slot].mask = 1 << eidx;
+  /*
    * Query the RETA.
    */
   auto ret = rte_eth_dev_rss_reta_query(m_portid, m_reta, m_htsz);
