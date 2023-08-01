@@ -239,6 +239,8 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR}
   tests/*.h tests/*.cpp
   tools/*.h tools/*.cpp)
 
+list(FILTER SOURCES EXCLUDE REGEX ".*linenoise.h")
+
 if (APPLE)
   list(FILTER SOURCES EXCLUDE REGEX ".*linux.*")
   list(FILTER SOURCES EXCLUDE REGEX ".*openbsd.*")
