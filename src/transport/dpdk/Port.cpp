@@ -50,10 +50,6 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
     pids.push_back(pid);
   }
   /*
-   * Use the first port.
-   */
-  m_portid = pids.front();
-  /*
    * Check that there is at least one available port.
    */
   if (pids.size() == 0) {
