@@ -31,7 +31,7 @@ private:
   void setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
                            const uint16_t ndsc);
 
-  void setupReceiveSideScaling(UNUSED struct rte_eth_dev_info const& dev_info);
+  void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info);
 
   /*
    * Members.

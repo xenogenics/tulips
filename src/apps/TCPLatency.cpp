@@ -77,12 +77,12 @@ run(Options const& options, transport::Device& base_device)
    */
   transport::pcap::Device* pcap_device = nullptr;
   Device* device = &base_device;
-  /**
+  /*
    * Signal handler
    */
   signal(SIGINT, signal_handler);
   signal(SIGALRM, alarm_handler);
-  /**
+  /*
    * Set the alarm
    */
   alarm_delay = options.interval();
@@ -351,12 +351,12 @@ run(Options const& options, transport::Device& base_device)
    */
   transport::pcap::Device* pcap_device = nullptr;
   Device* device = &base_device;
-  /**
+  /*
    * Signal handler
    */
   signal(SIGINT, signal_handler);
   signal(SIGALRM, alarm_handler);
-  /**
+  /*
    * Set the alarm
    */
   alarm_delay = options.interval();
@@ -373,7 +373,7 @@ run(Options const& options, transport::Device& base_device)
     pcap_device = new transport::pcap::Device(base_device, "server.pcap");
     device = pcap_device;
   }
-  /**
+  /*
    * Initialize the server
    */
   interface::Server* server = nullptr;

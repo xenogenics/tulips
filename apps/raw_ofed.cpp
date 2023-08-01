@@ -141,7 +141,7 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
    * Run as sender.
    */
   if (sender) {
-    /**
+    /*
      * Set the alarm
      */
     alarm_delay = ival;
@@ -168,7 +168,7 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
    * Run as receiver.
    */
   else {
-    /**
+    /*
      * Set the alarm
      */
     alarm_delay = ival;
@@ -247,7 +247,7 @@ try {
   TCLAP::CmdLine cmd("TULIPS OFED RAW TEST", ' ', "1.0");
   Options opts(cmd);
   cmd.parse(argc, argv);
-  /**
+  /*
    * Signal handler
    */
   signal(SIGINT, signal_handler);

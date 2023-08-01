@@ -119,12 +119,12 @@ TEST(Transport_Basic, SharedMemory)
 {
   tulips_fifo_t client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_t server_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-  /**
+  /*
    * Build the FIFOs
    */
   tulips_fifo_create(64, 32, &client_fifo);
   tulips_fifo_create(64, 32, &server_fifo);
-  /**
+  /*
    * Build the devices
    */
   stack::ethernet::Address client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10);
@@ -137,18 +137,18 @@ TEST(Transport_Basic, SharedMemory)
                                 server_fifo, client_fifo);
   transport::shm::Device server(server_adr, server_ip4, bcast, nmask,
                                 client_fifo, server_fifo);
-  /**
+  /*
    * Start the threads
    */
   pthread_t t0, t1;
   pthread_create(&t0, nullptr, client_thread, &client);
   pthread_create(&t1, nullptr, server_thread, &server);
-  /**
+  /*
    * Wait for the threads
    */
   pthread_join(t0, nullptr);
   pthread_join(t1, nullptr);
-  /**
+  /*
    * Destroy the FIFOs
    */
   tulips_fifo_destroy(&client_fifo);
