@@ -160,10 +160,8 @@ Device::poll(Processor& proc)
   if (!m_buffer->empty()) {
     uint32_t len = 0;
     m_buffer->read_all((uint8_t*)&len, sizeof(len));
-    DPDK_LOG(m_name << " processing internal packet: " << len << "B");
     m_buffer->read_all(m_packet, len);
     proc.process(len, m_packet);
-    DPDK_LOG(m_name << " done processing internal packet");
   }
   /*
    * Process the incoming receive buffers.
@@ -308,7 +306,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    DPDK_LOG("Packet preparation for TX failed: " << rte_strerror(rte_errno));
+    DPDK_LOG("packet preparation for TX failed: " << rte_strerror(rte_errno));
     return Status::HardwareError;
   }
   /*
@@ -316,7 +314,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    DPDK_LOG("Sending packet failed");
+    DPDK_LOG("sending packet failed");
     return Status::HardwareError;
   }
   /*

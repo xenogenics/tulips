@@ -13,7 +13,8 @@ namespace tulips::tools::uspace::ena::poller {
 Poller::Poller(transport::Device::Ref dev, const bool pcap)
   : m_capture(pcap)
   , m_dev(std::move(dev))
-  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, "packets.pcap") : nullptr)
+  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, m_dev->name() + ".pcap")
+                : nullptr)
   , m_device(pcap ? (transport::Device*)m_pcap
                   : (transport::Device*)m_dev.get())
   , m_delegate()

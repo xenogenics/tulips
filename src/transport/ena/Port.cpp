@@ -1,3 +1,4 @@
+#include "tulips/stack/Ethernet.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
@@ -220,11 +221,14 @@ Port::poll(Processor& proc)
     auto* dat = rte_pktmbuf_mtod(buf, const uint8_t*);
     auto len = rte_pktmbuf_pkt_len(buf);
     /*
-     * Push the data to the internal buffers (length-framed).
+     * Push all non-IP packets to the internal buffers (length-framed).
      */
-    for (auto const& buffer : m_buffers) {
-      buffer->write_all((uint8_t*)&len, sizeof(len));
-      buffer->write_all(dat, len);
+    const auto* eth = reinterpret_cast<const stack::ethernet::Header*>(dat);
+    if (ntohs(eth->type) != stack::ethernet::ETHTYPE_IP) {
+      for (auto const& buffer : m_buffers) {
+        buffer->write_all((uint8_t*)&len, sizeof(len));
+        buffer->write_all(dat, len);
+      }
     }
     /*
      * Process the packet.
