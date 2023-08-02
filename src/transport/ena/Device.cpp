@@ -1,8 +1,8 @@
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
-#include <tulips/transport/dpdk/Device.h>
-#include <tulips/transport/dpdk/Utils.h>
+#include <tulips/transport/ena/Device.h>
+#include <tulips/transport/ena/Utils.h>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -23,7 +23,7 @@
 #include <dpdk/rte_thash.h>
 #include <net/ethernet.h>
 
-namespace tulips::transport::dpdk {
+namespace tulips::transport::ena {
 
 Device::Device(const uint16_t port_id, const uint16_t queue_id,
                const size_t htsz, const size_t hlen, const uint8_t* const hkey,
