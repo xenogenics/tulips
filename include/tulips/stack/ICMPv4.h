@@ -15,7 +15,7 @@ struct Header
   uint16_t icmpchksum;
   uint16_t id;
   uint16_t seqno;
-} __attribute__((packed));
+} PACKED;
 
 static constexpr uint16_t USED HEADER_LEN = sizeof(Header);
 

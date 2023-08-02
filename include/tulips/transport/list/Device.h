@@ -28,7 +28,7 @@ public:
 
     uint32_t len;
     uint8_t data[];
-  } __attribute__((packed));
+  } PACKED;
 
   using List = std::list<Packet*>;
 

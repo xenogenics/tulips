@@ -13,6 +13,16 @@
 #define BUFFER_LOG(...)
 #endif
 
+namespace {
+
+static size_t
+next_pow2(const size_t v)
+{
+  return v == 1 ? 1 : 1 << (64 - __builtin_clzl(v - 1));
+}
+
+}
+
 namespace tulips::system {
 
 CircularBuffer::CircularBuffer(const size_t size)
@@ -46,17 +56,16 @@ CircularBuffer::CircularBuffer(const size_t size)
   /*
    * Create an anonymous mapping.
    */
-  void* data;
-  data =
-    mmap(nullptr, m_size << 1, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  if (data == MAP_FAILED) {
+  auto anon_flags = MAP_ANONYMOUS | MAP_PRIVATE;
+  void* data = mmap(nullptr, m_size << 1, PROT_NONE, anon_flags, -1, 0);
+  if (data == /* NOLINT */ MAP_FAILED) {
     throw std::runtime_error("cannot create anonymous mapping");
   }
   /*
    * Map the file in the region.
    */
-  void* a;
-  a = mmap(data, m_size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED, fd, 0);
+  auto map_flags = MAP_FIXED | MAP_SHARED | MAP_POPULATE;
+  void* a = mmap(data, m_size, PROT_READ | PROT_WRITE, map_flags, fd, 0);
   if (a != data) {
     throw std::runtime_error("cannot map file to anonymous mapping");
   }
@@ -80,12 +89,18 @@ CircularBuffer::~CircularBuffer()
 size_t
 CircularBuffer::fit(const size_t size)
 {
+  /*
+   * Fit the requested size into page sizes.
+   */
   size_t npages = size / getpagesize();
   size_t result = npages * getpagesize();
   if (result < size) {
     result += getpagesize();
   }
-  return result;
+  /*
+   * Round-up the the next power of 2.
+   */
+  return next_pow2(result);
 }
 
 }

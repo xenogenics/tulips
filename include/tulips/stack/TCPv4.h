@@ -53,7 +53,7 @@ struct Header
   uint16_t chksum;
   uint16_t urgp;
   uint8_t opts[];
-} __attribute__((packed));
+} PACKED;
 
 #define HEADER_LEN_WITH_OPTS(__HDR)                                            \
   (((tulips::stack::tcpv4::Header*)(__HDR))->offset << 2)

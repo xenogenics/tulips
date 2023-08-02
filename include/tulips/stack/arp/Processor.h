@@ -3,6 +3,7 @@
 #include <tulips/stack/ARP.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
+#include <tulips/system/Compiler.h>
 #include <tulips/system/Timer.h>
 #include <tulips/transport/Processor.h>
 #include <vector>
@@ -32,7 +33,7 @@ private:
     ipv4::Address ipaddr;
     ethernet::Address ethaddr;
     uint8_t time;
-  } __attribute__((packed));
+  } PACKED;
 
   using Table = std::vector<Entry>;
 
