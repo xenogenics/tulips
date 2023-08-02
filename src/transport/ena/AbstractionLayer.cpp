@@ -1,8 +1,8 @@
-#include <tulips/transport/dpdk/AbstractionLayer.h>
+#include <tulips/transport/ena/AbstractionLayer.h>
 #include <stdexcept>
 #include <dpdk/rte_eal.h>
 
-namespace tulips::transport::dpdk {
+namespace tulips::transport::ena {
 
 AbstractionLayer::AbstractionLayer()
 {

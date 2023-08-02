@@ -3,14 +3,14 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/transport/Device.h>
-#include <tulips/transport/dpdk/Device.h>
+#include <tulips/transport/ena/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <memory>
 #include <string>
 #include <pthread.h>
 #include <utils/Command.h>
 
-namespace tulips::tools::uspace::dpdk::poller {
+namespace tulips::tools::uspace::ena::poller {
 
 class Poller
 {

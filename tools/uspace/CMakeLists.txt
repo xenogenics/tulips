@@ -1,5 +1,5 @@
 if (LibDPDK_FOUND)
-  add_subdirectory(dpdk)
+  add_subdirectory(ena)
 endif (LibDPDK_FOUND)
 
 if (LibIBVerbs_FOUND)

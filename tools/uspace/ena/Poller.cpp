@@ -1,10 +1,10 @@
 #include <tulips/transport/Device.h>
 #include <iostream>
 #include <linenoise/linenoise.h>
-#include <uspace/dpdk/Poller.h>
-#include <uspace/dpdk/State.h>
+#include <uspace/ena/Poller.h>
+#include <uspace/ena/State.h>
 
-namespace tulips::tools::uspace::dpdk::poller {
+namespace tulips::tools::uspace::ena::poller {
 
 /*
  * Poller.

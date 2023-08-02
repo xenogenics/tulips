@@ -1,7 +1,7 @@
 #include <tulips/stack/Utils.h>
-#include <tulips/transport/dpdk/Device.h>
-#include <tulips/transport/dpdk/Port.h>
-#include <tulips/transport/dpdk/Utils.h>
+#include <tulips/transport/ena/Device.h>
+#include <tulips/transport/ena/Port.h>
+#include <tulips/transport/ena/Utils.h>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -23,7 +23,7 @@ log2(const uint64_t x)
 
 }
 
-namespace tulips::transport::dpdk {
+namespace tulips::transport::ena {
 
 AbstractionLayer Port::s_eal;
 

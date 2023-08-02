@@ -4,7 +4,7 @@
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/Device.h>
-#include <tulips/transport/dpdk/AbstractionLayer.h>
+#include <tulips/transport/ena/AbstractionLayer.h>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
@@ -12,7 +12,7 @@
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_mempool.h>
 
-namespace tulips::transport::dpdk {
+namespace tulips::transport::ena {
 
 class Device : public transport::Device
 {

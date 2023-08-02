@@ -1,6 +1,6 @@
 #pragma once
 
-namespace tulips::transport::dpdk {
+namespace tulips::transport::ena {
 
 class AbstractionLayer
 {

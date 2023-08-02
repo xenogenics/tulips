@@ -3,14 +3,14 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/transport/Device.h>
-#include <tulips/transport/dpdk/AbstractionLayer.h>
+#include <tulips/transport/ena/AbstractionLayer.h>
 #include <list>
 #include <string>
 #include <vector>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_mempool.h>
 
-namespace tulips::transport::dpdk {
+namespace tulips::transport::ena {
 
 class Port
 {

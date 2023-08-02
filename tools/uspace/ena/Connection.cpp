@@ -3,10 +3,10 @@
 #include <iostream>
 #include <sstream>
 #include <linenoise/linenoise.h>
-#include <uspace/dpdk/Connection.h>
-#include <uspace/dpdk/State.h>
+#include <uspace/ena/Connection.h>
+#include <uspace/ena/State.h>
 
-namespace tulips::tools::uspace::dpdk::connection {
+namespace tulips::tools::uspace::ena::connection {
 
 /*
  * Connect.

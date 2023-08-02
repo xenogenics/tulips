@@ -5,8 +5,8 @@
 #include <string>
 #include <linenoise/linenoise.h>
 #include <tclap/CmdLine.h>
-#include <uspace/dpdk/Connection.h>
-#include <uspace/dpdk/State.h>
+#include <uspace/ena/Connection.h>
+#include <uspace/ena/State.h>
 #include <utils/Basic.h>
 
 using namespace tulips;
@@ -86,10 +86,10 @@ try {
   /*
    * Commands.
    */
-  dpdk::State state(iffA.getValue(), pcpA.isSet());
+  ena::State state(iffA.getValue(), pcpA.isSet());
   basic::populate(state.commands);
-  dpdk::connection::populate(state.commands);
-  dpdk::poller::populate(state.commands);
+  ena::connection::populate(state.commands);
+  ena::poller::populate(state.commands);
   /*
    * Main loop.
    */
