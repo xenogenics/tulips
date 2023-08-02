@@ -84,17 +84,19 @@ public:
    *
    * @param buffer the target buffer to copy the data into.
    * @param len the request length.
-   *
-   * @return true if the read succeeded, false otherwise.
    */
-  inline bool read_all(uint8_t* const buffer, const size_t len)
+  inline void read_all(uint8_t* const buffer, const size_t len)
   {
-    if (read_available() < len) {
-      return false;
+    /*
+     * Busy wait for the data to be available.
+     */
+    while (read_available() < len) {
     }
+    /*
+     * Read the data.
+     */
     memcpy(buffer, readAt(), len);
     m_read.store(m_read + len, std::memory_order_release);
-    return true;
   }
 
   /**
@@ -119,17 +121,19 @@ public:
    *
    * @param buffer the source buffer to copy the data from.
    * @param len the request length.
-   *
-   * @return the actual length of the data written.
    */
-  inline bool write_all(const uint8_t* const buffer, const size_t len)
+  inline void write_all(const uint8_t* const buffer, const size_t len)
   {
-    if (write_available() < len) {
-      return false;
+    /*
+     * Busy wait until there is enough space available.
+     */
+    while (write_available() < len) {
     }
+    /*
+     * Write the data.
+     */
     memcpy(writeAt(), buffer, len);
     m_write.store(m_write + len, std::memory_order_release);
-    return true;
   }
 
   /**

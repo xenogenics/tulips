@@ -2,6 +2,7 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/CircularBuffer.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/AbstractionLayer.h>
 #include <list>
@@ -112,6 +113,7 @@ private:
   std::vector<struct rte_mempool*> m_rxpools;
   std::vector<struct rte_mempool*> m_txpools;
   std::list<uint16_t> m_free;
+  std::list<system::CircularBuffer::Ref> m_buffers;
   size_t m_retasz;
 };
 

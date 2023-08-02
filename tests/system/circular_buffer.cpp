@@ -15,9 +15,7 @@ TEST(CircularBuffer, RegularLength)
   auto reader = std::thread([cb]() {
     for (size_t i = 0; i < ITERATIONS; i += 1) {
       size_t value = 0;
-      while (!cb->read_all((uint8_t*)&value, sizeof(value))) {
-        /* busy waiting */
-      }
+      cb->read_all((uint8_t*)&value, sizeof(value));
       ASSERT_EQ(i, value);
     }
   });
@@ -26,9 +24,7 @@ TEST(CircularBuffer, RegularLength)
    */
   auto writer = std::thread([cb]() {
     for (size_t i = 0; i < ITERATIONS; i += 1) {
-      while (!cb->write_all((uint8_t*)&i, sizeof(i))) {
-        /* busy waiting */
-      }
+      cb->write_all((uint8_t*)&i, sizeof(i));
     }
   });
   /*
@@ -56,9 +52,7 @@ TEST(CircularBuffer, IrregularLength)
   auto reader = std::thread([cb]() {
     for (size_t i = 0; i < ITERATIONS; i += 1) {
       S value;
-      while (!cb->read_all((uint8_t*)&value, sizeof(value))) {
-        /* busy waiting */
-      }
+      cb->read_all((uint8_t*)&value, sizeof(value));
       ASSERT_EQ(i, value.i);
     }
   });
@@ -68,9 +62,7 @@ TEST(CircularBuffer, IrregularLength)
   auto writer = std::thread([cb]() {
     for (size_t i = 0; i < ITERATIONS; i += 1) {
       auto value = S{ .i = i, .v = false };
-      while (!cb->write_all((uint8_t*)&value, sizeof(value))) {
-        /* busy waiting */
-      }
+      cb->write_all((uint8_t*)&value, sizeof(value));
     }
   });
   /*

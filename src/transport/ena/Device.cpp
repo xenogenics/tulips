@@ -1,3 +1,4 @@
+#include "tulips/system/CircularBuffer.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
@@ -38,6 +39,8 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   , m_hkey(hkey)
   , m_txpool(txpool)
   , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 7])
+  , m_buffer(system::CircularBuffer::allocate(16384))
+  , m_packet(new uint8_t[16384])
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -55,6 +58,8 @@ Device::~Device()
 {
   delete[] m_reta;
   m_reta = nullptr;
+  delete[] m_packet;
+  m_packet = nullptr;
 }
 
 Status
@@ -149,6 +154,16 @@ Status
 Device::poll(Processor& proc)
 {
   /*
+   * Process the internal buffer. NOTE(xrg): packets coming this way should be
+   * few and far between, so we only check once.
+   */
+  if (!m_buffer->empty()) {
+    size_t len = 0;
+    m_buffer->read_all((uint8_t*)&len, sizeof(len));
+    m_buffer->read_all(m_packet, len);
+    proc.process(len, m_packet);
+  }
+  /*
    * Process the incoming receive buffers.
    */
   struct rte_mbuf* mbufs[32];
@@ -214,7 +229,7 @@ Device::poll(Processor& proc)
 }
 
 Status
-Device::wait(UNUSED Processor& proc, UNUSED const uint64_t ns)
+Device::wait(Processor& proc, const uint64_t ns)
 {
   std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
   return Device::poll(proc);

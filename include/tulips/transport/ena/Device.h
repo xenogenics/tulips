@@ -2,6 +2,7 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/CircularBuffer.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/AbstractionLayer.h>
@@ -63,6 +64,8 @@ private:
          struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
          stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
 
+  system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
+
   uint16_t m_portid;
   uint16_t m_queueid;
   size_t m_htsz;
@@ -70,6 +73,8 @@ private:
   const uint8_t* m_hkey;
   struct rte_mempool* m_txpool;
   struct rte_eth_rss_reta_entry64* m_reta;
+  system::CircularBuffer::Ref m_buffer;
+  uint8_t* m_packet;
 
   friend class Port;
 

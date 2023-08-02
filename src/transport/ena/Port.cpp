@@ -221,6 +221,13 @@ Port::poll(Processor& proc)
     auto* dat = rte_pktmbuf_mtod(buf, const uint8_t*);
     auto len = rte_pktmbuf_pkt_len(buf);
     /*
+     * Push the data to the internal buffers (length-framed).
+     */
+    for (auto const& buffer : m_buffers) {
+      buffer->write_all((uint8_t*)&len, sizeof(len));
+      buffer->write_all(dat, len);
+    }
+    /*
      * Process the packet.
      */
     proc.process(len, dat);
@@ -236,7 +243,7 @@ Port::poll(Processor& proc)
 }
 
 Status
-Port::wait(UNUSED Processor& proc, UNUSED const uint64_t ns)
+Port::wait(Processor& proc, const uint64_t ns)
 {
   std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
   return Port::poll(proc);
@@ -262,10 +269,14 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
    */
   auto* txpool = m_txpools[qid];
   /*
-   * Done.
+   * Allocate the new device.
    */
   auto* dev = new ena::Device(m_portid, qid, m_retasz, m_hlen, m_hkey,
                               m_address, m_mtu, txpool, ip, dr, nm);
+  m_buffers.push_back(dev->internalBuffer());
+  /*
+   * Done.
+   */
   return Device::Ref(dev);
 }
 
@@ -421,5 +432,4 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
     throw std::runtime_error("Failed to reset the RETA to the 0th queue");
   }
 }
-
 }
