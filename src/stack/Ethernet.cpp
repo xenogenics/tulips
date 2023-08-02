@@ -9,7 +9,7 @@ namespace tulips::stack::ethernet {
 
 const Address Address::BROADCAST(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
 
-/**
+/*
  * Address class definition
  */
 

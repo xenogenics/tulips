@@ -7,7 +7,7 @@
  *
  * ------------------------------------------------------------------------
  *
- * Copyright (c) 2010-2014, Salvatore Sanfilippo <antirez at gmail dot com>
+ * Copyright (c) 2010-2023, Salvatore Sanfilippo <antirez at gmail dot com>
  * Copyright (c) 2010-2013, Pieter Noordhuis <pcnoordhuis at gmail dot com>
  *
  * All rights reserved.
@@ -39,6 +39,10 @@
 #ifndef __LINENOISE_H
 #define __LINENOISE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define LN_RED 31
 #define LN_GREEN 32
 #define LN_YELLOW 33
@@ -47,37 +51,69 @@
 #define LN_CYAN 36
 #define LN_WHITE 37
 
-#include <stdlib.h>
+#include <stddef.h> /* For size_t. */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+extern char *linenoiseEditMore;
 
-typedef struct linenoiseCompletions
-{
+/* The linenoiseState structure represents the state during line editing.
+ * We pass this state to functions implementing specific editing
+ * functionalities. */
+struct linenoiseState {
+    int in_completion;  /* The user pressed TAB and we are now in completion
+                         * mode, so input is handled by completeLine(). */
+    size_t completion_idx; /* Index of next completion to propose. */
+    int ifd;            /* Terminal stdin file descriptor. */
+    int ofd;            /* Terminal stdout file descriptor. */
+    char *buf;          /* Edited line buffer. */
+    size_t buflen;      /* Edited line buffer size. */
+    const char *prompt; /* Prompt to display. */
+    size_t plen;        /* Prompt length. */
+    size_t pos;         /* Current cursor position. */
+    size_t oldpos;      /* Previous refresh cursor position. */
+    size_t len;         /* Current edited line length. */
+    size_t cols;        /* Number of columns in terminal. */
+    size_t oldrows;     /* Rows used by last refrehsed line (multiline mode) */
+    int history_index;  /* The history index we are currently editing. */
+    void* cookie;       /* User-defined state. */
+};
+
+typedef struct linenoiseCompletions {
   size_t len;
-  char** cvec;
+  char **cvec;
 } linenoiseCompletions;
 
-typedef void(linenoiseCompletionCallback)(const char*, linenoiseCompletions*,
-                                          void*);
-typedef char*(linenoiseHintsCallback)(const char*, int*, int*, void*);
-typedef void(linenoiseFreeHintsCallback)(void*);
+/* Non blocking API. */
+int linenoiseEditStart(struct linenoiseState *l, int stdin_fd, int stdout_fd, char *buf, size_t buflen, const char *prompt, void *cookie);
+char *linenoiseEditFeed(struct linenoiseState *l);
+void linenoiseEditStop(struct linenoiseState *l);
+void linenoiseHide(struct linenoiseState *l);
+void linenoiseShow(struct linenoiseState *l);
 
-void linenoiseSetCompletionCallback(linenoiseCompletionCallback*);
-void linenoiseSetHintsCallback(linenoiseHintsCallback*);
-void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback*);
-void linenoiseAddCompletion(linenoiseCompletions*, const char*);
+/* Blocking API. */
+char *linenoise(const char *prompt, void *cookie);
+void linenoiseFree(void *ptr);
 
-char* linenoise(const char* prompt, void* cookie);
-void linenoiseFree(void* ptr);
-int linenoiseHistoryAdd(const char* line);
+/* Completion API. */
+typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *, void *);
+typedef char*(linenoiseHintsCallback)(const char *, int *color, int *bold, void *);
+typedef void(linenoiseFreeHintsCallback)(void *);
+void linenoiseSetCompletionCallback(linenoiseCompletionCallback *);
+void linenoiseSetHintsCallback(linenoiseHintsCallback *);
+void linenoiseSetFreeHintsCallback(linenoiseFreeHintsCallback *);
+void linenoiseAddCompletion(linenoiseCompletions *, const char *);
+
+/* History API. */
+int linenoiseHistoryAdd(const char *line);
 int linenoiseHistorySetMaxLen(int len);
-int linenoiseHistorySave(const char* filename);
-int linenoiseHistoryLoad(const char* filename);
+int linenoiseHistorySave(const char *filename);
+int linenoiseHistoryLoad(const char *filename);
+
+/* Other utilities. */
 void linenoiseClearScreen(void);
 void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
+void linenoiseMaskModeEnable(void);
+void linenoiseMaskModeDisable(void);
 
 #ifdef __cplusplus
 }

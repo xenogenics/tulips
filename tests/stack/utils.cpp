@@ -1,0 +1,30 @@
+#include <tulips/stack/Utils.h>
+#include <cstddef>
+#include <gtest/gtest.h>
+
+using namespace tulips;
+
+static constexpr size_t KEY_LEN = 40;
+
+static uint8_t KEY[KEY_LEN] = {
+  0x00, 0x8b, 0xe0, 0x5e, 0xd4, 0xa5, 0x54, 0xf8, 0x3c, 0xf8,
+  0x08, 0x75, 0x07, 0x2c, 0x4e, 0x8b, 0x6f, 0x1d, 0xbf, 0x10,
+  0x3b, 0x04, 0x3b, 0x41, 0xb3, 0xa4, 0xa4, 0xae, 0x56, 0xc9,
+  0xa4, 0xec, 0x13, 0x76, 0xa0, 0xaf, 0x04, 0x10, 0x81, 0x66,
+};
+
+TEST(Stack, RssHashing)
+{
+  /*
+   * Define the tuple entries.
+   */
+  auto saddr = stack::ipv4::Address(10, 1, 0, 1);
+  auto daddr = stack::ipv4::Address(10, 1, 0, 2);
+  auto sport = uint16_t(8888);
+  auto dport = uint16_t(9999);
+  /*
+   * Compute the hash.
+   */
+  auto h = stack::utils::toeplitz(saddr, daddr, sport, dport, KEY_LEN, KEY);
+  ASSERT_EQ(0xd90a078c, h);
+}

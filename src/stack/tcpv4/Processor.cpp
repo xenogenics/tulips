@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -41,17 +42,17 @@ Processor::Processor(transport::Device& device, ethernet::Producer& eth,
 }
 
 void
-Processor::listen(const Port port)
+Processor::listen(const Port lport)
 {
-  if (m_device.listen(port) == Status::Ok) {
-    m_listenports.insert(htons(port));
+  if (m_device.listen(ipv4::Protocol::TCP, lport) == Status::Ok) {
+    m_listenports.insert(htons(lport));
   }
 }
 
 void
 Processor::unlisten(const Port port)
 {
-  m_device.unlisten(port);
+  m_device.unlisten(ipv4::Protocol::TCP, port);
   m_listenports.erase(htons(port));
 }
 
@@ -95,7 +96,7 @@ Processor::run()
        */
       if (e.m_timer == TIME_WAIT_TIMEOUT) {
         TCP_LOG("connection closed");
-        m_device.unlisten(e.m_lport);
+        m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
         e.m_state = Connection::CLOSED;
         continue;
       }
@@ -230,7 +231,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
   /*
    * Update IP and Ethernet attributes
    */
-  m_ipv4to.setProtocol(ipv4::PROTO_TCP);
+  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(m_ipv4from->sourceAddress());
   m_ethto.setDestinationAddress(m_ethfrom->sourceAddress());
   /*
@@ -294,7 +295,7 @@ Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
   /*
    * IP protocol and length fields. This addition cannot carry.
    */
-  sum = len + ipv4::PROTO_TCP;
+  sum = len + uint8_t(ipv4::Protocol::TCP);
   /*
    * Sum IP source and destination addresses.
    */
@@ -328,7 +329,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    */
   if (INTCP->flags & Flag::RST) {
     TCP_LOG("connection aborted");
-    m_device.unlisten(e.m_lport);
+    m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
     e.m_state = Connection::CLOSED;
     m_handler.onAborted(e);
     return Status::Ok;
@@ -806,7 +807,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
     case Connection::LAST_ACK: {
       if (e.m_ackdata) {
         TCP_LOG("connection closed");
-        m_device.unlisten(e.m_lport);
+        m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
         e.m_state = Connection::CLOSED;
         m_handler.onClosed(e);
       }
@@ -941,7 +942,7 @@ Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
   /*
    * Update IP and Ethernet attributes
    */
-  m_ipv4to.setProtocol(ipv4::PROTO_TCP);
+  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(m_ipv4from->sourceAddress());
   m_ethto.setDestinationAddress(m_ethfrom->sourceAddress());
   /*

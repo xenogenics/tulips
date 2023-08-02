@@ -9,17 +9,93 @@
 namespace tulips::tools::uspace::dpdk::connection {
 
 /*
- * Close.
+ * Connect.
  */
 
-class Close : public utils::Command
+class Connect : public utils::Command
 {
 public:
-  Close() : Command("close a connection"), m_hint(" <id>") {}
+  Connect()
+    : Command("connect to a remote TCP server"), m_hint(" <poller> <ip> <port>")
+  {}
 
   void help(UNUSED utils::Arguments const& args) override
   {
-    std::cout << "Usage: close ID" << std::endl;
+    std::cout << "Usage: connect POLLER IP PORT" << std::endl;
+  }
+
+  void execute(utils::State& us, utils::Arguments const& args) override
+  try {
+    auto& s = dynamic_cast<State&>(us);
+    /*
+     * Check arity.
+     */
+    if (args.size() != 4) {
+      help(args);
+      return;
+    }
+    /*
+     * Parse the poller ID.
+     */
+    size_t poller;
+    std::istringstream(args[1]) >> poller;
+    /*
+     * Check that the poller index is valid.
+     */
+    if (poller >= s.pollers.size()) {
+      std::cout << "Invalid poller ID: " << poller << "." << std::endl;
+      return;
+    }
+    /*
+     * Parse the IP address.
+     */
+    stack::ipv4::Address ip(args[2]);
+    /*
+     * Parse the port number.
+     */
+    uint16_t port;
+    std::istringstream(args[3]) >> port;
+    /*
+     * Create a connection.
+     */
+    Client::ID id;
+    switch (s.pollers[poller]->connect(ip, port, id)) {
+      case Status::Ok: {
+        std::cout << "OK - " << id << std::endl;
+        s.ids[id] = poller;
+        break;
+      }
+      default: {
+        std::cout << "Error." << std::endl;
+        break;
+      }
+    }
+  } catch (...) {
+    help(args);
+  }
+
+  char* hint(UNUSED utils::State& s, int* color, UNUSED int* bold) override
+  {
+    *color = LN_GREEN;
+    return (char*)m_hint.c_str();
+  }
+
+private:
+  std::string m_hint;
+};
+
+/*
+ * Disconnect.
+ */
+
+class Disconnect : public utils::Command
+{
+public:
+  Disconnect() : Command("disconnect from a remote server"), m_hint(" <id>") {}
+
+  void help(UNUSED utils::Arguments const& args) override
+  {
+    std::cout << "Usage: disconnect ID" << std::endl;
   }
 
   void execute(utils::State& us, utils::Arguments const& args) override
@@ -45,9 +121,13 @@ public:
       return;
     }
     /*
+     * Grab the poller index.
+     */
+    size_t poller = s.ids[c];
+    /*
      * Grab and close the connection.
      */
-    switch (s.poller.close(c)) {
+    switch (s.pollers[poller]->close(c)) {
       case Status::Ok: {
         std::cout << "Connection closed." << std::endl;
         s.ids.erase(c);
@@ -62,69 +142,6 @@ public:
         break;
       }
     }
-  }
-
-  char* hint(UNUSED utils::State& s, int* color, UNUSED int* bold) override
-  {
-    *color = LN_GREEN;
-    return (char*)m_hint.c_str();
-  }
-
-private:
-  std::string m_hint;
-};
-
-/*
- * Connect.
- */
-
-class Connect : public utils::Command
-{
-public:
-  Connect() : Command("connect to a remote TCP server"), m_hint(" <ip> <port>")
-  {}
-
-  void help(UNUSED utils::Arguments const& args) override
-  {
-    std::cout << "Usage: connect IP PORT" << std::endl;
-  }
-
-  void execute(utils::State& us, utils::Arguments const& args) override
-  try {
-    auto& s = dynamic_cast<State&>(us);
-    /*
-     * Check arity.
-     */
-    if (args.size() != 3) {
-      help(args);
-      return;
-    }
-    /*
-     * Parse the IP address.
-     */
-    stack::ipv4::Address ip(args[1]);
-    /*
-     * Parse the port number.
-     */
-    uint16_t port;
-    std::istringstream(args[2]) >> port;
-    /*
-     * Create a connection.
-     */
-    Client::ID id;
-    switch (s.poller.connect(ip, port, id)) {
-      case Status::Ok: {
-        std::cout << "OK - " << id << std::endl;
-        s.ids.insert(id);
-        break;
-      }
-      default: {
-        std::cout << "Error." << std::endl;
-        break;
-      }
-    }
-  } catch (...) {
-    help(args);
   }
 
   char* hint(UNUSED utils::State& s, int* color, UNUSED int* bold) override
@@ -160,6 +177,8 @@ public:
     if (s.ids.empty()) {
       std::cout << "No active connections." << std::endl;
     } else {
+      stack::ipv4::Address ip;
+      stack::tcpv4::Port lport, rport;
       /*
        * Print the header.
        */
@@ -170,12 +189,9 @@ public:
       /*
        * Print the connections.
        */
-      IDs::iterator it;
-      stack::ipv4::Address ip;
-      stack::tcpv4::Port lport, rport;
-      for (it = s.ids.begin(); it != s.ids.end(); it++) {
-        s.poller.get(*it, ip, lport, rport);
-        std::cout << std::setw(7) << std::left << *it << std::setw(16)
+      for (auto [key, value] : s.ids) {
+        s.pollers[value]->get(key, ip, lport, rport);
+        std::cout << std::setw(7) << std::left << key << std::setw(16)
                   << std::left << ip.toString() << std::setw(12) << std::left
                   << lport << std::setw(11) << std::left << rport << std::right
                   << std::endl;
@@ -219,12 +235,16 @@ public:
       return;
     }
     /*
+     * Grab the poller index.
+     */
+    size_t poller = s.ids[id];
+    /*
      * Write data.
      */
     std::string data;
     std::vector<std::string> rest(args.begin() + 2, args.end());
     system::utils::join(rest, ' ', data);
-    switch (s.poller.write(id, data)) {
+    switch (s.pollers[poller]->write(id, data)) {
       case Status::Ok: {
         std::cout << "OK - " << data.length() << "." << std::endl;
         break;
@@ -252,9 +272,9 @@ private:
 void
 populate(UNUSED utils::Commands& cmds)
 {
-  cmds["close"] = new Close;
   cmds["connect"] = new Connect;
-  cmds["list"] = new List;
+  cmds["disconnect"] = new Disconnect;
+  cmds["list-connections"] = new List;
   cmds["write"] = new Write;
 }
 

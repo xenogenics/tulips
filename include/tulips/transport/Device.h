@@ -1,8 +1,10 @@
 #pragma once
 
+#include "tulips/stack/IPv4.h"
 #include <tulips/api/Status.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/Producer.h>
+#include <memory>
 #include <string>
 #include <unistd.h>
 
@@ -26,6 +28,8 @@ public:
     VALIDATE_IP_CSUM = 0x1,
     VALIDATE_L4_CSUM = 0x2,
   };
+
+  using Ref = std::unique_ptr<Device>;
 
   /*
    * The DEFAULT_MTU takes the value of the maximum size for the payload of an
@@ -68,20 +72,56 @@ public:
   virtual uint32_t mtu() const = 0;
 
   /**
-   * Ask the device to listen to a particular TCP port.
+   * Listen to a particular (simplified) flow signature.
    *
-   * @param port the TCP port.
+   * @param proto the IPv4 protocol.
+   * @param lport the local L4 port.
    *
    * @return the status of the operation.
    */
-  virtual Status listen(const uint16_t port) = 0;
+  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport)
+  {
+    return listen(proto, lport, stack::ipv4::Address::ANY, 0);
+  }
 
   /**
-   * Ask the device to stop listening to a TCP port.
+   * Listen to a particular flow signature.
    *
-   * @param port the TCP port.
+   * @param proto the IPv4 protocol.
+   * @param lport the local L4 port.
+   * @param raddr the remote IP address.
+   * @param rport the remote L4 port.
+   *
+   * @return the status of the operation.
    */
-  virtual void unlisten(const uint16_t port) = 0;
+  virtual Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+                        stack::ipv4::Address const& raddr,
+                        const uint16_t rport) = 0;
+
+  /**
+   * Stop listening to a particular (simplified) flow signature.
+   *
+   * @param proto the IPv4 protocol.
+   * @param lport the local L4 port.
+   * @param raddr the remote IP address.
+   * @param rport the remote L4 port.
+   */
+  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport)
+  {
+    return unlisten(proto, lport, stack::ipv4::Address::ANY, 0);
+  }
+
+  /**
+   * Ask the device to stop listening to a particular flow signature.
+   *
+   * @param proto the IPv4 protocol.
+   * @param lport the local L4 port.
+   * @param raddr the remote IP address.
+   * @param rport the remote L4 port.
+   */
+  virtual void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+                        stack::ipv4::Address const& raddr,
+                        const uint16_t rport) = 0;
 
   /**
    * Poll the device input queues for activity. Call upon the rcv processor

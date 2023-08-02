@@ -2,10 +2,8 @@
 
 namespace tulips::tools::uspace::dpdk {
 
-State::State(std::string const& dev, stack::ipv4::Address const& ip,
-             stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-             const bool pcap)
-  : utils::State(), poller(dev, ip, dr, nm, pcap)
+State::State(std::string const& iff, const bool pcap)
+  : utils::State(), interface(iff), port(iff, 8, 32), with_pcap(pcap), pollers()
 {}
 
 }

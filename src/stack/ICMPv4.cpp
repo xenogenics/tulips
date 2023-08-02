@@ -4,7 +4,7 @@
 
 namespace tulips::stack::icmpv4 {
 
-/**
+/*
  * ICMPv4 checksum.
  */
 uint16_t

@@ -73,7 +73,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
   /*
    * Update the IP and Ethernet attributes.
    */
-  m_ip4out.setProtocol(ipv4::PROTO_ICMP);
+  m_ip4out.setProtocol(ipv4::Protocol::ICMP);
   m_ip4out.setDestinationAddress(m_ip4in->sourceAddress());
   m_ethout.setDestinationAddress(m_ethin->sourceAddress());
   /*

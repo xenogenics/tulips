@@ -30,9 +30,22 @@ public:
     return m_device.netmask();
   }
 
-  Status listen(const uint16_t port) override { return m_device.listen(port); }
+  Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED const uint16_t lport,
+                UNUSED stack::ipv4::Address const& raddr,
+                UNUSED const uint16_t rport) override
+  {
 
-  void unlisten(const uint16_t port) override { m_device.unlisten(port); }
+    return m_device.listen(proto, lport, raddr, rport);
+  }
+
+  void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED const uint16_t lport,
+                UNUSED stack::ipv4::Address const& raddr,
+                UNUSED const uint16_t rport) override
+  {
+    m_device.unlisten(proto, lport, raddr, rport);
+  }
 
   Status poll(Processor& proc) override;
   Status wait(Processor& proc, const uint64_t ns) override;

@@ -46,39 +46,39 @@ TEST(FIFO_Basic, CreateAndDestroy)
 {
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
-  /**
+  /*
    * Invalid depth
    */
   error = tulips_fifo_create(0, 0, &fifo);
   ASSERT_EQ(TULIPS_FIFO_INVALID_DEPTH, error);
-  /**
+  /*
    * Invalid data length
    */
   error = tulips_fifo_create(16, 0, &fifo);
   ASSERT_EQ(TULIPS_FIFO_INVALID_DATA_LEN, error);
-  /**
+  /*
    * Create success
    */
   error = tulips_fifo_create(16, 16, &fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * State
    */
   error = tulips_fifo_empty(fifo);
   ASSERT_EQ(TULIPS_FIFO_YES, error);
   error = tulips_fifo_full(fifo);
   ASSERT_EQ(TULIPS_FIFO_NO, error);
-  /**
+  /*
    * Already allocated
    */
   error = tulips_fifo_create(16, 16, &fifo);
   ASSERT_EQ(TULIPS_FIFO_ALREADY_ALLOCATED, error);
-  /**
+  /*
    * Destroy success
    */
   error = tulips_fifo_destroy(&fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * Already deallocated
    */
   error = tulips_fifo_destroy(&fifo);
@@ -89,23 +89,23 @@ TEST(FIFO_Basic, ReadWrite)
 {
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
-  /**
+  /*
    * Create success
    */
   error = tulips_fifo_create(16, 16, &fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * Front failure
    */
   void* result = nullptr;
   error = tulips_fifo_front(fifo, &result);
   ASSERT_EQ(TULIPS_FIFO_EMPTY, error);
-  /**
+  /*
    * Pop failure
    */
   error = tulips_fifo_pop(fifo);
   ASSERT_EQ(TULIPS_FIFO_EMPTY, error);
-  /**
+  /*
    * Push success
    */
   const char* data = "hi to the world!";
@@ -121,13 +121,13 @@ TEST(FIFO_Basic, ReadWrite)
    */
   error = tulips_fifo_full(fifo);
   ASSERT_EQ(TULIPS_FIFO_NO, error);
-  /**
+  /*
    * Front success
    */
   error = tulips_fifo_front(fifo, &result);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
   ASSERT_EQ(0, memcmp(result, data, 16));
-  /**
+  /*
    * Pop success
    */
   error = tulips_fifo_pop(fifo);
@@ -137,7 +137,7 @@ TEST(FIFO_Basic, ReadWrite)
    */
   error = tulips_fifo_empty(fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * Destroy success
    */
   error = tulips_fifo_destroy(&fifo);
@@ -148,12 +148,12 @@ TEST(FIFO_Basic, FullEmpty)
 {
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
-  /**
+  /*
    * Create success
    */
   error = tulips_fifo_create(16, 16, &fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * Push success
    */
   const char* data = "hi to the world!";
@@ -161,12 +161,12 @@ TEST(FIFO_Basic, FullEmpty)
     error = tulips_fifo_push(fifo, data);
     ASSERT_EQ(TULIPS_FIFO_OK, error);
   }
-  /**
+  /*
    * Push failure
    */
   error = tulips_fifo_push(fifo, data);
   ASSERT_EQ(TULIPS_FIFO_FULL, error);
-  /**
+  /*
    * Front and pop success
    */
   void* result = nullptr;
@@ -177,7 +177,7 @@ TEST(FIFO_Basic, FullEmpty)
     error = tulips_fifo_pop(fifo);
     ASSERT_EQ(TULIPS_FIFO_OK, error);
   }
-  /**
+  /*
    * Front and pop error
    */
   error = tulips_fifo_front(fifo, &result);
@@ -190,7 +190,7 @@ TEST(FIFO_Basic, FullEmpty)
    */
   error = tulips_fifo_empty(fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * Destroy success
    */
   error = tulips_fifo_destroy(&fifo);
@@ -201,7 +201,7 @@ TEST(FIFO_Basic, MultiThread)
 {
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
-  /**
+  /*
    * Create success
    */
   error = tulips_fifo_create(16, sizeof(uint64_t), &fifo);
@@ -222,7 +222,7 @@ TEST(FIFO_Basic, MultiThread)
    */
   error = tulips_fifo_empty(fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
-  /**
+  /*
    * Destroy success
    */
   error = tulips_fifo_destroy(&fifo);

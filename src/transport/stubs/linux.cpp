@@ -105,7 +105,7 @@ getInterfaceInformation(std::string const& ifn,
     return false;
   }
   mtu = req.ifr_ifru.ifru_mtu;
-  /**
+  /*
    * Clean-up.
    */
   close(sock);

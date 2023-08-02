@@ -34,13 +34,13 @@ Status
 Processor::run()
 {
   Status ret = Status::Ok;
-  /**
+  /*
    * Reset the state
    */
   m_srceAddress = Address();
   m_destAddress = Address();
   m_type = 0;
-  /**
+  /*
    * Run the processors
    */
 #ifdef TULIPS_ENABLE_RAW
@@ -63,14 +63,14 @@ Status
 Processor::process(const uint16_t len, const uint8_t* const data)
 {
   ETH_LOG("processing frame: " << len << "B");
-  /**
+  /*
    * Grab the incoming information
    */
   const auto* hdr = reinterpret_cast<const Header*>(data);
   m_srceAddress = hdr->src;
   m_destAddress = hdr->dest;
   m_type = ntohs(hdr->type);
-  /**
+  /*
    * Process the remaing buffer
    */
   Status ret;
@@ -114,7 +114,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       break;
     }
   }
-  /**
+  /*
    * Process outputs
    */
   return ret;

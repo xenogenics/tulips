@@ -1,14 +1,21 @@
+#include <tulips/transport/Device.h>
+#include <iostream>
+#include <linenoise/linenoise.h>
 #include <uspace/dpdk/Poller.h>
+#include <uspace/dpdk/State.h>
 
-namespace tulips::tools::uspace::dpdk {
+namespace tulips::tools::uspace::dpdk::poller {
 
-Poller::Poller(std::string const& dev, stack::ipv4::Address const& ip,
-               stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-               const bool pcap)
+/*
+ * Poller.
+ */
+
+Poller::Poller(transport::Device::Ref dev, const bool pcap)
   : m_capture(pcap)
-  , m_dpdk(dev, ip, dr, nm, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(m_dpdk, "packets.pcap") : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_dpdk)
+  , m_dev(std::move(dev))
+  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, "packets.pcap") : nullptr)
+  , m_device(pcap ? (transport::Device*)m_pcap
+                  : (transport::Device*)m_dev.get())
   , m_delegate()
   , m_client(m_delegate, *m_device, 32)
   , m_run(true)
@@ -22,17 +29,17 @@ Poller::Poller(std::string const& dev, stack::ipv4::Address const& ip,
   , m_id()
   , m_status()
 {
-  pthread_create(&m_thread, nullptr, &Poller::entrypoint, this);
   pthread_mutex_init(&m_mutex, nullptr);
   pthread_cond_init(&m_cond, nullptr);
+  pthread_create(&m_thread, nullptr, &Poller::entrypoint, this);
 }
 
 Poller::~Poller()
 {
+  m_run = false;
   /*
    * Clean-up runtime variables.
    */
-  m_run = false;
   pthread_join(m_thread, nullptr);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
@@ -223,6 +230,74 @@ Poller::run()
     }
     pthread_mutex_unlock(&m_mutex);
   }
+}
+
+/*
+ * Open a poller.
+ */
+
+class Open : public utils::Command
+{
+public:
+  Open() : Command("open a new poller"), m_hint(" <ip> <dr> <nm>") {}
+
+  void help(UNUSED utils::Arguments const& args) override
+  {
+    std::cout << "Usage: open IP GATEWAY NETMASK" << std::endl;
+  }
+
+  void execute(utils::State& us, utils::Arguments const& args) override
+  try {
+    auto& s = dynamic_cast<State&>(us);
+    /*
+     * Check arity.
+     */
+    if (args.size() != 4) {
+      help(args);
+      return;
+    }
+    /*
+     * Parse the IP address.
+     */
+    stack::ipv4::Address ip(args[1]);
+    /*
+     * Parse the default route.
+     */
+    stack::ipv4::Address dr(args[2]);
+    /*
+     * Parse the netmask.
+     */
+    stack::ipv4::Address nm(args[3]);
+    /*
+     * Create a new poller.
+     */
+    s.pollers.emplace_back(new Poller(s.port.next(ip, dr, nm), s.with_pcap));
+    /*
+     * Print the poller ID.
+     */
+    std::cout << "New poller: " << s.pollers.size() - 1 << std::endl;
+  } catch (...) {
+    help(args);
+  }
+
+  char* hint(UNUSED utils::State& s, int* color, UNUSED int* bold) override
+  {
+    *color = LN_GREEN;
+    return (char*)m_hint.c_str();
+  }
+
+private:
+  std::string m_hint;
+};
+
+/*
+ * Helpers.
+ */
+
+void
+populate(UNUSED utils::Commands& cmds)
+{
+  cmds["open"] = new Open;
 }
 
 }

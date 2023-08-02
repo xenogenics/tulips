@@ -34,7 +34,7 @@ Processor::Processor(ethernet::Producer& eth, ipv4::Producer& ip4)
 Status
 Processor::run()
 {
-  /**
+  /*
    * Poll the timer
    */
   if (m_timer.expired()) {
@@ -78,7 +78,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
                      << m_ipv4.hostAddress().toString());
         break;
       }
-      /**
+      /*
        * Update ethernet state
        */
       m_eth.setType(ethernet::ETHTYPE_ARP);
@@ -108,7 +108,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       OUTARP->shwaddr = m_eth.hostAddress();
       OUTARP->dipaddr = INARP->sipaddr;
       OUTARP->sipaddr = m_ipv4.hostAddress();
-      /**
+      /*
        * Let the device know we have some data
        */
       ARP_LOG("(" << m_eth.hostAddress().toString() << ", "
@@ -134,7 +134,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       break;
     }
   }
-  /**
+  /*
    * Return our status
    */
   return Status::Ok;
@@ -156,7 +156,7 @@ Processor::discover(ipv4::Address const& destipaddr)
   if (has(destipaddr)) {
     return Status::Ok;
   }
-  /**
+  /*
    * Set the ethernet parameters.
    */
   ipv4::Address ipaddr = hopAddress(destipaddr);
@@ -173,7 +173,7 @@ Processor::discover(ipv4::Address const& destipaddr)
      */
     return ret;
   }
-  /**
+  /*
    * Set the ARP parameters
    */
   OUTARP->dhwaddr = ethernet::Address();
@@ -185,7 +185,7 @@ Processor::discover(ipv4::Address const& destipaddr)
   OUTARP->protocol = htons(ethernet::ETHTYPE_IP);
   OUTARP->hwlen = 6;
   OUTARP->protolen = 4;
-  /**
+  /*
    * Commit the message, return
    */
   return m_eth.commit(HEADER_LEN, outdata);
@@ -194,7 +194,7 @@ Processor::discover(ipv4::Address const& destipaddr)
 bool
 Processor::query(ipv4::Address const& destipaddr, ethernet::Address& ethaddr)
 {
-  /**
+  /*
    * Check if the IP is a broadcast IP
    */
   if (destipaddr == ipv4::Address::BROADCAST) {
@@ -205,7 +205,7 @@ Processor::query(ipv4::Address const& destipaddr, ethernet::Address& ethaddr)
    * Check if the destination address is on the local network.
    */
   ipv4::Address const& ipaddr = hopAddress(destipaddr);
-  /**
+  /*
    * Loop-up the address in our table
    */
   for (auto& e : m_table) {

@@ -48,7 +48,7 @@ public:
     return *this;
   }
 
-  void setProtocol(const uint8_t proto) { m_proto = proto; }
+  void setProtocol(const Protocol proto) { m_proto = decltype(m_proto)(proto); }
 
   bool isLocal(Address const& addr) const
   {

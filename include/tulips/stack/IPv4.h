@@ -14,6 +14,7 @@ class Address
 public:
   using Data = uint32_t;
 
+  static const Address ANY;
   static const Address BROADCAST;
 
   Address();
@@ -74,9 +75,12 @@ struct Header
 
 static constexpr size_t USED HEADER_LEN = sizeof(Header);
 
-static constexpr uint8_t USED PROTO_ICMP = 1;
-static constexpr uint8_t USED PROTO_TCP = 6;
-static constexpr uint8_t USED PROTO_TEST = 254;
+enum class Protocol : uint8_t
+{
+  ICMP = 1,
+  TCP = 6,
+  TEST = 254,
+};
 
 /*
  * The IPv4 checksum.

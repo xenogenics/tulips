@@ -1,3 +1,4 @@
+#include "tulips/stack/IPv4.h"
 #include <tulips/stack/arp/Processor.h>
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
@@ -43,7 +44,7 @@ public:
   Status process(UNUSED const uint16_t len, const uint8_t* const data) override
   {
     m_data = *(uint64_t*)data;
-    m_ipv4to->setProtocol(ipv4::PROTO_TEST);
+    m_ipv4to->setProtocol(ipv4::Protocol::TEST);
     m_ipv4to->setDestinationAddress(m_ipv4from->sourceAddress());
     uint8_t* outdata;
     m_ipv4to->prepare(outdata);
@@ -154,7 +155,7 @@ TEST(ARP_Basic, RequestResponse)
   ethernet::Address dest;
   ASSERT_TRUE(client_arp.query(ipv4::Address(10, 1, 0, 2), dest));
   client_eth_prod.setDestinationAddress(dest);
-  client_ip4_prod.setProtocol(ipv4::PROTO_TEST);
+  client_ip4_prod.setProtocol(ipv4::Protocol::TEST);
   ASSERT_EQ(Status::Ok, client_ip4_prod.prepare(data));
   *(uint64_t*)data = 0xdeadbeefULL;
   ASSERT_EQ(Status::Ok, client_ip4_prod.commit(8, data));

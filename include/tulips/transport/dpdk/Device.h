@@ -17,9 +17,6 @@ namespace tulips::transport::dpdk {
 class Device : public transport::Device
 {
 public:
-  Device(std::string const& ifn, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
-         const uint16_t nbuf);
   ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }
@@ -30,8 +27,13 @@ public:
 
   stack::ipv4::Address const& netmask() const override { return m_nm; }
 
-  Status listen(const uint16_t port) override;
-  void unlisten(const uint16_t port) override;
+  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+                stack::ipv4::Address const& raddr,
+                const uint16_t rport) override;
+
+  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+                stack::ipv4::Address const& raddr,
+                const uint16_t rport) override;
 
   Status poll(Processor& proc) override;
   Status wait(Processor& proc, const uint64_t ns) override;
@@ -55,15 +57,21 @@ public:
   }
 
 private:
-  static AbstractionLayer s_eal;
+  Device(const uint16_t port_id, const uint16_t queue_id, const size_t htsz,
+         const size_t hlen, const uint8_t* const hkey,
+         stack::ethernet::Address const& m_address, const uint32_t m_mtu,
+         struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
+         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
 
   uint16_t m_portid;
-  struct rte_mempool* m_rxqpool;
-  struct rte_mempool* m_txqpool;
-  struct rte_eth_conf m_ethconf;
-  struct rte_eth_rxconf m_rxqconf;
-  struct rte_eth_txconf m_txqconf;
-  uint16_t m_buflen;
+  uint16_t m_queueid;
+  size_t m_htsz;
+  size_t m_hlen;
+  const uint8_t* m_hkey;
+  struct rte_mempool* m_txpool;
+  struct rte_eth_rss_reta_entry64* m_reta;
+
+  friend class Port;
 
 protected:
   stack::ethernet::Address m_address;
