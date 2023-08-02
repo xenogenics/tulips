@@ -12,11 +12,76 @@
 
 namespace tulips::transport::ena {
 
-class Port
+class Port : transport::Device
 {
 public:
+  /*
+   * Constructor.
+   */
+
   Port(std::string const& ifn, const size_t width, const size_t depth);
-  ~Port();
+  ~Port() override;
+
+  stack::ethernet::Address const& address() const override { return m_address; }
+
+  /*
+   * Device interface.
+   */
+
+  stack::ipv4::Address const& ip() const override
+  {
+    return stack::ipv4::Address::ANY;
+  }
+
+  stack::ipv4::Address const& gateway() const override
+  {
+    return stack::ipv4::Address::ANY;
+  }
+
+  stack::ipv4::Address const& netmask() const override
+  {
+    return stack::ipv4::Address::ANY;
+  }
+
+  Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED const uint16_t lport,
+                UNUSED stack::ipv4::Address const& raddr,
+                UNUSED const uint16_t rport) override
+  {
+    return Status::UnsupportedOperation;
+  }
+
+  void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED const uint16_t lport,
+                UNUSED stack::ipv4::Address const& raddr,
+                UNUSED const uint16_t rport) override
+  {}
+
+  Status poll(Processor& proc) override;
+  Status wait(Processor& proc, const uint64_t ns) override;
+
+  Status prepare(UNUSED uint8_t*& buf) override
+  {
+    return Status::UnsupportedOperation;
+  }
+
+  Status commit(UNUSED const uint32_t len, UNUSED uint8_t* const buf,
+                UNUSED const uint16_t mss) override
+  {
+    return Status::UnsupportedOperation;
+  }
+
+  uint32_t mtu() const override { return m_mtu - stack::ethernet::HEADER_LEN; }
+
+  uint32_t mss() const override { return m_mtu; }
+
+  uint8_t receiveBufferLengthLog2() const override { return 11; }
+
+  uint16_t receiveBuffersAvailable() const override { return 0; }
+
+  /*
+   * Device enumerator.
+   */
 
   Device::Ref next(stack::ipv4::Address const& ip,
                    stack::ipv4::Address const& dr,
