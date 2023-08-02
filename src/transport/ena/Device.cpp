@@ -31,7 +31,7 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
-  : transport::Device()
+  : transport::Device("ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
   , m_htsz(htsz)
@@ -70,14 +70,14 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    * Hash the payload and get the table index.
    */
   auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
-  auto indx = hash % m_htsz;
-  auto slot = indx >> 6;
-  auto eidx = indx & 0x3F;
+  uint64_t indx = hash % m_htsz;
+  uint64_t slot = indx >> 6;
+  uint64_t eidx = indx & 0x3F;
   /*
    * Clear the RETA.
    */
   memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
-  m_reta[slot].mask = 1 << eidx;
+  m_reta[slot].mask = 1ULL << eidx;
   /*
    * Query the RETA.
    */
@@ -109,7 +109,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    * Prepare the RETA for an update.
    */
   memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
-  m_reta[slot].mask = 1 << eidx;
+  m_reta[slot].mask = 1ULL << eidx;
   m_reta[slot].reta[eidx] = m_queueid;
   /*
    * Update the RETA.
@@ -135,14 +135,14 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
    * Hash the payload and get the table index.
    */
   auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
-  auto indx = hash % m_htsz;
-  auto slot = indx >> 6;
-  auto eidx = indx & 0x3F;
+  uint64_t indx = hash % m_htsz;
+  uint64_t slot = indx >> 6;
+  uint64_t eidx = indx & 0x3F;
   /*
    * Prepare the RETA for an update.
    */
   memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
-  m_reta[slot].mask = 1 << eidx;
+  m_reta[slot].mask = 1ULL << eidx;
   m_reta[slot].reta[eidx] = m_queueid;
   /*
    * Update the RETA.
@@ -158,10 +158,12 @@ Device::poll(Processor& proc)
    * few and far between, so we only check once.
    */
   if (!m_buffer->empty()) {
-    size_t len = 0;
+    uint32_t len = 0;
     m_buffer->read_all((uint8_t*)&len, sizeof(len));
+    DPDK_LOG(m_name << " processing internal packet: " << len << "B");
     m_buffer->read_all(m_packet, len);
     proc.process(len, m_packet);
+    DPDK_LOG(m_name << " done processing internal packet");
   }
   /*
    * Process the incoming receive buffers.

@@ -186,7 +186,6 @@ Port::poll(Processor& proc)
    */
   for (auto i = 0; i < nbrx; i += 1) {
     auto* buf = mbufs[i];
-    DPDK_LOG("RX hash : " << std::hex << buf->hash.rss << std::dec);
     /*
      * Validate the IP checksum.
      */
