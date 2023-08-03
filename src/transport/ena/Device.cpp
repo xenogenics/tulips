@@ -38,7 +38,7 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   , m_hlen(hlen)
   , m_hkey(hkey)
   , m_txpool(txpool)
-  , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 7])
+  , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 6])
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
   , m_address(address)
@@ -76,7 +76,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
   /*
    * Clear the RETA.
    */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
   m_reta[slot].mask = 1ULL << eidx;
   /*
    * Query the RETA.
@@ -108,7 +108,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
   /*
    * Prepare the RETA for an update.
    */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
   m_reta[slot].mask = 1ULL << eidx;
   m_reta[slot].reta[eidx] = m_queueid;
   /*
@@ -141,7 +141,7 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
   /*
    * Prepare the RETA for an update.
    */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
   m_reta[slot].mask = 1ULL << eidx;
   m_reta[slot].reta[eidx] = m_queueid;
   /*
@@ -157,7 +157,7 @@ Device::poll(Processor& proc)
    * Process the internal buffer.
    */
   if (!m_buffer->empty()) {
-    uint32_t len = 0;
+    uint16_t len = 0;
     m_buffer->read_all((uint8_t*)&len, sizeof(len));
     m_buffer->read_all(m_packet, len);
     proc.process(len, m_packet);
