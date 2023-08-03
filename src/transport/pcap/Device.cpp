@@ -44,7 +44,7 @@ writePacket(pcap_dumper_t* const dumper, const void* const data,
   pcap_dump((u_char*)dumper, &hdr, (const u_char*)data);
 }
 
-Device::Device(transport::Device& device, std::string const& fn)
+Device::Device(transport::Device& device, std::string_view name)
   : transport::Device("pcap")
   , m_device(device)
   , m_pcap(nullptr)
@@ -64,7 +64,8 @@ Device::Device(transport::Device& device, std::string const& fn)
   m_pcap = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, (int)snaplen,
                                                 PCAP_TSTAMP_PRECISION_NANO);
 #endif
-  m_pcap_dumper = pcap_dump_open(m_pcap, fn.c_str());
+  auto sfn = std::string(name) + ".pcap";
+  m_pcap_dumper = pcap_dump_open(m_pcap, sfn.c_str());
 }
 
 Device::~Device()

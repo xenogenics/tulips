@@ -21,7 +21,7 @@ public:
   static constexpr uint32_t RECV_BUFLEN = 2 * 1024;
 
   Device(const uint16_t nbuf);
-  Device(std::string const& ifn, const uint16_t nbuf);
+  Device(std::string_view ifn, const uint16_t nbuf);
   ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }
@@ -61,7 +61,7 @@ public:
 private:
   using Filters = std::map<uint16_t, ibv_flow*>;
 
-  void construct(std::string const& ifn, const uint16_t nbuf);
+  void construct(std::string_view ifn, const uint16_t nbuf);
   Status postReceive(const uint16_t id);
 
   uint16_t m_nbuf;

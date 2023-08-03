@@ -102,7 +102,7 @@ private:
 
 int
 main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
-         std::string const& ifn, std::string const& dst, const int usdly,
+         std::string_view ifn, std::string_view dst, const int usdly,
          const int cpuid)
 {
   /*

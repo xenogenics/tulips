@@ -13,13 +13,13 @@ namespace tulips::stack::arp {
 
 namespace stub {
 
-extern bool lookup(std::string const& eth, ipv4::Address const& ip,
+extern bool lookup(std::string_view eth, ipv4::Address const& ip,
                    ethernet::Address& hw);
 
 }
 
 bool
-lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
+lookup(std::string_view eth, tulips::stack::ipv4::Address const& ip,
        tulips::stack::ethernet::Address& hw)
 {
   if (stub::lookup(eth, ip, hw)) {

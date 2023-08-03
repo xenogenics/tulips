@@ -34,7 +34,7 @@ Address::Address(const uint8_t a0, const uint8_t a1, const uint8_t a2,
   m_data = alias.raw;
 }
 
-Address::Address(std::string const& dst) : m_data()
+Address::Address(std::string_view dst) : m_data()
 {
   std::vector<std::string> parts;
   system::utils::split(dst, '.', parts);

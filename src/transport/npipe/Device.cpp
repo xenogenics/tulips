@@ -150,8 +150,8 @@ Device::waitForInput(const uint64_t ns)
 ClientDevice::ClientDevice(stack::ethernet::Address const& address,
                            stack::ipv4::Address const& ip,
                            stack::ipv4::Address const& nm,
-                           stack::ipv4::Address const& dr,
-                           std::string const& rf, std::string const& wf)
+                           stack::ipv4::Address const& dr, std::string_view rf,
+                           std::string_view wf)
   : Device(address, ip, nm, dr)
 {
   /*
@@ -162,14 +162,16 @@ ClientDevice::ClientDevice(stack::ethernet::Address const& address,
   /*
    * Open the FIFOs.
    */
-  read_fd = open(rf.c_str(), O_RDONLY);
+  auto rp = std::string(rf);
+  read_fd = open(rp.c_str(), O_RDONLY);
   if (read_fd < 0) {
     throw std::runtime_error(strerror(errno));
   }
   if (fcntl(read_fd, F_SETFL, O_NONBLOCK)) {
     throw std::runtime_error(strerror(errno));
   }
-  write_fd = open(wf.c_str(), O_WRONLY);
+  auto wp = std::string(wf);
+  write_fd = open(wp.c_str(), O_WRONLY);
   if (write_fd < 0) {
     throw std::runtime_error(strerror(errno));
   }
@@ -182,8 +184,8 @@ ClientDevice::ClientDevice(stack::ethernet::Address const& address,
 ServerDevice::ServerDevice(stack::ethernet::Address const& address,
                            stack::ipv4::Address const& ip,
                            stack::ipv4::Address const& nm,
-                           stack::ipv4::Address const& dr,
-                           std::string const& rf, std::string const& wf)
+                           stack::ipv4::Address const& dr, std::string_view rf,
+                           std::string_view wf)
   : Device(address, ip, nm, dr), m_rf(rf), m_wf(wf)
 {
   int ret = 0;
@@ -195,28 +197,28 @@ ServerDevice::ServerDevice(stack::ethernet::Address const& address,
   /*
    * Erase the FIFOs
    */
-  unlink(rf.c_str());
-  unlink(wf.c_str());
+  unlink(m_rf.c_str());
+  unlink(m_wf.c_str());
   /*
    * Create the FIFOs
    */
-  ret = mkfifo(rf.c_str(), S_IRUSR | S_IWUSR);
+  ret = mkfifo(m_rf.c_str(), S_IRUSR | S_IWUSR);
   if (ret) {
     throw std::runtime_error(strerror(errno));
   }
-  ret = mkfifo(wf.c_str(), S_IRUSR | S_IWUSR);
+  ret = mkfifo(m_wf.c_str(), S_IRUSR | S_IWUSR);
   if (ret) {
     throw std::runtime_error(strerror(errno));
   }
   /*
    * Open the FIFOs
    */
-  write_fd = open(wf.c_str(), O_WRONLY);
+  write_fd = open(m_wf.c_str(), O_WRONLY);
   if (write_fd < 0) {
     throw std::runtime_error(strerror(errno));
   }
   sleep(1);
-  read_fd = open(rf.c_str(), O_RDONLY);
+  read_fd = open(m_rf.c_str(), O_RDONLY);
   if (read_fd < 0) {
     throw std::runtime_error(strerror(errno));
   }

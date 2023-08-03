@@ -15,9 +15,9 @@
 #define HAS_TSO(__caps)                                                        \
   ((__caps).max_tso > 0 && ((__caps).supported_qpts | IBV_QPT_RAW_PACKET))
 
-bool getInterfaceDeviceAndPortIds(std::string const& ifn, std::string& name,
+bool getInterfaceDeviceAndPortIds(std::string_view ifn, std::string& name,
                                   int& portid);
-bool isSupportedDevice(std::string const& ifn);
+bool isSupportedDevice(std::string_view ifn);
 
 bool findSupportedInterface(std::string& ifn);
 

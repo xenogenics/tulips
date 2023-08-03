@@ -38,7 +38,7 @@ send_dummy(const int sock, ipv4::Address const& ip)
 }
 
 static bool
-read_address(const int sock, std::string const& eth, ipv4::Address const& ip,
+read_address(const int sock, std::string_view eth, ipv4::Address const& ip,
              ethernet::Address& hw)
 {
   struct arpreq areq;
@@ -52,7 +52,7 @@ read_address(const int sock, std::string const& eth, ipv4::Address const& ip,
   memcpy(&sin->sin_addr, ip.data(), 4);
   sin = (struct sockaddr_in*)&areq.arp_ha;
   sin->sin_family = ARPHRD_ETHER;
-  strncpy(areq.arp_dev, eth.c_str(), 15);
+  strncpy(areq.arp_dev, eth.data(), 15);
   /*
    * Run the ARP request.
    */
@@ -66,7 +66,7 @@ read_address(const int sock, std::string const& eth, ipv4::Address const& ip,
 }
 
 bool
-lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
+lookup(std::string_view eth, tulips::stack::ipv4::Address const& ip,
        tulips::stack::ethernet::Address& hw)
 {
   /*

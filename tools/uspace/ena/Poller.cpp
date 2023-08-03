@@ -13,8 +13,7 @@ namespace tulips::tools::uspace::ena::poller {
 Poller::Poller(transport::Device::Ref dev, const bool pcap)
   : m_capture(pcap)
   , m_dev(std::move(dev))
-  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, m_dev->name() + ".pcap")
-                : nullptr)
+  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, m_dev->name()) : nullptr)
   , m_device(pcap ? (transport::Device*)m_pcap
                   : (transport::Device*)m_dev.get())
   , m_delegate()
@@ -125,7 +124,7 @@ Poller::get(const Client::ID id, stack::ipv4::Address& ripaddr,
 }
 
 Status
-Poller::write(const Client::ID id, std::string const& data)
+Poller::write(const Client::ID id, std::string_view data)
 {
   Status result;
   pthread_mutex_lock(&m_mutex);

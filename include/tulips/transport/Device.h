@@ -38,13 +38,13 @@ public:
   static constexpr uint32_t DEFAULT_MTU = 1500;
 
   Device() : m_name(), m_hints(0) {}
-  Device(std::string name) : m_name(std::move(name)), m_hints(0) {}
+  Device(std::string_view name) : m_name(name), m_hints(0) {}
   ~Device() override = default;
 
   /**
    * @return the device's name.
    */
-  virtual std::string const& name() const { return m_name; }
+  virtual std::string_view name() const { return m_name; }
 
   /**
    * @return the device's hardware address.

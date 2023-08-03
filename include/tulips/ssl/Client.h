@@ -13,8 +13,8 @@ class Client
 {
 public:
   Client(interface::Client::Delegate& delegate, transport::Device& device,
-         const size_t nconn, const Protocol type, std::string const& cert,
-         std::string const& key);
+         const size_t nconn, const Protocol type, std::string_view cert,
+         std::string_view key);
   ~Client() override;
 
   /**

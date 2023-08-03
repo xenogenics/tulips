@@ -30,7 +30,7 @@
 
 namespace tulips::transport::tap {
 
-Device::Device(std::string const& devname, stack::ipv4::Address const& ip,
+Device::Device(std::string_view devname, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& nm, stack::ipv4::Address const& dr)
   : transport::Device(devname)
   , m_address()

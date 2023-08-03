@@ -27,7 +27,7 @@ namespace tulips::transport::ena {
 
 AbstractionLayer Port::s_eal;
 
-Port::Port(std::string const& ifn, const size_t width, const size_t depth)
+Port::Port(std::string_view ifn, const size_t width, const size_t depth)
   : m_depth(depth)
   , m_portid(0xFFFF)
   , m_address()

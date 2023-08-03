@@ -7,6 +7,7 @@
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/pcap/Device.h>
 #include <tulips/transport/shm/Device.h>
+#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 
@@ -18,10 +19,10 @@ namespace {
 class Client : public tcpv4::EventHandler
 {
 public:
-  Client(std::string const& fn)
-    : m_out(), m_connected(false), m_delayedack(false)
+  Client(std::string_view fn) : m_out(), m_connected(false), m_delayedack(false)
   {
-    m_out.open(fn.c_str());
+    auto path = std::filesystem::path(fn);
+    m_out.open(path);
   }
 
   ~Client() override { m_out.close(); }
@@ -97,7 +98,7 @@ private:
 class Server : public tcpv4::EventHandler
 {
 public:
-  Server(std::string const& fn, const bool response = false)
+  Server(std::string_view fn, const bool response = false)
     : m_out()
     , m_response(response)
     , m_connected(false)
@@ -107,7 +108,8 @@ public:
     , m_abort(false)
     , m_delayedack(false)
   {
-    m_out.open(fn.c_str());
+    auto path = std::filesystem::path(fn);
+    m_out.open(path);
   }
 
   ~Server() override { m_out.close(); }

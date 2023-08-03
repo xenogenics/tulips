@@ -21,7 +21,7 @@ public:
   Address(Address const& o);
   Address(const uint8_t a0, const uint8_t a1, const uint8_t a2,
           const uint8_t a3);
-  Address(std::string const& dst);
+  Address(std::string_view dst);
 
   inline Address& operator=(Address const& o)
   {

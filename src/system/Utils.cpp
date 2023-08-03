@@ -13,7 +13,7 @@ join(std::vector<std::string> const& r, const char d, std::string& s)
 }
 
 void
-split(std::string const& s, const char d, std::vector<std::string>& r)
+split(std::string_view s, const char d, std::vector<std::string>& r)
 {
   r.clear();
   if (s.empty()) {

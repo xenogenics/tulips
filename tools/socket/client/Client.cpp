@@ -51,7 +51,7 @@ completion(const char* buf, linenoiseCompletions* lc, void* cookie)
  */
 
 void
-execute(client::State& s, std::string const& line)
+execute(client::State& s, std::string_view line)
 {
   std::vector<std::string> args;
   tulips::system::utils::split(line, ' ', args);

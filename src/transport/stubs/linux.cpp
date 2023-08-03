@@ -23,7 +23,7 @@
 namespace {
 
 bool
-getGateway(std::string const& dev, tulips::stack::ipv4::Address& gw)
+getGateway(std::string_view dev, tulips::stack::ipv4::Address& gw)
 {
   std::ifstream route("/proc/net/route");
   int line_count = 0;
@@ -76,9 +76,15 @@ getGateway(std::string const& dev, tulips::stack::ipv4::Address& gw)
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(std::string const& ifn,
-                        stack::ethernet::Address& hwaddr, uint32_t& mtu)
+getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
+                        uint32_t& mtu)
 {
+  /*
+   * Check that the interface name is valid.
+   */
+  if (ifn.length() > IFNAMSIZ) {
+    return false;
+  }
   /*
    * Create a dummy socket.
    */
@@ -90,7 +96,7 @@ getInterfaceInformation(std::string const& ifn,
    * Get the ethernet address.
    */
   struct ifreq req;
-  memcpy(req.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(req.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFHWADDR, &req) < 0) {
     close(sock);
     return false;
@@ -99,7 +105,7 @@ getInterfaceInformation(std::string const& ifn,
   /*
    * Get the device MTU.
    */
-  memcpy(req.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(req.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFMTU, &req) < 0) {
     close(sock);
     return false;
@@ -113,10 +119,16 @@ getInterfaceInformation(std::string const& ifn,
 }
 
 bool
-getInterfaceInformation(std::string const& ifn, stack::ipv4::Address& ipaddr,
+getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
                         stack::ipv4::Address& ntmask,
                         stack::ipv4::Address& draddr)
 {
+  /*
+   * Check that the interface name is valid.
+   */
+  if (ifn.length() > IFNAMSIZ) {
+    return false;
+  }
   /*
    * Create a dummy socket.
    */
@@ -128,7 +140,7 @@ getInterfaceInformation(std::string const& ifn, stack::ipv4::Address& ipaddr,
    * Get the IPv4 address.
    */
   struct ifreq req;
-  memcpy(req.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(req.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFADDR, &req) < 0) {
     close(sock);
     return false;
@@ -137,7 +149,7 @@ getInterfaceInformation(std::string const& ifn, stack::ipv4::Address& ipaddr,
   /*
    * Get the IPv4 netmask.
    */
-  memcpy(req.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(req.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFNETMASK, &req) < 0) {
     close(sock);
     return false;
