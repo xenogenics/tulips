@@ -280,7 +280,7 @@ Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
   {
     struct ibv_flow_attr attr;
     struct ibv_flow_spec_eth spec_eth;
-  } __attribute__((packed));
+  } PACKED;
   /*
    * Fill in the attributes.
    */
@@ -439,7 +439,7 @@ Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
     struct ibv_flow_spec_eth l2;
     struct ibv_flow_spec_ipv4 l3;
     struct ibv_flow_spec_tcp_udp l4;
-  } __attribute__((packed));
+  } PACKED;
   /*
    * Fill in the attributes.
    */

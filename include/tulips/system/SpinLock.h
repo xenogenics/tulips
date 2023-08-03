@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <pthread.h>
 
@@ -8,25 +9,19 @@ namespace tulips::system {
 class SpinLock
 {
 public:
-  class Guard
+  SpinLock() : m_flag() {}
+
+  inline void lock()
   {
-  public:
-    inline Guard(SpinLock& lock) : m_lock(lock)
-    {
-      while (__sync_val_compare_and_swap(&lock.m_lock, 0, 1)) {
-      }
-    }
+    do {
+      /* Busy wait */
+    } while (m_flag.test_and_set());
+  }
 
-    inline ~Guard() { m_lock.m_lock = 0; }
-
-  private:
-    SpinLock& m_lock;
-  };
-
-  SpinLock() : m_lock(0) {}
+  inline void unlock() { m_flag.clear(); }
 
 private:
-  volatile uint8_t m_lock;
+  std::atomic_flag m_flag;
 };
 
 }

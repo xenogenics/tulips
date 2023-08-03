@@ -54,7 +54,7 @@ private:
 
   friend class Producer;
   friend class Processor;
-} __attribute__((packed));
+} PACKED;
 
 /*
  * The IPv4 header.
@@ -71,7 +71,7 @@ struct Header
   uint16_t ipchksum;
   ipv4::Address srcipaddr;
   ipv4::Address destipaddr;
-} __attribute__((packed));
+} PACKED;
 
 static constexpr size_t USED HEADER_LEN = sizeof(Header);
 

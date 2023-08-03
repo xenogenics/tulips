@@ -13,16 +13,22 @@
 #define BUFFER_LOG(...)
 #endif
 
+namespace {
+
+static size_t
+next_pow2(const size_t v)
+{
+  return v == 1 ? 1 : 1 << (64 - __builtin_clzl(v - 1));
+}
+
+}
+
 namespace tulips::system {
 
-CircularBuffer::CircularBuffer(const size_t size)
-  : m_size(fit(size))
-  , m_mask(m_size - 1)
-  , m_data(nullptr)
-  , m_read(0)
-  , m_write(0)
+CircularBuffer::CircularBuffer(const size_t hint) : m_read(), m_write()
 {
-  BUFFER_LOG("create with length: " << m_size << "B");
+  auto size = fit(hint);
+  BUFFER_LOG("create with length: " << size << "B");
   /*
    * Create a temporary file.
    */
@@ -40,52 +46,61 @@ CircularBuffer::CircularBuffer(const size_t size)
   /*
    * Truncate the file.
    */
-  if (ftruncate(fd, (off_t)size) < 0) {
+  if (ftruncate(fd, (off_t)hint) < 0) {
     throw std::runtime_error("cannot truncate temporary file");
   }
   /*
    * Create an anonymous mapping.
    */
-  void* data;
-  data =
-    mmap(nullptr, m_size << 1, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-  if (data == MAP_FAILED) {
+  auto anon_flags = MAP_ANONYMOUS | MAP_PRIVATE;
+  void* data = mmap(nullptr, size << 1, PROT_NONE, anon_flags, -1, 0);
+  if (data == /* NOLINT */ MAP_FAILED) {
     throw std::runtime_error("cannot create anonymous mapping");
   }
   /*
    * Map the file in the region.
    */
-  void* a;
-  a = mmap(data, m_size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_SHARED, fd, 0);
+  auto map_flags = MAP_FIXED | MAP_SHARED | MAP_POPULATE;
+  void* a = mmap(data, size, PROT_READ | PROT_WRITE, map_flags, fd, 0);
   if (a != data) {
     throw std::runtime_error("cannot map file to anonymous mapping");
   }
-  a = mmap((uint8_t*)data + m_size, m_size, PROT_READ | PROT_WRITE,
+  a = mmap((uint8_t*)data + size, size, PROT_READ | PROT_WRITE,
            MAP_FIXED | MAP_SHARED, fd, 0);
-  if (a != (uint8_t*)data + m_size) {
+  if (a != (uint8_t*)data + size) {
     throw std::runtime_error("cannot map file to anonymous mapping");
   }
+  /*
+   * Setup the contexts.
+   */
+  m_read.setup(size, (uint8_t*)data);
+  m_write.setup(size, (uint8_t*)data);
   /*
    * Clean-up.
    */
   close(fd);
-  m_data = (uint8_t*)data;
 }
 
 CircularBuffer::~CircularBuffer()
 {
-  munmap(m_data, m_size << 1);
+  munmap(m_read.data, m_read.size << 1);
 }
 
 size_t
 CircularBuffer::fit(const size_t size)
 {
+  /*
+   * Fit the requested size into page sizes.
+   */
   size_t npages = size / getpagesize();
   size_t result = npages * getpagesize();
   if (result < size) {
     result += getpagesize();
   }
-  return result;
+  /*
+   * Round-up the the next power of 2.
+   */
+  return next_pow2(result);
 }
 
 }

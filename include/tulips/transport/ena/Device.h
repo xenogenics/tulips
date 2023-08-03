@@ -2,6 +2,7 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/CircularBuffer.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/AbstractionLayer.h>
@@ -48,28 +49,27 @@ public:
 
   uint8_t receiveBufferLengthLog2() const override { return 11; }
 
-  uint16_t receiveBuffersAvailable() const override
-  {
-    /*
-     * TODO(xrg): check OFED.
-     */
-    return std::numeric_limits<uint16_t>::max();
-  }
+  uint16_t receiveBuffersAvailable() const override { return m_nbuf; }
 
 private:
-  Device(const uint16_t port_id, const uint16_t queue_id, const size_t htsz,
-         const size_t hlen, const uint8_t* const hkey,
+  Device(const uint16_t port_id, const uint16_t queue_id, const size_t nbuf,
+         const size_t htsz, const size_t hlen, const uint8_t* const hkey,
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
          struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
          stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
 
+  system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
+
   uint16_t m_portid;
   uint16_t m_queueid;
+  size_t m_nbuf;
   size_t m_htsz;
   size_t m_hlen;
   const uint8_t* m_hkey;
   struct rte_mempool* m_txpool;
   struct rte_eth_rss_reta_entry64* m_reta;
+  system::CircularBuffer::Ref m_buffer;
+  uint8_t* m_packet;
 
   friend class Port;
 

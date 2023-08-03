@@ -2,6 +2,7 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/Compiler.h>
 #include <cstdint>
 #include <string>
 
@@ -24,7 +25,7 @@ struct Header
   ipv4::Address sipaddr;
   ethernet::Address dhwaddr;
   ipv4::Address dipaddr;
-} __attribute__((packed));
+} PACKED;
 
 bool lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
             tulips::stack::ethernet::Address& hw);

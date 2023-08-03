@@ -60,7 +60,7 @@ public:
 
 private:
   Data m_data;
-} __attribute__((packed));
+} PACKED;
 
 /*
  * The Ethernet header.
@@ -70,7 +70,7 @@ struct Header
   Address dest;
   Address src;
   uint16_t type;
-} __attribute__((packed));
+} PACKED;
 
 static constexpr size_t USED HEADER_LEN = sizeof(Header);
 

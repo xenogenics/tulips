@@ -28,7 +28,8 @@ namespace tulips::transport::ena {
 AbstractionLayer Port::s_eal;
 
 Port::Port(std::string const& ifn, const size_t width, const size_t depth)
-  : m_portid(0xFFFF)
+  : m_depth(depth)
+  , m_portid(0xFFFF)
   , m_address()
   , m_mtu()
   , m_ethconf()
@@ -37,6 +38,9 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   , m_rxpools()
   , m_txpools()
   , m_free()
+  , m_retasz(0)
+  , m_admin()
+  , m_raw()
 {
 
   int ret = 0;
@@ -142,6 +146,10 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
    * Update the RSS state.
    */
   setupReceiveSideScaling(dev_info);
+  /*
+   * Allocate the admin device.
+   */
+  m_admin = next();
 }
 
 Port::~Port()
@@ -166,6 +174,14 @@ Port::~Port()
   m_rxpools.clear();
 }
 
+void
+Port::run()
+{
+  if (m_admin->poll(m_raw) == Status::NoDataAvailable) {
+    m_raw.run();
+  }
+}
+
 Device::Ref
 Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
            stack::ipv4::Address const& nm)
@@ -186,10 +202,19 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
    */
   auto* txpool = m_txpools[qid];
   /*
+   * Allocate the new device.
+   */
+  auto* dev = new ena::Device(m_portid, qid, m_depth, m_retasz, m_hlen, m_hkey,
+                              m_address, m_mtu, txpool, ip, dr, nm);
+  /*
+   * Add the device queue to the raw processor.
+   */
+  if (qid > 0) {
+    m_raw.add(dev->internalBuffer());
+  }
+  /*
    * Done.
    */
-  auto* dev = new Device(m_portid, qid, m_retasz, m_hlen, m_hkey, m_address,
-                         m_mtu, txpool, ip, dr, nm);
   return Device::Ref(dev);
 }
 

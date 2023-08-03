@@ -1,3 +1,4 @@
+#include "tulips/system/CircularBuffer.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
@@ -26,18 +27,22 @@
 namespace tulips::transport::ena {
 
 Device::Device(const uint16_t port_id, const uint16_t queue_id,
-               const size_t htsz, const size_t hlen, const uint8_t* const hkey,
+               const size_t nbuf, const size_t htsz, const size_t hlen,
+               const uint8_t* const hkey,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
-  : transport::Device()
+  : transport::Device("ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
+  , m_nbuf(nbuf)
   , m_htsz(htsz)
   , m_hlen(hlen)
   , m_hkey(hkey)
   , m_txpool(txpool)
-  , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 7])
+  , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 6])
+  , m_buffer(system::CircularBuffer::allocate(16384))
+  , m_packet(new uint8_t[16384])
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -55,6 +60,8 @@ Device::~Device()
 {
   delete[] m_reta;
   m_reta = nullptr;
+  delete[] m_packet;
+  m_packet = nullptr;
 }
 
 Status
@@ -65,14 +72,14 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    * Hash the payload and get the table index.
    */
   auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
-  auto indx = hash % m_htsz;
-  auto slot = indx >> 6;
-  auto eidx = indx & 0x3F;
+  uint64_t indx = hash % m_htsz;
+  uint64_t slot = indx >> 6;
+  uint64_t eidx = indx & 0x3F;
   /*
    * Clear the RETA.
    */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
-  m_reta[slot].mask = 1 << eidx;
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
+  m_reta[slot].mask = 1ULL << eidx;
   /*
    * Query the RETA.
    */
@@ -103,8 +110,8 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
   /*
    * Prepare the RETA for an update.
    */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
-  m_reta[slot].mask = 1 << eidx;
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
+  m_reta[slot].mask = 1ULL << eidx;
   m_reta[slot].reta[eidx] = m_queueid;
   /*
    * Update the RETA.
@@ -130,14 +137,14 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
    * Hash the payload and get the table index.
    */
   auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
-  auto indx = hash % m_htsz;
-  auto slot = indx >> 6;
-  auto eidx = indx & 0x3F;
+  uint64_t indx = hash % m_htsz;
+  uint64_t slot = indx >> 6;
+  uint64_t eidx = indx & 0x3F;
   /*
    * Prepare the RETA for an update.
    */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 7]));
-  m_reta[slot].mask = 1 << eidx;
+  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
+  m_reta[slot].mask = 1ULL << eidx;
   m_reta[slot].reta[eidx] = m_queueid;
   /*
    * Update the RETA.
@@ -148,6 +155,15 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
 Status
 Device::poll(Processor& proc)
 {
+  /*
+   * Process the internal buffer.
+   */
+  if (!m_buffer->empty()) {
+    uint16_t len = 0;
+    m_buffer->read_all((uint8_t*)&len, sizeof(len));
+    m_buffer->read_all(m_packet, len);
+    proc.process(len, m_packet);
+  }
   /*
    * Process the incoming receive buffers.
    */
@@ -164,7 +180,6 @@ Device::poll(Processor& proc)
    */
   for (auto i = 0; i < nbrx; i += 1) {
     auto* buf = mbufs[i];
-    DPDK_LOG("RX hash : " << std::hex << buf->hash.rss << std::dec);
     /*
      * Validate the IP checksum.
      */
@@ -214,7 +229,7 @@ Device::poll(Processor& proc)
 }
 
 Status
-Device::wait(UNUSED Processor& proc, UNUSED const uint64_t ns)
+Device::wait(Processor& proc, const uint64_t ns)
 {
   std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
   return Device::poll(proc);
@@ -291,7 +306,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    DPDK_LOG("Packet preparation for TX failed: " << rte_strerror(rte_errno));
+    DPDK_LOG("packet preparation for TX failed: " << rte_strerror(rte_errno));
     return Status::HardwareError;
   }
   /*
@@ -299,7 +314,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    DPDK_LOG("Sending packet failed");
+    DPDK_LOG("sending packet failed");
     return Status::HardwareError;
   }
   /*
