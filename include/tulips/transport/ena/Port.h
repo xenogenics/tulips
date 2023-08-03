@@ -41,6 +41,7 @@ private:
                 stack::ipv4::Address::ANY);
   }
 
+  size_t m_depth;
   uint16_t m_portid;
   stack::ethernet::Address m_address;
   uint32_t m_mtu;

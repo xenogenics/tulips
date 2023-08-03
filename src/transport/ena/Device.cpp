@@ -27,13 +27,15 @@
 namespace tulips::transport::ena {
 
 Device::Device(const uint16_t port_id, const uint16_t queue_id,
-               const size_t htsz, const size_t hlen, const uint8_t* const hkey,
+               const size_t nbuf, const size_t htsz, const size_t hlen,
+               const uint8_t* const hkey,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
   : transport::Device("ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
+  , m_nbuf(nbuf)
   , m_htsz(htsz)
   , m_hlen(hlen)
   , m_hkey(hkey)

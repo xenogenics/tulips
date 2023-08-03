@@ -28,7 +28,8 @@ namespace tulips::transport::ena {
 AbstractionLayer Port::s_eal;
 
 Port::Port(std::string const& ifn, const size_t width, const size_t depth)
-  : m_portid(0xFFFF)
+  : m_depth(depth)
+  , m_portid(0xFFFF)
   , m_address()
   , m_mtu()
   , m_ethconf()
@@ -203,7 +204,7 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(m_portid, qid, m_retasz, m_hlen, m_hkey,
+  auto* dev = new ena::Device(m_portid, qid, m_depth, m_retasz, m_hlen, m_hkey,
                               m_address, m_mtu, txpool, ip, dr, nm);
   /*
    * Add the device queue to the raw processor.
