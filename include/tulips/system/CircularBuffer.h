@@ -45,8 +45,8 @@ public:
    */
   inline bool empty() const
   {
-    auto read = m_read.load(std::memory_order_relaxed);
-    auto write = m_write.load(std::memory_order_acquire);
+    auto read = m_read.counter.load(std::memory_order_relaxed);
+    auto write = m_write.counter.load(std::memory_order_acquire);
     return read == write;
   }
 
@@ -57,9 +57,9 @@ public:
    */
   inline bool full() const
   {
-    auto read = m_read.load(std::memory_order_acquire);
-    auto write = m_write.load(std::memory_order_relaxed);
-    return write - read == m_size;
+    auto read = m_read.counter.load(std::memory_order_acquire);
+    auto write = m_write.counter.load(std::memory_order_relaxed);
+    return write - read == m_write.size;
   }
 
   /**
@@ -75,7 +75,7 @@ public:
     const size_t delta = read_available();
     size_t n = len > delta ? delta : len;
     memcpy(buffer, readAt(), n);
-    m_read.store(m_read + n, std::memory_order_release);
+    m_read.counter.store(m_read.counter + n, std::memory_order_release);
     return n;
   }
 
@@ -96,7 +96,7 @@ public:
      * Read the data.
      */
     memcpy(buffer, readAt(), len);
-    m_read.store(m_read + len, std::memory_order_release);
+    m_read.counter.store(m_read.counter + len, std::memory_order_release);
   }
 
   /**
@@ -112,7 +112,7 @@ public:
     const size_t delta = write_available();
     size_t n = len > delta ? delta : len;
     memcpy(writeAt(), buffer, n);
-    m_write.store(m_write + n, std::memory_order_release);
+    m_write.counter.store(m_write.counter + n, std::memory_order_release);
     return n;
   }
 
@@ -133,7 +133,7 @@ public:
      * Write the data.
      */
     memcpy(writeAt(), buffer, len);
-    m_write.store(m_write + len, std::memory_order_release);
+    m_write.counter.store(m_write.counter + len, std::memory_order_release);
   }
 
   /**
@@ -143,8 +143,8 @@ public:
    */
   inline size_t read_available() const
   {
-    auto read = m_read.load(std::memory_order_relaxed);
-    auto write = m_write.load(std::memory_order_acquire);
+    auto read = m_read.counter.load(std::memory_order_relaxed);
+    auto write = m_write.counter.load(std::memory_order_acquire);
     return write - read;
   }
 
@@ -155,9 +155,9 @@ public:
    */
   inline size_t write_available() const
   {
-    auto read = m_read.load(std::memory_order_acquire);
-    auto write = m_write.load(std::memory_order_relaxed);
-    return m_size - (write - read);
+    auto read = m_read.counter.load(std::memory_order_acquire);
+    auto write = m_write.counter.load(std::memory_order_relaxed);
+    return m_write.size - (write - read);
   }
 
   /**
@@ -165,8 +165,8 @@ public:
    */
   inline void reset()
   {
-    m_read = 0;
-    m_write = 0;
+    m_read.reset();
+    m_write.reset();
   }
 
   /**
@@ -174,8 +174,8 @@ public:
    */
   inline const uint8_t* readAt() const
   {
-    auto read = m_read.load(std::memory_order_relaxed);
-    return &m_data[read & m_mask];
+    auto read = m_read.counter.load(std::memory_order_relaxed);
+    return &m_read.data[read & m_read.mask];
   }
 
   /**
@@ -183,8 +183,8 @@ public:
    */
   inline uint8_t* writeAt() const
   {
-    auto write = m_write.load(std::memory_order_relaxed);
-    return &m_data[write & m_mask];
+    auto write = m_write.counter.load(std::memory_order_relaxed);
+    return &m_write.data[write & m_write.mask];
   }
 
   /**
@@ -196,17 +196,31 @@ public:
   {
     const size_t delta = read_available();
     size_t n = len > delta ? delta : len;
-    m_read.store(m_read + n, std::memory_order_release);
+    m_read.counter.store(m_read.counter + n, std::memory_order_release);
   }
 
 private:
+  struct alignas(64) Context
+  {
+    size_t size = 0;
+    size_t mask = 0;
+    uint8_t* data = nullptr;
+    std::atomic<size_t> counter = 0;
+
+    void setup(const size_t s, uint8_t* const d)
+    {
+      size = s;
+      mask = s - 1;
+      data = d;
+    }
+
+    void reset() { counter = 0; }
+  };
+
   static size_t fit(const size_t size);
 
-  const size_t m_size;
-  const size_t m_mask;
-  uint8_t* m_data;
-  std::atomic<size_t> m_read;
-  std::atomic<size_t> m_write;
+  Context m_read;
+  Context m_write;
 };
 
 }

@@ -25,14 +25,10 @@ next_pow2(const size_t v)
 
 namespace tulips::system {
 
-CircularBuffer::CircularBuffer(const size_t size)
-  : m_size(fit(size))
-  , m_mask(m_size - 1)
-  , m_data(nullptr)
-  , m_read(0)
-  , m_write(0)
+CircularBuffer::CircularBuffer(const size_t hint) : m_read(), m_write()
 {
-  BUFFER_LOG("create with length: " << m_size << "B");
+  auto size = fit(hint);
+  BUFFER_LOG("create with length: " << size << "B");
   /*
    * Create a temporary file.
    */
@@ -50,14 +46,14 @@ CircularBuffer::CircularBuffer(const size_t size)
   /*
    * Truncate the file.
    */
-  if (ftruncate(fd, (off_t)size) < 0) {
+  if (ftruncate(fd, (off_t)hint) < 0) {
     throw std::runtime_error("cannot truncate temporary file");
   }
   /*
    * Create an anonymous mapping.
    */
   auto anon_flags = MAP_ANONYMOUS | MAP_PRIVATE;
-  void* data = mmap(nullptr, m_size << 1, PROT_NONE, anon_flags, -1, 0);
+  void* data = mmap(nullptr, size << 1, PROT_NONE, anon_flags, -1, 0);
   if (data == /* NOLINT */ MAP_FAILED) {
     throw std::runtime_error("cannot create anonymous mapping");
   }
@@ -65,25 +61,29 @@ CircularBuffer::CircularBuffer(const size_t size)
    * Map the file in the region.
    */
   auto map_flags = MAP_FIXED | MAP_SHARED | MAP_POPULATE;
-  void* a = mmap(data, m_size, PROT_READ | PROT_WRITE, map_flags, fd, 0);
+  void* a = mmap(data, size, PROT_READ | PROT_WRITE, map_flags, fd, 0);
   if (a != data) {
     throw std::runtime_error("cannot map file to anonymous mapping");
   }
-  a = mmap((uint8_t*)data + m_size, m_size, PROT_READ | PROT_WRITE,
+  a = mmap((uint8_t*)data + size, size, PROT_READ | PROT_WRITE,
            MAP_FIXED | MAP_SHARED, fd, 0);
-  if (a != (uint8_t*)data + m_size) {
+  if (a != (uint8_t*)data + size) {
     throw std::runtime_error("cannot map file to anonymous mapping");
   }
+  /*
+   * Setup the contexts.
+   */
+  m_read.setup(size, (uint8_t*)data);
+  m_write.setup(size, (uint8_t*)data);
   /*
    * Clean-up.
    */
   close(fd);
-  m_data = (uint8_t*)data;
 }
 
 CircularBuffer::~CircularBuffer()
 {
-  munmap(m_data, m_size << 1);
+  munmap(m_read.data, m_read.size << 1);
 }
 
 size_t
