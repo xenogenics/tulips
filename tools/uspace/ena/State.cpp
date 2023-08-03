@@ -1,3 +1,5 @@
+#include <chrono>
+#include <thread>
 #include <uspace/ena/State.h>
 
 namespace tulips::tools::uspace::ena {
@@ -10,18 +12,22 @@ State::State(std::string const& iff, const bool pcap)
   , pollers()
   , m_run(true)
   , m_thread()
-  , m_raw()
 {
   pthread_create(&m_thread, nullptr, &State::entrypoint, this);
+}
+
+State::~State()
+{
+  m_run = false;
+  pthread_join(m_thread, nullptr);
 }
 
 void
 State::run()
 {
   while (m_run) {
-    if (port.wait(m_raw, 100000000ULL) == Status::NoDataAvailable) {
-      m_raw.run();
-    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    port.run();
   }
 }
 

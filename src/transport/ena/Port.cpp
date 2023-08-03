@@ -1,4 +1,3 @@
-#include "tulips/stack/Ethernet.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
@@ -9,7 +8,6 @@
 #include <memory>
 #include <sstream>
 #include <stdexcept>
-#include <thread>
 #include <dpdk/rte_ethdev.h>
 #include <net/ethernet.h>
 
@@ -39,6 +37,9 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
   , m_rxpools()
   , m_txpools()
   , m_free()
+  , m_retasz(0)
+  , m_admin()
+  , m_raw()
 {
 
   int ret = 0;
@@ -144,6 +145,10 @@ Port::Port(std::string const& ifn, const size_t width, const size_t depth)
    * Update the RSS state.
    */
   setupReceiveSideScaling(dev_info);
+  /*
+   * Allocate the admin device.
+   */
+  m_admin = next();
 }
 
 Port::~Port()
@@ -168,88 +173,12 @@ Port::~Port()
   m_rxpools.clear();
 }
 
-Status
-Port::poll(Processor& proc)
+void
+Port::run()
 {
-  /*
-   * Process the incoming receive buffers.
-   */
-  struct rte_mbuf* mbufs[32];
-  auto nbrx = rte_eth_rx_burst(m_portid, 0, mbufs, 32);
-  /*
-   * Check if there are any buffer.
-   */
-  if (nbrx == 0) {
-    return Status::NoDataAvailable;
+  if (m_admin->poll(m_raw) == Status::NoDataAvailable) {
+    m_raw.run();
   }
-  /*
-   * Process the buffers.
-   */
-  for (auto i = 0; i < nbrx; i += 1) {
-    auto* buf = mbufs[i];
-    /*
-     * Validate the IP checksum.
-     */
-#ifdef TULIPS_HAS_HW_CHECKSUM
-    if (buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK) {
-      if (m_hints & Device::VALIDATE_IP_CSUM) {
-        auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
-        if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
-          DPDK_LOG("invalid IP checksum, dropping packet");
-          rte_pktmbuf_free(buf);
-          continue;
-        }
-      }
-    }
-    /*
-     * Validate the L4 checksum.
-     */
-    if (buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK) {
-      if (m_hints & Device::VALIDATE_L4_CSUM) {
-        auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
-        if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
-          DPDK_LOG("invalid L4 checksum, dropping packet");
-          rte_pktmbuf_free(buf);
-          continue;
-        }
-      }
-    }
-#endif
-    /*
-     * Grab the packet data and length.
-     */
-    auto* dat = rte_pktmbuf_mtod(buf, const uint8_t*);
-    auto len = rte_pktmbuf_pkt_len(buf);
-    /*
-     * Push all non-IP packets to the internal buffers (length-framed).
-     */
-    const auto* eth = reinterpret_cast<const stack::ethernet::Header*>(dat);
-    if (ntohs(eth->type) != stack::ethernet::ETHTYPE_IP) {
-      for (auto const& buffer : m_buffers) {
-        buffer->write_all((uint8_t*)&len, sizeof(len));
-        buffer->write_all(dat, len);
-      }
-    }
-    /*
-     * Process the packet.
-     */
-    proc.process(len, dat);
-    /*
-     * Free the packet.
-     */
-    rte_pktmbuf_free(buf);
-  }
-  /*
-   * Done.
-   */
-  return Status::Ok;
-}
-
-Status
-Port::wait(Processor& proc, const uint64_t ns)
-{
-  std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
-  return Port::poll(proc);
 }
 
 Device::Ref
@@ -276,7 +205,12 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
    */
   auto* dev = new ena::Device(m_portid, qid, m_retasz, m_hlen, m_hkey,
                               m_address, m_mtu, txpool, ip, dr, nm);
-  m_buffers.push_back(dev->internalBuffer());
+  /*
+   * Add the device queue to the raw processor.
+   */
+  if (qid > 0) {
+    m_raw.add(dev->internalBuffer());
+  }
   /*
    * Done.
    */
@@ -388,7 +322,7 @@ Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
   /*
    * Update the free list. We reserve the 0th queue.
    */
-  for (size_t i = 1; i < nqus; i += 1) {
+  for (size_t i = 0; i < nqus; i += 1) {
     m_free.push_back(i);
   }
 }
@@ -435,4 +369,5 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
     throw std::runtime_error("Failed to reset the RETA to the 0th queue");
   }
 }
+
 }

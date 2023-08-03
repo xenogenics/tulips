@@ -154,8 +154,7 @@ Status
 Device::poll(Processor& proc)
 {
   /*
-   * Process the internal buffer. NOTE(xrg): packets coming this way should be
-   * few and far between, so we only check once.
+   * Process the internal buffer.
    */
   if (!m_buffer->empty()) {
     uint32_t len = 0;
@@ -179,7 +178,6 @@ Device::poll(Processor& proc)
    */
   for (auto i = 0; i < nbrx; i += 1) {
     auto* buf = mbufs[i];
-    DPDK_LOG("RX hash : " << std::hex << buf->hash.rss << std::dec);
     /*
      * Validate the IP checksum.
      */

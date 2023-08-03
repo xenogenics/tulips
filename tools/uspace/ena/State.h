@@ -16,6 +16,7 @@ class State : public utils::State
 {
 public:
   State(std::string const& iff, const bool pcap = false);
+  ~State() override;
 
   std::string interface;
   transport::ena::Port port;
@@ -24,18 +25,6 @@ public:
   IDs ids;
 
 private:
-  class RawProcessor : public transport::Processor
-  {
-  public:
-    Status run() override { return Status::Ok; }
-
-    Status process(UNUSED const uint16_t len,
-                   UNUSED const uint8_t* const data) override
-    {
-      return Status::Ok;
-    }
-  };
-
   static void* entrypoint(void* data)
   {
     auto* poller = reinterpret_cast<State*>(data);
@@ -47,7 +36,6 @@ private:
 
   volatile bool m_run;
   pthread_t m_thread;
-  RawProcessor m_raw;
 };
 
 }
