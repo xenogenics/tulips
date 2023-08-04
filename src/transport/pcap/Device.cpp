@@ -1,10 +1,9 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/system/Clock.h>
+#include <tulips/system/Utils.h>
 #include <tulips/transport/pcap/Device.h>
 
-#define PCAP_VERBOSE 0
-
-#if PCAP_VERBOSE
+#ifdef TRANS_VERBOSE
 #define PCAP_LOG(__args) LOG("PCAP", __args)
 #else
 #define PCAP_LOG(...) ((void)0)

@@ -3,9 +3,7 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 
-#define CLIENT_VERBOSE 1
-
-#if CLIENT_VERBOSE
+#ifdef CLIENT_VERBOSE
 #define CLIENT_LOG(__args) LOG("CLIENT", __args)
 #else
 #define CLIENT_LOG(...) ((void)0)
@@ -246,7 +244,7 @@ Client::close(const ID id)
    * Close the connection.
    */
   Status res = m_tcp.close(c.conn);
-#if CLIENT_VERBOSE
+#ifdef CLIENT_VERBOSE
   if (res == Status::Ok) {
     CLIENT_LOG("closing connection " << id);
   }

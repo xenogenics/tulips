@@ -5,9 +5,7 @@
 #include <ostream>
 #include <arpa/inet.h>
 
-#define OPT_VERBOSE 1
-
-#if OPT_VERBOSE
+#ifdef TCP_OPT_VERBOSE
 #define OPT_LOG(__args) LOG("TCP", __args)
 #else
 #define OPT_LOG(...) ((void)0)

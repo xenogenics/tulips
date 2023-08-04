@@ -5,10 +5,9 @@
 #include <cstdlib>
 #include <ctime>
 
-#define SHM_VERBOSE 0
 #define SHM_HEXDUMP 0
 
-#if SHM_VERBOSE
+#ifdef TRANS_VERBOSE
 #define SHM_LOG(__args) LOG("SHM", __args)
 #else
 #define SHM_LOG(...) ((void)0)
@@ -69,7 +68,7 @@ Device::poll(Processor& proc)
     return Status::HardwareError;
   }
   SHM_LOG("processing packet: " << packet->len << "B, " << packet);
-#if SHM_VERBOSE && SHM_HEXDUMP
+#if defined(TRANS_VERBOSE) && SHM_HEXDUMP
   stack::utils::hexdump(packet->data, packet->len, std::cout);
 #endif
   Status ret = proc.process(packet->len, packet->data);
@@ -129,7 +128,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
   SHM_LOG("committing packet: " << len << "B, " << packet);
   packet->len = len;
-#if SHM_VERBOSE && SHM_HEXDUMP
+#if defined(TRANS_VERBOSE) && SHM_HEXDUMP
   stack::utils::hexdump(packet->data, packet->len, std::cout);
 #endif
   tulips_fifo_commit(write_fifo);

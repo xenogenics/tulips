@@ -1,9 +1,7 @@
 #include <tulips/system/Utils.h>
 
-#define DPDK_VERBOSE 1
-
-#if DPDK_VERBOSE
-#define DPDK_LOG(__args) LOG("DPDK", __args)
+#ifdef TRANS_VERBOSE
+#define ENA_LOG(__args) LOG("ENA", __args)
 #else
-#define DPDK_LOG(...) ((void)0)
+#define ENA_LOG(...) ((void)0)
 #endif

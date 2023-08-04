@@ -1,9 +1,8 @@
 #include <tulips/stack/ethernet/Producer.h>
+#include <tulips/system/Utils.h>
 #include <arpa/inet.h>
 
-#define ETH_VERBOSE 0
-
-#if ETH_VERBOSE
+#ifdef ETH_VERBOSE
 #define ETH_LOG(__args) LOG("ETH", __args)
 #else
 #define ETH_LOG(...) ((void)0)

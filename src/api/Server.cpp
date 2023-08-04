@@ -2,9 +2,7 @@
 #include <tulips/system/Utils.h>
 #include <arpa/inet.h>
 
-#define SERVER_VERBOSE 1
-
-#if SERVER_VERBOSE
+#ifdef SERVER_VERBOSE
 #define SERVER_LOG(__args) LOG("SERVER", __args)
 #else
 #define SERVER_LOG(...) ((void)0)
@@ -85,7 +83,7 @@ Status
 Server::close(const ID id)
 {
   Status res = m_tcp.close(id);
-#if SERVER_VERBOSE
+#ifdef SERVER_VERBOSE
   if (res == Status::Ok) {
     SERVER_LOG("closing connection " << id);
   }

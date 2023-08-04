@@ -18,9 +18,7 @@
 #include <sys/mman.h>
 #include <infiniband/verbs.h>
 
-#define OFED_VERBOSE 0
 #define OFED_HEXDUMP 0
-
 /*
  * Enable OFED_CAPTSOB to limit the TSO segment to 64KB. This is required to
  * debug large segment with the PCAP transport enabled as IP packets cannot be
@@ -28,7 +26,7 @@
  */
 #define OFED_CAPTSOB 0 // NOLINT
 
-#if OFED_VERBOSE
+#ifdef TRANS_VERBOSE
 #define OFED_LOG(__args) LOG("OFED", __args)
 #else
 #define OFED_LOG(...) ((void)0)
@@ -476,7 +474,7 @@ Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
   /*
    * Register the flow.
    */
-  OFED_LOG("TCP/UDP flow for port " << port << " created");
+  OFED_LOG("TCP/UDP flow for port " << lport << " created");
   m_filters[lport] = f;
   return Status::Ok;
 }
@@ -525,7 +523,7 @@ Device::poll(Processor& proc)
     const uint8_t* addr = m_recvbuf + size_t(id) * RECV_BUFLEN;
     OFED_LOG("processing id=" << id << " addr=" << (void*)addr
                               << " len=" << len);
-#if OFED_VERBOSE && OFED_HEXDUMP
+#if defined(TRANS_VERBOSE) && OFED_HEXDUMP
     stack::utils::hexdump(addr, wc[i].byte_len, std::cout);
 #endif
     /*
@@ -765,7 +763,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
     return Status::HardwareError;
   }
   OFED_LOG("commit buffer " << (void*)buf << " len " << len);
-#if OFED_VERBOSE && OFED_HEXDUMP
+#if defined(TRANS_VERBOSE) && OFED_HEXDUMP
   stack::utils::hexdump(buf, len, std::cout);
 #endif
   return Status::Ok;

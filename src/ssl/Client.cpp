@@ -5,9 +5,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#define CLIENT_VERBOSE 1
-
-#if CLIENT_VERBOSE
+#ifdef CLIENT_VERBOSE
 #define CLIENT_LOG(__args) LOG("SSLCLI", __args)
 #else
 #define CLIENT_LOG(...) ((void)0)

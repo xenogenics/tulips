@@ -14,9 +14,7 @@
 #include <sys/ioctl.h>
 #include <sys/sockio.h>
 
-#define TRANS_VERBOSE 1
-
-#if TRANS_VERBOSE
+#ifdef TRANS_VERBOSE
 #define TRANS_LOG(__args) LOG("TRANS", __args)
 #else
 #define TRANS_LOG(...) ((void)0)

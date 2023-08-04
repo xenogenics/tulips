@@ -49,11 +49,11 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   , m_nm(nm)
   , m_mtu(mtu)
 {
-  DPDK_LOG("port id: " << port_id);
-  DPDK_LOG("queue id: " << queue_id);
-  DPDK_LOG("ip address: " << m_ip.toString());
-  DPDK_LOG("netmask: " << m_nm.toString());
-  DPDK_LOG("router address: " << m_dr.toString());
+  ENA_LOG("port id: " << port_id);
+  ENA_LOG("queue id: " << queue_id);
+  ENA_LOG("ip address: " << m_ip.toString());
+  ENA_LOG("netmask: " << m_nm.toString());
+  ENA_LOG("router address: " << m_dr.toString());
 }
 
 Device::~Device()
@@ -85,20 +85,20 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   auto ret = rte_eth_dev_rss_reta_query(m_portid, m_reta, m_htsz);
   if (ret < 0) {
-    DPDK_LOG("failed to query the RETA");
+    ENA_LOG("failed to query the RETA");
     return Status::HardwareError;
   }
   /*
    * Print the existing configuration for the index.
    */
   auto preq = m_reta[slot].reta[eidx];
-  DPDK_LOG("LS hash/index: " << std::hex << hash << std::dec << "/" << indx);
-  DPDK_LOG("RETA queue: " << preq);
+  ENA_LOG("LS hash/index: " << std::hex << hash << std::dec << "/" << indx);
+  ENA_LOG("RETA queue: " << preq);
   /*
    * Check the configuration.
    */
   if (preq != 0 && preq != m_queueid) {
-    DPDK_LOG("RETA queue allocation conflict: " << preq);
+    ENA_LOG("RETA queue allocation conflict: " << preq);
     return Status::HardwareError;
   }
   /*
@@ -118,7 +118,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
   if (ret != 0) {
-    DPDK_LOG("failed to update the RETA");
+    ENA_LOG("failed to update the RETA");
     return Status::HardwareError;
   }
   /*
@@ -188,7 +188,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_IP_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
-          DPDK_LOG("invalid IP checksum, dropping packet");
+          ENA_LOG("invalid IP checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -201,7 +201,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_L4_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
-          DPDK_LOG("invalid L4 checksum, dropping packet");
+          ENA_LOG("invalid L4 checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -306,7 +306,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    DPDK_LOG("packet preparation for TX failed: " << rte_strerror(rte_errno));
+    ENA_LOG("packet preparation for TX failed: " << rte_strerror(rte_errno));
     return Status::HardwareError;
   }
   /*
@@ -314,7 +314,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    DPDK_LOG("sending packet failed");
+    ENA_LOG("sending packet failed");
     return Status::HardwareError;
   }
   /*
