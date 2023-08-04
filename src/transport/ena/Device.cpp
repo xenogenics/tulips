@@ -49,11 +49,13 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   , m_nm(nm)
   , m_mtu(mtu)
 {
-  ENA_LOG("port id: " << port_id);
-  ENA_LOG("queue id: " << queue_id);
-  ENA_LOG("ip address: " << m_ip.toString());
-  ENA_LOG("netmask: " << m_nm.toString());
-  ENA_LOG("router address: " << m_dr.toString());
+  if (m_queueid > 0) {
+    ENA_LOG("port id: " << port_id);
+    ENA_LOG("queue id: " << queue_id);
+    ENA_LOG("ip address: " << m_ip.toString());
+    ENA_LOG("netmask: " << m_nm.toString());
+    ENA_LOG("router address: " << m_dr.toString());
+  }
 }
 
 Device::~Device()
