@@ -87,8 +87,8 @@ class ClientDevice : public Device
 public:
   ClientDevice(stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
-               stack::ipv4::Address const& dr, std::string const& rf,
-               std::string const& wf);
+               stack::ipv4::Address const& dr, std::string_view rf,
+               std::string_view wf);
 };
 
 class ServerDevice : public Device
@@ -96,8 +96,8 @@ class ServerDevice : public Device
 public:
   ServerDevice(stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
-               stack::ipv4::Address const& dr, std::string const& rf,
-               std::string const& wf);
+               stack::ipv4::Address const& dr, std::string_view rf,
+               std::string_view wf);
 
   ~ServerDevice() override;
 

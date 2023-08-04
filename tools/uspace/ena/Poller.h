@@ -29,7 +29,7 @@ public:
   Status get(const Client::ID id, stack::ipv4::Address& ripaddr,
              stack::tcpv4::Port& lport, stack::tcpv4::Port& rport);
 
-  Status write(const Client::ID id, std::string const& data);
+  Status write(const Client::ID id, std::string_view data);
 
 private:
   enum class Action

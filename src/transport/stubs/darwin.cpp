@@ -5,14 +5,14 @@
 #include <tulips/transport/Utils.h>
 #include <cerrno>
 #include <string>
-#include <ifaddrs.h>
 #include <net/if.h>
-#include <net/if_dl.h>
 #include <netinet/in.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/sockio.h>
 #include <sys/types.h>
+#include <ifaddrs.h>
+#include <net/if_dl.h>
+#include <sys/ioctl.h>
+#include <sys/sockio.h>
 
 #define TRANS_VERBOSE 1
 
@@ -36,9 +36,16 @@ getDefaultRoute(UNUSED tulips::stack::ipv4::Address const& ip,
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(std::string const& ifn,
-                        stack::ethernet::Address& hwaddr, uint32_t& mtu)
+getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
+                        uint32_t& mtu)
 {
+  auto sifn = std::string(ifn);
+  /*
+   * Check that the interface name is valid.
+   */
+  if (ifn.length() > IFNAMSIZ) {
+    return false;
+  }
   /*
    * Get the ethernet address.
    */
@@ -46,7 +53,7 @@ getInterfaceInformation(std::string const& ifn,
   uint8_t* ptr;
   if (getifaddrs(&ifap) == 0) {
     for (ifaptr = ifap; ifaptr != nullptr; ifaptr = (ifaptr)->ifa_next) {
-      if (!strcmp((ifaptr)->ifa_name, ifn.c_str()) &&
+      if (!strcmp((ifaptr)->ifa_name, sifn.c_str()) &&
           (((ifaptr)->ifa_addr)->sa_family == AF_LINK)) {
         ptr = (uint8_t*)LLADDR((struct sockaddr_dl*)(ifaptr)->ifa_addr);
         hwaddr = stack::ethernet::Address(ptr[0], ptr[1], ptr[2], ptr[3],
@@ -70,7 +77,7 @@ getInterfaceInformation(std::string const& ifn,
    * Get the device MTU.
    */
   struct ifreq ifreq = {};
-  memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(ifreq.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFMTU, &ifreq) < 0) {
     TRANS_LOG(strerror(errno));
     close(sock);
@@ -85,12 +92,18 @@ getInterfaceInformation(std::string const& ifn,
 }
 
 bool
-getInterfaceInformation(std::string const& ifn,
+getInterfaceInformation(std::string_view ifn,
                         UNUSED stack::ethernet::Address& hwaddr,
                         UNUSED uint32_t& mtu, stack::ipv4::Address& ipaddr,
                         stack::ipv4::Address& draddr,
                         stack::ipv4::Address& ntmask)
 {
+  /*
+   * Check that the interface name is valid.
+   */
+  if (ifn.length() > IFNAMSIZ) {
+    return false;
+  }
   /*
    * Create a dummy socket.
    */
@@ -103,7 +116,7 @@ getInterfaceInformation(std::string const& ifn,
    * Get the IPv4 address.
    */
   struct ifreq ifreq = {};
-  memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(ifreq.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFADDR, &ifreq) < 0) {
     TRANS_LOG(strerror(errno));
     close(sock);
@@ -119,7 +132,7 @@ getInterfaceInformation(std::string const& ifn,
   /*
    * Get the IPv4 netmask.
    */
-  memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
+  memcpy(ifreq.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFNETMASK, &ifreq) < 0) {
     TRANS_LOG(strerror(errno));
     close(sock);

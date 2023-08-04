@@ -95,7 +95,7 @@ getDefaultRoute(tulips::stack::ipv4::Address const& ip,
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(std::string const& ifn,
+getInterfaceInformation(std::string_view ifn,
                         stack::ethernet::Address& hwaddr, uint32_t& mtu)
 {
   /*
@@ -144,7 +144,7 @@ getInterfaceInformation(std::string const& ifn,
 }
 
 bool
-getInterfaceInformation(std::string const& ifn, stack::ipv4::Address& ipaddr,
+getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
                         stack::ipv4::Address& draddr,
                         stack::ipv4::Address& ntmask)
 {

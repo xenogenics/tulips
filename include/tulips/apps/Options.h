@@ -15,11 +15,11 @@ public:
   int usDelay() const { return usd.getValue(); }
   bool noDelay() const { return nag.isSet(); }
   bool isSender() const { return snd.isSet(); }
-  std::string linkAddress() const { return lla.getValue(); }
-  std::string source() const { return src.getValue(); }
-  std::string route() const { return rte.getValue(); }
-  std::string mask() const { return msk.getValue(); }
-  std::string destination() const { return dst.getValue(); }
+  std::string_view linkAddress() const { return lla.getValue(); }
+  std::string_view source() const { return src.getValue(); }
+  std::string_view route() const { return rte.getValue(); }
+  std::string_view mask() const { return msk.getValue(); }
+  std::string_view destination() const { return dst.getValue(); }
   bool dumpPackets() const { return pcp.isSet(); }
   size_t interval() const { return dly.getValue(); }
   bool hasInterface() const { return iff.isSet(); }
@@ -31,8 +31,8 @@ public:
   size_t length() const { return len.getValue(); }
   size_t count() const { return cnt.getValue(); }
   bool withSSL() const { return ssl.isSet(); }
-  std::string sslCert() const { return crt.getValue(); }
-  std::string sslKey() const { return key.getValue(); }
+  std::string_view sslCert() const { return crt.getValue(); }
+  std::string_view sslKey() const { return key.getValue(); }
   long cpuId() const { return cpu.getValue(); }
 
 private:

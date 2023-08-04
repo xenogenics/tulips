@@ -27,7 +27,7 @@ struct Header
   ipv4::Address dipaddr;
 } PACKED;
 
-bool lookup(std::string const& eth, tulips::stack::ipv4::Address const& ip,
+bool lookup(std::string_view eth, tulips::stack::ipv4::Address const& ip,
             tulips::stack::ethernet::Address& hw);
 
 }

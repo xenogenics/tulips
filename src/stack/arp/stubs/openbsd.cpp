@@ -5,17 +5,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/sysctl.h>
-#include <sys/ioctl.h>
+#include <arpa/inet.h>
 #include <net/if.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/route.h>
-#include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <sys/sysctl.h>
 
 #define ARP_VERBOSE 1
 
@@ -28,17 +28,18 @@
 namespace tulips::stack::arp::stub {
 
 static bool
-getinetaddr(std::string const& host, struct in_addr* inap)
+getinetaddr(std::string_view host, struct in_addr* inap)
 {
   struct hostent* hp;
+  auto shost = std::string(host);
   /*
    * Loop-up the host address.
    */
-  if (inet_aton(host.c_str(), inap) == 1) {
+  if (inet_aton(shost.c_str(), inap) == 1) {
     ARP_LOG("inet_aton for " << host << " succeeded");
     return true;
   }
-  if ((hp = gethostbyname(host.c_str())) == nullptr) {
+  if ((hp = gethostbyname(shost.c_str())) == nullptr) {
     ARP_LOG("gethostbyname for " << host << " failed");
     return false;
   }
@@ -121,14 +122,14 @@ search(in_addr_t const& addr, ethernet::Address& lladdr)
 }
 
 static bool
-get(std::string const& host, ethernet::Address& addr)
+get(std::string_view host, ethernet::Address& addr)
 {
   struct sockaddr_inarp sin = { sizeof(sin), AF_INET, 0, { 0 }, { 0 }, 0, 0 };
   return getinetaddr(host, &sin.sin_addr) && search(sin.sin_addr.s_addr, addr);
 }
 
 bool
-lookup(std::string const& eth, ipv4::Address const& ip, ethernet::Address& hw)
+lookup(std::string_view eth, ipv4::Address const& ip, ethernet::Address& hw)
 {
   return get(ip.toString(), hw);
 }

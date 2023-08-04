@@ -78,7 +78,7 @@ Device::Device(const uint16_t nbuf)
   construct(ifn, nbuf);
 }
 
-Device::Device(std::string const& ifn, const uint16_t nbuf)
+Device::Device(std::string_view ifn, const uint16_t nbuf)
   : transport::Device(ifn)
   , m_nbuf(nbuf)
   , m_pending(0)
@@ -110,7 +110,7 @@ Device::Device(std::string const& ifn, const uint16_t nbuf)
    * Check if the interface driver is mlx?_core.
    */
   if (!isSupportedDevice(ifn)) {
-    throw std::runtime_error("Unsupported interface: " + ifn);
+    throw std::runtime_error("Unsupported interface: " + m_name);
   }
   /*
    * Construct the device.
@@ -120,7 +120,7 @@ Device::Device(std::string const& ifn, const uint16_t nbuf)
 }
 
 void
-Device::construct(std::string const& ifn, UNUSED const uint16_t nbuf)
+Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
 {
   int res, ndev = 0;
   ibv_device** devlist = ibv_get_device_list(&ndev);

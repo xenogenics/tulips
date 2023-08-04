@@ -16,7 +16,7 @@ namespace tulips::transport::ena {
 class Port
 {
 public:
-  Port(std::string const& ifn, const size_t width, const size_t depth);
+  Port(std::string_view ifn, const size_t width, const size_t depth);
   ~Port();
 
   void run();

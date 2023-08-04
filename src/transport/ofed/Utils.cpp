@@ -11,12 +11,13 @@
 #include <unistd.h>
 
 static bool
-getInterfaceDriverName(std::string const& ifn, std::string& drv)
+getInterfaceDriverName(std::string_view ifn, std::string& drv)
 {
   char path[PATH_MAX], target[PATH_MAX];
   memset(path, 0, PATH_MAX);
   memset(target, 0, PATH_MAX);
-  sprintf(path, "/sys/class/net/%s/device/driver", ifn.c_str());
+  sprintf(path, "/sys/class/net/%.*s/device/driver", (int)ifn.length(),
+          ifn.data());
   if (readlink(path, target, PATH_MAX) < 0) {
     LOG("OFED", "cannot readlink() " << path);
     return false;
@@ -35,7 +36,7 @@ filterInfinibandEntry(const struct dirent* d)
 }
 
 bool
-getInterfaceDeviceAndPortIds(std::string const& ifn, std::string& name,
+getInterfaceDeviceAndPortIds(std::string_view ifn, std::string& name,
                              int& portid)
 {
   std::ifstream ifs;
@@ -45,7 +46,8 @@ getInterfaceDeviceAndPortIds(std::string const& ifn, std::string& name,
    * Get the device name.
    */
   struct dirent** entries;
-  sprintf(path, "/sys/class/net/%s/device/infiniband", ifn.c_str());
+  sprintf(path, "/sys/class/net/%.*s/device/infiniband", (int)ifn.length(),
+          ifn.data());
   if (scandir(path, &entries, filterInfinibandEntry, ::alphasort) != 1) {
     return false;
   }
@@ -55,7 +57,7 @@ getInterfaceDeviceAndPortIds(std::string const& ifn, std::string& name,
   /*
    * Get the port ID.
    */
-  sprintf(path, "/sys/class/net/%s/dev_port", ifn.c_str());
+  sprintf(path, "/sys/class/net/%.*s/dev_port", (int)ifn.length(), ifn.data());
   ifs.open(path);
   if (!ifs.good()) {
     return false;
@@ -66,7 +68,7 @@ getInterfaceDeviceAndPortIds(std::string const& ifn, std::string& name,
 }
 
 bool
-isSupportedDevice(std::string const& ifn)
+isSupportedDevice(std::string_view ifn)
 {
   std::string drvname;
   if (!getInterfaceDriverName(ifn, drvname)) {

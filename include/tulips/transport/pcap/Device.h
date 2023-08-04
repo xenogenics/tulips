@@ -16,10 +16,10 @@ class Device
   , public Processor
 {
 public:
-  Device(transport::Device& device, std::string const& fn);
+  Device(transport::Device& device, std::string_view name);
   ~Device() override;
 
-  std::string const& name() const override { return m_device.name(); }
+  std::string_view name() const override { return m_device.name(); }
 
   stack::ethernet::Address const& address() const override
   {

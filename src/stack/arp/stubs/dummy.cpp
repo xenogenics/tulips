@@ -5,7 +5,7 @@
 namespace tulips::stack::arp::stub {
 
 bool
-lookup(UNUSED std::string const& eth,
+lookup(UNUSED std::string_view eth,
        UNUSED tulips::stack::ipv4::Address const& ip,
        UNUSED tulips::stack::ethernet::Address& hw)
 {

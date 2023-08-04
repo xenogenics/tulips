@@ -25,7 +25,7 @@ Poller::Poller(const bool pcap)
   pthread_cond_init(&m_cond, nullptr);
 }
 
-Poller::Poller(std::string const& dev, const bool pcap)
+Poller::Poller(std::string_view dev, const bool pcap)
   : m_capture(pcap)
   , m_ofed(dev, 128)
   , m_pcap(pcap ? new transport::pcap::Device(m_ofed, "packets.pcap") : nullptr)
@@ -138,7 +138,7 @@ Poller::get(const Client::ID id, stack::ipv4::Address& ripaddr,
 }
 
 Status
-Poller::write(const Client::ID id, std::string const& data)
+Poller::write(const Client::ID id, std::string_view data)
 {
   Status result;
   pthread_mutex_lock(&m_mutex);

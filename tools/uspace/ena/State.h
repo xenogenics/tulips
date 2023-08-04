@@ -15,7 +15,7 @@ using IDs = std::map<Client::ID, size_t>;
 class State : public utils::State
 {
 public:
-  State(std::string const& iff, const bool pcap = false);
+  State(std::string_view iff, const bool pcap = false);
   ~State() override;
 
   std::string interface;

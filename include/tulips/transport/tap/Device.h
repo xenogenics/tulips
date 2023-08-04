@@ -13,7 +13,7 @@ namespace tulips::transport::tap {
 class Device : public transport::Device
 {
 public:
-  Device(std::string const& devname, stack::ipv4::Address const& ip,
+  Device(std::string_view devname, stack::ipv4::Address const& ip,
          stack::ipv4::Address const& nm, stack::ipv4::Address const& dr);
   ~Device();
 

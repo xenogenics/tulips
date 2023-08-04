@@ -15,7 +15,7 @@ namespace tulips::ssl {
 
 Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
                const size_t nconn, const ssl::Protocol type,
-               std::string const& cert, std::string const& key)
+               std::string_view cert, std::string_view key)
   : m_delegate(delegate)
   , m_dev(device)
   , m_server(*this, device, nconn)
@@ -42,7 +42,8 @@ Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
   /*
    * Load certificate and private key files, and check consistency.
    */
-  err = SSL_CTX_use_certificate_file(AS_SSL(m_context), cert.c_str(),
+  auto scert = std::string(cert);
+  err = SSL_CTX_use_certificate_file(AS_SSL(m_context), scert.c_str(),
                                      SSL_FILETYPE_PEM);
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_certificate_file failed");
@@ -51,7 +52,8 @@ Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
   /*
    * Indicate the key file to be used.
    */
-  err = SSL_CTX_use_PrivateKey_file(AS_SSL(m_context), key.c_str(),
+  auto skey = std::string(key);
+  err = SSL_CTX_use_PrivateKey_file(AS_SSL(m_context), skey.c_str(),
                                     SSL_FILETYPE_PEM);
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_PrivateKey_file failed");

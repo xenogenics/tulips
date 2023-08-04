@@ -12,8 +12,8 @@ class Server
 {
 public:
   Server(interface::Server::Delegate& delegate, transport::Device& device,
-         const size_t nconn, const ssl::Protocol type, std::string const& cert,
-         std::string const& key);
+         const size_t nconn, const ssl::Protocol type, std::string_view cert,
+         std::string_view key);
   ~Server() override;
 
   inline Status run() override { return m_server.run(); }

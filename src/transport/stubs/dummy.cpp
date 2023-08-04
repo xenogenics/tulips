@@ -6,7 +6,7 @@
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(UNUSED std::string const& ifn,
+getInterfaceInformation(UNUSED std::string_view ifn,
                         UNUSED stack::ethernet::Address& hwaddr,
                         UNUSED uint32_t& mtu)
 {
@@ -14,7 +14,7 @@ getInterfaceInformation(UNUSED std::string const& ifn,
 }
 
 bool
-getInterfaceInformation(UNUSED std::string const& ifn,
+getInterfaceInformation(UNUSED std::string_view ifn,
                         UNUSED stack::ethernet::Address& hwaddr,
                         UNUSED uint32_t& mtu,
                         UNUSED stack::ipv4::Address& ipaddr,

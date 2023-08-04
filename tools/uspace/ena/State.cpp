@@ -4,7 +4,7 @@
 
 namespace tulips::tools::uspace::ena {
 
-State::State(std::string const& iff, const bool pcap)
+State::State(std::string_view iff, const bool pcap)
   : utils::State()
   , interface(iff)
   , port(iff, 8, 32)
