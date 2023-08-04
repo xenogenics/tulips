@@ -14,14 +14,12 @@
 namespace tulips::ssl {
 
 Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
-               const size_t nconn, const Protocol type, std::string_view cert,
-               std::string_view key)
+               const size_t nconn, const Protocol type)
   : m_delegate(delegate)
   , m_dev(device)
   , m_client(*this, device, nconn)
   , m_context(nullptr)
 {
-  int err = 0;
   CLIENT_LOG("protocol: " << ssl::toString(type));
   /*
    * Initialize the SSL library.
@@ -39,6 +37,22 @@ Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
     throw std::runtime_error("SSL_CTX_new failed");
   }
   SSL_CTX_set_options(AS_SSL(m_context), flags);
+  /*
+   * Use AES ciphers.
+   */
+  const char* const PREFERRED_CIPHERS = "HIGH:!aNULL:!PSK:!SRP:!MD5:!RC4:!3DES";
+  int res = SSL_CTX_set_cipher_list(AS_SSL(m_context), PREFERRED_CIPHERS);
+  if (res != 1) {
+    throw std::runtime_error("SSL_CTX_set_cipher_list failed");
+  }
+}
+
+Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
+               const size_t nconn, const Protocol type, std::string_view cert,
+               std::string_view key)
+  : Client(delegate, device, nconn, type)
+{
+  int err = 0;
   /*
    * Load certificate and private key files, and check consistency.
    */
@@ -64,14 +78,6 @@ Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
    */
   if (SSL_CTX_check_private_key(AS_SSL(m_context)) != 1) {
     throw std::runtime_error("SSL_CTX_check_private_key failed");
-  }
-  /*
-   * Use AES ciphers.
-   */
-  const char* const PREFERRED_CIPHERS = "HIGH:!aNULL:!PSK:!SRP:!MD5:!RC4:!3DES";
-  int res = SSL_CTX_set_cipher_list(AS_SSL(m_context), PREFERRED_CIPHERS);
-  if (res != 1) {
-    throw std::runtime_error("SSL_CTX_set_cipher_list failed");
   }
 }
 
