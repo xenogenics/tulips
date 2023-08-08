@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
@@ -111,6 +112,10 @@ try {
   signal(SIGINT, signal_handler);
   signal(SIGALRM, alarm_handler);
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create the transport FIFOs
    */
   tulips_fifo_t client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
@@ -137,7 +142,7 @@ try {
    * Initialize the client.
    */
   defaults::ClientDelegate client_delegate;
-  Client client(client_delegate, client_dev, 1);
+  Client client(client_delegate, logger, client_dev, 1);
   /*
    * Open a connection.
    */
@@ -147,7 +152,7 @@ try {
    * Initialize the server
    */
   defaults::ServerDelegate server_delegate;
-  Server server(server_delegate, server_dev, 1);
+  Server server(server_delegate, logger, server_dev, 1);
   server.listen(1234, nullptr);
   /*
    * Set the alarm

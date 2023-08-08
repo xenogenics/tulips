@@ -9,6 +9,7 @@
 #endif
 #include <tulips/stack/tcpv4/Processor.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <list>
 #include <map>
@@ -22,7 +23,8 @@ class Client
   , public stack::tcpv4::EventHandler
 {
 public:
-  Client(Delegate& dlg, transport::Device& device, const size_t nconn);
+  Client(Delegate& dlg, system::Logger& log, transport::Device& device,
+         const size_t nconn);
   ~Client() override = default;
 
   /**
@@ -140,6 +142,7 @@ private:
                    uint8_t* const sdata, uint32_t& slen) override;
 
   Delegate& m_delegate;
+  system::Logger& m_log;
   transport::Device& m_dev;
   size_t m_nconn;
   stack::ethernet::Producer m_ethto;

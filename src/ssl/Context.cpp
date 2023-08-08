@@ -67,8 +67,10 @@ errorToString(SSL* ssl, const int err)
  * SSL context.
  */
 
-Context::Context(SSL_CTX* ctx, const size_t buflen, void* cookie)
-  : bin(bio::allocate(buflen))
+Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
+                 void* cookie)
+  : log(log)
+  , bin(bio::allocate(buflen))
   , bout(bio::allocate(buflen))
   , ssl(SSL_new(ctx))
   , state(State::Closed)
@@ -94,14 +96,14 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
    * Process an abort request.
    */
   if (r == Action::Abort) {
-    SSL_LOG("aborting connection");
+    log.debug("SSLCTX", "aborting connection");
     return Action::Abort;
   }
   /*
    * Process a close request.
    */
   if (r == Action::Close) {
-    SSL_LOG("closing connection");
+    log.debug("SSLCTX", "closing connection");
     /*
      * Call SSL_shutdown, repeat if necessary.
      */
@@ -114,7 +116,7 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
      */
     if (e < 0) {
       if (SSL_get_error(ssl, e) != SSL_ERROR_WANT_READ) {
-        SSL_LOG("SSL_shutdown error: " << ssl::errorToString(ssl, e));
+        log.error("SSLCTX", "SSL_shutdown error: ", ssl::errorToString(ssl, e));
         return Action::Abort;
       }
       /*
@@ -123,7 +125,7 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
       state = State::Shutdown;
       return flush(alen, sdata, slen);
     }
-    SSL_LOG("SSL_shutdown error, aborting connection");
+    log.error("SSLCTX", "SSL_shutdown error, aborting connection");
     return Action::Abort;
   }
   /*

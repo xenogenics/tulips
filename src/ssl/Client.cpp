@@ -5,22 +5,18 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#ifdef CLIENT_VERBOSE
-#define CLIENT_LOG(__args) LOG("SSLCLI", __args)
-#else
-#define CLIENT_LOG(...) ((void)0)
-#endif
-
 namespace tulips::ssl {
 
-Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
-               const size_t nconn, const Protocol type)
+Client::Client(interface::Client::Delegate& delegate, system::Logger& log,
+               transport::Device& device, const size_t nconn,
+               const Protocol type)
   : m_delegate(delegate)
+  , m_log(log)
   , m_dev(device)
-  , m_client(*this, device, nconn)
+  , m_client(*this, log, device, nconn)
   , m_context(nullptr)
 {
-  CLIENT_LOG("protocol: " << ssl::toString(type));
+  m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
   /*
    * Initialize the SSL library.
    */
@@ -47,10 +43,10 @@ Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
   }
 }
 
-Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
-               const size_t nconn, const Protocol type, std::string_view cert,
-               std::string_view key)
-  : Client(delegate, device, nconn, type)
+Client::Client(interface::Client::Delegate& delegate, system::Logger& log,
+               transport::Device& device, const size_t nconn,
+               const Protocol type, std::string_view cert, std::string_view key)
+  : Client(delegate, log, device, nconn, type)
 {
   int err = 0;
   /*
@@ -62,7 +58,7 @@ Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_certificate_file failed");
   }
-  CLIENT_LOG("using certificate: " << cert);
+  m_log.info("SSLCLI", "using certificate: ", cert);
   /*
    * Indicate the key file to be used.
    */
@@ -72,7 +68,7 @@ Client::Client(interface::Client::Delegate& delegate, transport::Device& device,
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_PrivateKey_file failed");
   }
-  CLIENT_LOG("using key: " << key);
+  m_log.info("SSLCLI", "using key: ", key);
   /*
    * Make sure the key and certificate file match.
    */
@@ -124,17 +120,18 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       int e = SSL_connect(c.ssl);
       switch (e) {
         case 0: {
-          CLIENT_LOG("connect error");
+          m_log.error("SSLCLI", "connect error");
           return Status::ProtocolError;
         }
         case 1: {
-          CLIENT_LOG("SSL_connect successful");
+          m_log.debug("SSLCLI", "SSL_connect successful");
           c.state = Context::State::Ready;
           return Status::Ok;
         }
         default: {
           if (SSL_get_error(c.ssl, e) != SSL_ERROR_WANT_READ) {
-            CLIENT_LOG("connect error: " << ssl::errorToString(c.ssl, e));
+            auto error = ssl::errorToString(c.ssl, e);
+            m_log.error("SSLCLI", "connect error: ", error);
             return Status::ProtocolError;
           }
           Status res = flush(id, cookie);
@@ -222,16 +219,17 @@ Client::close(const ID id)
    */
   switch (e) {
     case 0: {
-      CLIENT_LOG("SSL shutdown sent");
+      m_log.debug("SSLCLI", "SSL shutdown sent");
       flush(id, cookie);
       return Status::OperationInProgress;
     }
     case 1: {
-      CLIENT_LOG("shutdown completed");
+      m_log.debug("SSLCLI", "shutdown completed");
       return m_client.close(id);
     }
     default: {
-      CLIENT_LOG("SSL_shutdown error: " << ssl::errorToString(c.ssl, e));
+      auto error = ssl::errorToString(c.ssl, e);
+      m_log.error("SSLCLI", "SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
   }
@@ -288,7 +286,7 @@ void*
 Client::onConnected(ID const& id, void* const cookie, uint8_t& opts)
 {
   void* user = m_delegate.onConnected(id, cookie, opts);
-  auto* c = new Context(AS_SSL(m_context), m_dev.mss(), user);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
   c->state = Context::State::Connect;
   return c;
 }

@@ -1,21 +1,15 @@
 #include <tulips/api/Server.h>
-#include <tulips/system/Utils.h>
 #include <arpa/inet.h>
-
-#ifdef SERVER_VERBOSE
-#define SERVER_LOG(__args) LOG("SERVER", __args)
-#else
-#define SERVER_LOG(...) ((void)0)
-#endif
 
 namespace tulips {
 
 using namespace stack;
 
-Server::Server(Delegate& delegate, transport::Device& device,
-               const size_t nconn)
+Server::Server(Delegate& delegate, system::Logger& log,
+               transport::Device& device, const size_t nconn)
   : m_delegate(delegate)
-  , m_ethto(device, device.address())
+  , m_log(log)
+  , m_ethto(log, device, device.address())
   , m_ip4to(m_ethto, device.ip())
 #ifdef TULIPS_ENABLE_ARP
   , m_arp(m_ethto, m_ip4to)
@@ -83,11 +77,9 @@ Status
 Server::close(const ID id)
 {
   Status res = m_tcp.close(id);
-#ifdef SERVER_VERBOSE
   if (res == Status::Ok) {
-    SERVER_LOG("closing connection " << id);
+    m_log.debug("APISRV", "closing connection ", id);
   }
-#endif
   return res;
 }
 
@@ -116,7 +108,7 @@ Server::onConnected(tcpv4::Connection& c)
   uint8_t opts = 0;
   void* srvdata = m_cookies[c.localPort()];
   void* appdata = m_delegate.onConnected(c.id(), srvdata, opts);
-  SERVER_LOG("connection " << c.id() << " connected");
+  m_log.debug("APISRV", "connection ", c.id(), " connected");
   c.setCookie(appdata);
   c.setOptions(opts);
 }
@@ -139,7 +131,7 @@ void
 Server::onClosed(tcpv4::Connection& c)
 {
   m_delegate.onClosed(c.id(), c.cookie());
-  SERVER_LOG("connection " << c.id() << " closed");
+  m_log.debug("APISRV", "connection ", c.id(), " closed");
   c.setCookie(nullptr);
 }
 

@@ -73,6 +73,10 @@ int
 run(Options const& options, transport::Device& base_device)
 {
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create an PCAP device
    */
   transport::pcap::Device* pcap_device = nullptr;
@@ -108,11 +112,11 @@ run(Options const& options, transport::Device& base_device)
    */
   interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(delegate, *device, 1,
+    client = new tulips::ssl::Client(delegate, logger, *device, 1,
                                      tulips::ssl::Protocol::TLS,
                                      options.sslCert(), options.sslKey());
   } else {
-    client = new tulips::Client(delegate, *device, 1);
+    client = new tulips::Client(delegate, logger, *device, 1);
   }
   /*
    * Set the CPU affinity.
@@ -347,6 +351,10 @@ int
 run(Options const& options, transport::Device& base_device)
 {
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create an PCAP device
    */
   transport::pcap::Device* pcap_device = nullptr;
@@ -378,11 +386,12 @@ run(Options const& options, transport::Device& base_device)
    */
   interface::Server* server = nullptr;
   if (options.withSSL()) {
-    server = new tulips::ssl::Server(delegate, *device, options.connections(),
-                                     tulips::ssl::Protocol::TLS,
-                                     options.sslCert(), options.sslKey());
+    server = new tulips::ssl::Server(
+      delegate, logger, *device, options.connections(),
+      tulips::ssl::Protocol::TLS, options.sslCert(), options.sslKey());
   } else {
-    server = new tulips::Server(delegate, *device, options.connections());
+    server =
+      new tulips::Server(delegate, logger, *device, options.connections());
   }
   /*
    * Listen to the local ports.

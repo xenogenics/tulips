@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/api/Defaults.h>
 #include <tulips/ssl/Client.h>
 #include <tulips/ssl/Server.h>
@@ -58,6 +59,10 @@ try {
   Options opts(cmd);
   cmd.parse(argc, argv);
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create the transport FIFOs
    */
   tulips_fifo_t cfifo = TULIPS_FIFO_DEFAULT_VALUE;
@@ -87,7 +92,7 @@ try {
    * Initialize the client.
    */
   defaults::ClientDelegate client_delegate;
-  ssl::Client client(client_delegate, cdev, 1, ssl::Protocol::TLS,
+  ssl::Client client(client_delegate, logger, cdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   /*
    * Open a connection.
@@ -98,7 +103,7 @@ try {
    * Initialize the server
    */
   ServerDelegate server_delegate;
-  ssl::Server server(server_delegate, sdev, 1, ssl::Protocol::TLS,
+  ssl::Server server(server_delegate, logger, sdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   server.listen(1234, nullptr);
   /*

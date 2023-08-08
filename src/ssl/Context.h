@@ -4,15 +4,11 @@
 #include <tulips/api/Action.h>
 #include <tulips/api/Interface.h>
 #include <tulips/ssl/Protocol.h>
-#include <tulips/system/Utils.h>
+#include <tulips/system/Logger.h>
 #include <string>
 #include <openssl/ssl.h>
 
-#ifdef SSL_VERBOSE
-#define SSL_LOG(__args) LOG("SSL", __args) // NOLINT
-#else
-#define SSL_LOG(...)
-#endif
+#define LOG(_l, ...) m_log(system::Logger::Level::_l, "SSLCLI", __VA_ARGS__)
 
 #define AS_SSL(__c) (reinterpret_cast<SSL_CTX*>(__c))
 
@@ -41,7 +37,8 @@ struct Context
     Shutdown
   };
 
-  Context(SSL_CTX* ctx, const size_t buflen, void* cookie = nullptr);
+  Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
+          void* cookie = nullptr);
   ~Context();
 
   /**
@@ -111,7 +108,7 @@ struct Context
         if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
           break;
         }
-        SSL_LOG("SSL_read error: " << errorToString(ssl, ret));
+        log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
         return Action::Abort;
       }
       /*
@@ -123,10 +120,10 @@ struct Context
           if (SSL_shutdown(ssl) != 1) {
             return Action::Abort;
           }
-          SSL_LOG("SSL_shutdown received");
+          log.debug("SSLCTX", "SSL_shutdown received");
           break;
         }
-        SSL_LOG("SSL_read error: " << errorToString(ssl, ret));
+        log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
         return Action::Abort;
       }
       /*
@@ -171,11 +168,11 @@ struct Context
         int e = SSL_connect(ssl);
         switch (e) {
           case 0: {
-            SSL_LOG("SSL_connect error, controlled shutdown");
+            log.debug("SSLCTX", "SSL_connect error, controlled shutdown");
             return Action::Abort;
           }
           case 1: {
-            SSL_LOG("SSL_connect successful");
+            log.debug("SSLCTX", "SSL_connect successful");
             state = State::Ready;
             return flush(alen, sdata, slen);
           }
@@ -183,7 +180,7 @@ struct Context
             if (SSL_get_error(ssl, e) == SSL_ERROR_WANT_READ) {
               return flush(alen, sdata, slen);
             }
-            SSL_LOG("SSL_connect error: " << errorToString(ssl, e));
+            log.error("SSLCTX", "SSL_connect error: ", errorToString(ssl, e));
             return Action::Abort;
           }
         }
@@ -198,11 +195,11 @@ struct Context
         int e = SSL_accept(ssl);
         switch (e) {
           case 0: {
-            SSL_LOG("SSL_accept error: " << errorToString(ssl, e));
+            log.error("SSLCTX", "SSL_accept error: ", errorToString(ssl, e));
             return Action::Abort;
           }
           case 1: {
-            SSL_LOG("SSL_accept successful");
+            log.debug("SSLCTX", "SSL_accept successful");
             state = State::Ready;
             return flush(alen, sdata, slen);
           }
@@ -210,7 +207,7 @@ struct Context
             if (SSL_get_error(ssl, e) == SSL_ERROR_WANT_READ) {
               return flush(alen, sdata, slen);
             }
-            SSL_LOG("SSL_accept error: " << errorToString(ssl, e));
+            log.error("SSLCTX", "SSL_accept error: ", errorToString(ssl, e));
             return Action::Abort;
           }
         }
@@ -234,7 +231,7 @@ struct Context
             if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
               break;
             }
-            SSL_LOG("SSL_read error: " << errorToString(ssl, ret));
+            log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
             return Action::Abort;
           }
           /*
@@ -246,10 +243,10 @@ struct Context
               if (SSL_shutdown(ssl) != 1) {
                 return Action::Abort;
               }
-              SSL_LOG("SSL_shutdown received");
+              log.debug("SSLCTX", "SSL_shutdown received");
               break;
             }
-            SSL_LOG("SSL_read error: " << errorToString(ssl, ret));
+            log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
             return Action::Abort;
           }
           /*
@@ -306,6 +303,7 @@ struct Context
    */
   Action flush(const uint32_t alen, uint8_t* const sdata, uint32_t& slen);
 
+  system::Logger& log;
   BIO* bin;
   BIO* bout;
   SSL* ssl;

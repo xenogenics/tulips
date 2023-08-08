@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/api/Defaults.h>
 #include <tulips/fifo/fifo.h>
 #include <tulips/ssl/Client.h>
@@ -43,7 +44,8 @@ class SSL_OneClient : public ::testing::Test
 {
 public:
   SSL_OneClient()
-    : m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
+    : m_logger(system::Logger::Level::Trace)
+    , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
     , m_client_ip4(10, 1, 0, 1)
     , m_server_ip4(10, 1, 0, 2)
@@ -140,12 +142,12 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new ssl::Client(m_client_delegate, *m_client_pcap, 1,
+    m_client = new ssl::Client(m_client_delegate, m_logger, *m_client_pcap, 1,
                                tulips::ssl::Protocol::TLS, certFile, keyFile);
     /*
      * Create the server.
      */
-    m_server = new ssl::Server(m_server_delegate, *m_server_pcap, 1,
+    m_server = new ssl::Server(m_server_delegate, m_logger, *m_server_pcap, 1,
                                tulips::ssl::Protocol::TLS, certFile, keyFile);
   }
 
@@ -168,6 +170,7 @@ protected:
     delete m_server_ldev;
   }
 
+  system::ConsoleLogger m_logger;
   ethernet::Address m_client_adr;
   ethernet::Address m_server_adr;
   ipv4::Address m_client_ip4;

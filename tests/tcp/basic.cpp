@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Processor.h>
@@ -186,7 +187,8 @@ class TCP_Basic : public ::testing::Test
 {
 public:
   TCP_Basic()
-    : m_client_fifo(nullptr)
+    : m_logger(system::Logger::Level::Trace)
+    , m_client_fifo(nullptr)
     , m_server_fifo(nullptr)
     , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
@@ -247,8 +249,8 @@ protected:
      * Client stack
      */
     m_client_evt = new Client(client_n + ".log");
-    m_client_eth_prod =
-      new ethernet::Producer(*m_client_pcap, m_client_pcap->address());
+    m_client_eth_prod = new ethernet::Producer(m_logger, *m_client_pcap,
+                                               m_client_pcap->address());
     m_client_ip4_prod = new ipv4::Producer(*m_client_eth_prod, m_client_ip4);
     m_client_eth_proc = new ethernet::Processor(m_client_pcap->address());
     m_client_ip4_proc = new ipv4::Processor(m_client_ip4);
@@ -269,8 +271,8 @@ protected:
      * Server stack
      */
     m_server_evt = new Server(server_n + ".log");
-    m_server_eth_prod =
-      new ethernet::Producer(*m_server_pcap, m_server_pcap->address());
+    m_server_eth_prod = new ethernet::Producer(m_logger, *m_server_pcap,
+                                               m_server_pcap->address());
     m_server_ip4_prod = new ipv4::Producer(*m_server_eth_prod, m_server_ip4);
     m_server_eth_proc = new ethernet::Processor(m_server_pcap->address());
     m_server_ip4_proc = new ipv4::Processor(m_server_ip4);
@@ -330,6 +332,7 @@ protected:
     tulips_fifo_destroy(&m_server_fifo);
   }
 
+  system::ConsoleLogger m_logger;
   tulips_fifo_t m_client_fifo;
   tulips_fifo_t m_server_fifo;
   ethernet::Address m_client_adr;

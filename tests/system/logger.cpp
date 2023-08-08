@@ -14,7 +14,10 @@ public:
   std::string_view data() const { return m_data; }
 
 protected:
-  void flush(UNUSED std::string&& value) override { m_data = value; }
+  void flush(UNUSED std::string_view hdr, std::string&& value) override
+  {
+    m_data = value;
+  }
 
 private:
   std::string m_data;
@@ -25,29 +28,29 @@ private:
 TEST(Logger, BackToBack)
 {
   Logger logger(Logger::Level::Debug);
-  logger.log(Logger::Level::Debug, "Hello, ", "world!");
+  logger.debug("TEST", "Hello, ", "world!");
   ASSERT_EQ(logger.data(), "Hello, world!");
-  logger.log(Logger::Level::Debug, "Hello, ", "world!");
+  logger.debug("TEST", "Hello, ", "world!");
   ASSERT_EQ(logger.data(), "Hello, world!");
 }
 
 TEST(Logger, SameLevel)
 {
   Logger logger(Logger::Level::Debug);
-  logger.log(Logger::Level::Debug, "Hello, ", "world!");
+  logger.debug("TEST", "Hello, ", "world!");
   ASSERT_EQ(logger.data(), "Hello, world!");
 }
 
 TEST(Logger, HigherLevel)
 {
   Logger logger(Logger::Level::Debug);
-  logger.log(Logger::Level::Trace, "Hello, ", "world!");
+  logger.trace("TEST", "Hello, ", "world!");
   ASSERT_TRUE(logger.data().empty());
 }
 
 TEST(Logger, LowerLevel)
 {
   Logger logger(Logger::Level::Debug);
-  logger.log(Logger::Level::Info, "Hello, ", "world!");
+  logger.info("TEST", "Hello, ", "world!");
   ASSERT_EQ(logger.data(), "Hello, world!");
 }

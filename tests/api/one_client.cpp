@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
@@ -56,7 +57,8 @@ class API_OneClient : public ::testing::Test
 {
 public:
   API_OneClient()
-    : m_client_fifo(nullptr)
+    : m_logger(system::Logger::Level::Trace)
+    , m_client_fifo(nullptr)
     , m_server_fifo(nullptr)
     , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
@@ -110,11 +112,11 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new Client(m_client_delegate, *m_client_pcap, 2);
+    m_client = new Client(m_client_delegate, m_logger, *m_client_pcap, 2);
     /*
      * Create the server.
      */
-    m_server = new Server(m_server_delegate, *m_server_pcap, 2);
+    m_server = new Server(m_server_delegate, m_logger, *m_server_pcap, 2);
   }
 
   void TearDown() override
@@ -141,6 +143,7 @@ protected:
     tulips_fifo_destroy(&m_server_fifo);
   }
 
+  system::ConsoleLogger m_logger;
   tulips_fifo_t m_client_fifo;
   tulips_fifo_t m_server_fifo;
   ethernet::Address m_client_adr;

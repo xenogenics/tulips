@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/stack/arp/Processor.h>
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
@@ -16,6 +17,10 @@ TEST(ICMP_Basic, RequestResponse)
 {
   std::string tname(
     ::testing::UnitTest::GetInstance()->current_test_info()->name());
+  /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
   /*
    * Create the transport FIFOs
    */
@@ -47,7 +52,7 @@ TEST(ICMP_Basic, RequestResponse)
   /*
    * Client stack
    */
-  ethernet::Producer client_eth_prod(client_pcap, client.address());
+  ethernet::Producer client_eth_prod(logger, client_pcap, client.address());
   ipv4::Producer client_ip4_prod(client_eth_prod, ipv4::Address(10, 1, 0, 1));
   ethernet::Processor client_eth_proc(client.address());
   ipv4::Processor client_ip4_proc(ipv4::Address(10, 1, 0, 1));
@@ -66,7 +71,7 @@ TEST(ICMP_Basic, RequestResponse)
   /*
    * Server stack
    */
-  ethernet::Producer server_eth_prod(server_pcap, server.address());
+  ethernet::Producer server_eth_prod(logger, server_pcap, server.address());
   ipv4::Producer server_ip4_prod(server_eth_prod, ipv4::Address(10, 1, 0, 2));
   ethernet::Processor server_eth_proc(server.address());
   ipv4::Processor server_ip4_proc(ipv4::Address(10, 1, 0, 2));

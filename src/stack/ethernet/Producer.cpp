@@ -1,17 +1,11 @@
 #include <tulips/stack/ethernet/Producer.h>
-#include <tulips/system/Utils.h>
 #include <arpa/inet.h>
-
-#ifdef ETH_VERBOSE
-#define ETH_LOG(__args) LOG("ETH", __args)
-#else
-#define ETH_LOG(...) ((void)0)
-#endif
 
 namespace tulips::stack::ethernet {
 
-Producer::Producer(transport::Producer& prod, Address const& ha)
-  : m_prod(prod), m_hostAddress(ha), m_destAddress(), m_type(0)
+Producer::Producer(system::Logger& log, transport::Producer& prod,
+                   Address const& ha)
+  : m_log(log), m_prod(prod), m_hostAddress(ha), m_destAddress(), m_type(0)
 {}
 
 Status
@@ -42,7 +36,7 @@ Producer::prepare(uint8_t*& buf)
 Status
 Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
 {
-  ETH_LOG("committing frame: " << len << "B");
+  m_log.debug("ETH", "committing frame: ", len, "B");
   return m_prod.commit(len + HEADER_LEN, buf - HEADER_LEN, mss);
 }
 
