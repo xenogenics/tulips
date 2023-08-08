@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.5)
 
 #
 # Policies
@@ -84,7 +84,7 @@ option(TULIPS_DISABLE_CHECKSUM_CHECK "Disable checksum checks" OFF)
 option(TULIPS_HAS_HW_TSO "Target has hardware TSO" OFF)
 option(TULIPS_IGNORE_INCOMPATIBLE_HW "Ignore when HW lacks features (e.g. TCO)" OFF)
 
-message(STATUS "[ TULIPS OPTIONS BEGIN ]")
+message(STATUS "[ TULIPS COMPILATION OPTIONS ]")
 
 if (TULIPS_TESTS)
 
@@ -125,6 +125,14 @@ if (TULIPS_DEBUG)
 else (TULIPS_DEBUG)
   message(STATUS "Debug logs: OFF")
 endif (TULIPS_DEBUG)
+
+if (TULIPS_ENABLE_SANITIZERS)
+  message(STATUS "Sanitizers: ON")
+else (TULIPS_ENABLE_SANITIZERS)
+  message(STATUS "Sanitizers: OFF")
+endif (TULIPS_ENABLE_SANITIZERS)
+
+message(STATUS "[ TULIPS LOGGING OPTIONS ]")
 
 if (TULIPS_DEBUG AND TULIPS_DEBUG_TRANSPORT)
   add_definitions(-DTRANS_VERBOSE)
@@ -176,6 +184,8 @@ if (TULIPS_DEBUG AND TULIPS_DEBUG_SERVER)
   message(STATUS "API server logs: ON")
 endif (TULIPS_DEBUG AND TULIPS_DEBUG_SERVER)
 
+message(STATUS "[ TULIPS OFFLOAD OPTIONS ]")
+
 if (TULIPS_HAS_HW_CHECKSUM)
   add_definitions(-DTULIPS_HAS_HW_CHECKSUM)
   message(STATUS "Hardware checksum: ON")
@@ -204,6 +214,8 @@ else (TULIPS_IGNORE_INCOMPATIBLE_HW)
   message(STATUS "Ignore incompatible hardware: OFF")
 endif (TULIPS_IGNORE_INCOMPATIBLE_HW)
 
+message(STATUS "[ TULIPS PROTOCOL OPTIONS ]")
+
 if (TULIPS_ENABLE_ARP)
   add_definitions(-DTULIPS_ENABLE_ARP)
   add_definitions(-DTULIPS_ENABLE_RAW)
@@ -230,13 +242,6 @@ if (TULIPS_ENABLE_LATENCY_MONITOR)
 else (TULIPS_ENABLE_LATENCY_MONITOR)
   message(STATUS "Client latency monitor: OFF")
 endif (TULIPS_ENABLE_LATENCY_MONITOR)
-
-
-if (TULIPS_ENABLE_SANITIZERS)
-  message(STATUS "Sanitizers: ON")
-else (TULIPS_ENABLE_SANITIZERS)
-  message(STATUS "Sanitizers: OFF")
-endif (TULIPS_ENABLE_SANITIZERS)
 
 message(STATUS "[ TULIPS OPTIONS END ]")
 

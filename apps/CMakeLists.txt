@@ -17,7 +17,7 @@ if (LibIBVerbs_FOUND)
     tulips_transport_stubs_static
     tulips_fifo_static
     PUBLIC
-    ${LibIBVerbs_LIBRARIES})
+    ${LibIBVerbs_LINK_LIBRARIES})
 endif (LibIBVerbs_FOUND)
 
 if (LibIBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
@@ -32,8 +32,8 @@ if (LibIBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
     tulips_stack_static
     tulips_system_static
     PUBLIC
-    ${LibIBVerbs_LIBRARIES}
-    ${LibPCAP_LIBRARIES})
+    ${LibIBVerbs_LINK_LIBRARIES}
+    ${LibPCAP_LINK_LIBRARIES})
 endif (LibIBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
 
 if (NOT TULIPS_HAS_HW_CHECKSUM OR TULIPS_DISABLE_CHECKSUM_CHECK)
