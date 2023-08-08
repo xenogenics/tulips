@@ -1,12 +1,10 @@
-#include "tulips/stack/ARP.h"
+#include <tulips/stack/ARP.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/arp/Processor.h>
 #include <tulips/system/Utils.h>
 #include <arpa/inet.h>
 
-#define ARP_VERBOSE 1
-
-#if ARP_VERBOSE
+#ifdef ARP_VERBOSE
 #define ARP_LOG(__args) LOG("ARP", __args)
 #else
 #define ARP_LOG(...) ((void)0)
@@ -130,6 +128,8 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       /*
        * Register the reply in the table.
        */
+      ARP_LOG("+ " << INARP->sipaddr.toString() << " -> "
+                   << INARP->shwaddr.toString());
       update(INARP->sipaddr, INARP->shwaddr);
       break;
     }
@@ -188,6 +188,7 @@ Processor::discover(ipv4::Address const& destipaddr)
   /*
    * Commit the message, return
    */
+  ARP_LOG("? " << OUTARP->dipaddr.toString());
   return m_eth.commit(HEADER_LEN, outdata);
 }
 

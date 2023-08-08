@@ -1,11 +1,10 @@
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Utils.h>
 #include <tulips/transport/list/Device.h>
 #include <cstdlib>
 #include <ctime>
 
-#define LIST_VERBOSE 0
-
-#if LIST_VERBOSE
+#ifdef TRANS_VERBOSE
 #define LIST_LOG(__args) LOG("LIST", __args)
 #else
 #define LIST_LOG(...) ((void)0)

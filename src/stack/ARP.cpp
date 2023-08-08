@@ -1,9 +1,7 @@
 #include <tulips/stack/ARP.h>
 #include <tulips/system/Utils.h>
 
-#define ARP_VERBOSE 1
-
-#if ARP_VERBOSE
+#ifdef ARP_VERBOSE
 #define ARP_LOG(__args) LOG("ARP", __args)
 #else
 #define ARP_LOG(...)

@@ -120,13 +120,13 @@ Port::Port(std::string_view ifn, const size_t width, const size_t depth)
   /*
    * Print some device information.
    */
-  DPDK_LOG("driver: " << dev_info.driver_name);
-  DPDK_LOG("name: " << rte_dev_name(dev_info.device));
-  DPDK_LOG("hardware address: " << m_address.toString());
-  DPDK_LOG("MTU: " << m_mtu);
-  DPDK_LOG("queues: " << nqus);
-  DPDK_LOG("descriptors: " << ndsc);
-  DPDK_LOG("buffer length: " << buflen);
+  ENA_LOG("driver: " << dev_info.driver_name);
+  ENA_LOG("name: " << rte_dev_name(dev_info.device));
+  ENA_LOG("hardware address: " << m_address.toString());
+  ENA_LOG("MTU: " << m_mtu);
+  ENA_LOG("queues: " << nqus);
+  ENA_LOG("descriptors: " << ndsc);
+  ENA_LOG("buffer length: " << buflen);
   /*
    * Configure the device.
    */
@@ -346,16 +346,16 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
    */
   m_retasz = dev_info.reta_size;
   size_t retasz_log2 = log2(m_retasz);
-#ifdef DPDK_VERBOSE
+#ifdef TRANS_VERBOSE
   std::ostringstream oss;
   for (size_t i = 0; i < m_hlen; i += 1) {
     oss << std::setw(2) << std::setfill('0') << std::hex << uint16_t(m_hkey[i]);
     oss << ((i + 1 < m_hlen) ? ":" : "");
   }
 #endif
-  DPDK_LOG("hash key length: " << size_t(rss_conf.rss_key_len));
-  DPDK_LOG("hash key: " << oss.str());
-  DPDK_LOG("reta size log2: " << retasz_log2);
+  ENA_LOG("hash key length: " << size_t(rss_conf.rss_key_len));
+  ENA_LOG("hash key: " << oss.str());
+  ENA_LOG("reta size log2: " << retasz_log2);
   /*
    * Reset the RETA to point all entries to the 0th queue.
    */

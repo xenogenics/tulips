@@ -8,9 +8,7 @@
 #include <string>
 #include <openssl/ssl.h>
 
-#define SSL_VERBOSE 1
-
-#if SSL_VERBOSE
+#ifdef SSL_VERBOSE
 #define SSL_LOG(__args) LOG("SSL", __args) // NOLINT
 #else
 #define SSL_LOG(...)

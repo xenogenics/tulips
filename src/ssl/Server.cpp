@@ -3,9 +3,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#define SERVER_VERBOSE 1
-
-#if SERVER_VERBOSE
+#ifdef SERVER_VERBOSE
 #define SERVER_LOG(__args) LOG("SSLSRV", __args)
 #else
 #define SERVER_LOG(...) ((void)0)

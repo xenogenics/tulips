@@ -3,21 +3,19 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/sysctl.h>
-#include <sys/types.h>
 #include <net/if.h>
+#include <netinet/in.h>
+#include <stdint.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
 #include <net/if_dl.h>
 #include <net/route.h>
-#include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <stdint.h>
-#include <ifaddrs.h>
+#include <sys/ioctl.h>
+#include <sys/sysctl.h>
 
-#define TRANS_VERBOSE 1
-
-#if TRANS_VERBOSE
+#ifdef TRANS_VERBOSE
 #define TRANS_LOG(__args) LOG("TRANS", __args)
 #else
 #define TRANS_LOG(...) ((void)0)
@@ -95,8 +93,8 @@ getDefaultRoute(tulips::stack::ipv4::Address const& ip,
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(std::string_view ifn,
-                        stack::ethernet::Address& hwaddr, uint32_t& mtu)
+getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
+                        uint32_t& mtu)
 {
   /*
    * Get the ethernet address.

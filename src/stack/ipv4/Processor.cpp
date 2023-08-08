@@ -1,15 +1,14 @@
-#include "tulips/stack/IPv4.h"
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/ipv4/Processor.h>
 #ifdef TULIPS_ENABLE_ICMP
 #include <tulips/stack/icmpv4/Processor.h>
 #endif
 #include <tulips/stack/tcpv4/Processor.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Utils.h>
 #include <arpa/inet.h>
 
-#define IP_VERBOSE 0
-
-#if IP_VERBOSE
+#ifdef IP_VERBOSE
 #define IP_LOG(__args) LOG("IP", __args)
 #else
 #define IP_LOG(...) ((void)0)
@@ -99,7 +98,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
     ++m_stats.chkerr;
     IP_LOG("data length: " << len);
     IP_LOG("invalid checksum: 0x" << std::hex << sum << std::dec);
-#if IP_VERBOSE
+#ifdef IP_VERBOSE
     utils::hexdump(data, len, std::cout);
 #endif
     return Status::CorruptedData;

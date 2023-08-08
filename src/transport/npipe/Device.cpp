@@ -9,10 +9,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define NPIPE_VERBOSE 0
 #define NPIPE_HEXDUMP 0
 
-#if NPIPE_VERBOSE
+#ifdef TRANS_VERBOSE
 #define NPIPE_LOG(__args) LOG("NPIPE", __args)
 #else
 #define NPIPE_LOG(...) ((void)0)
@@ -40,9 +39,9 @@ Device::Device(stack::ethernet::Address const& address,
   memset(m_read_buffer, 0, BUFLEN);
   memset(m_write_buffer, 0, BUFLEN);
   signal(SIGPIPE, SIG_IGN);
-  LOG("NPIPE", "IP address: " << ip.toString());
-  LOG("NPIPE", "netmask: " << nm.toString());
-  LOG("NPIPE", "default router: " << dr.toString());
+  NPIPE_LOG("IP address: " << ip.toString());
+  NPIPE_LOG("netmask: " << nm.toString());
+  NPIPE_LOG("default router: " << dr.toString());
 }
 
 Status
@@ -61,21 +60,21 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    * Send the length first.
    */
   if (!write(sizeof(len), (uint8_t*)&len)) {
-    LOG("NPIPE", "write error: " << strerror(errno));
+    NPIPE_LOG("write error: " << strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
    * Send the payload.
    */
   if (!write(len, buf)) {
-    LOG("NPIPE", "write error: " << strerror(errno));
+    NPIPE_LOG("write error: " << strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
    * Success.
    */
-  NPIPE_LOG("commit " << len << "B => " << ret << "B");
-#if NPIPE_VERBOSE && NPIPE_HEXDUMP
+  NPIPE_LOG("commit " << len << "B");
+#if defined(TRANS_VERBOSE) && NPIPE_HEXDUMP
   stack::utils::hexdump(buf, len, std::cout);
 #endif
   return Status::Ok;
@@ -94,11 +93,11 @@ Device::poll(Processor& proc)
     if (errno == EAGAIN) {
       return Status::NoDataAvailable;
     }
-    LOG("NPIPE", "read error: " << strerror(errno));
+    NPIPE_LOG("read error: " << strerror(errno));
     return Status::HardwareLinkLost;
   }
   if (ret == 0) {
-    LOG("NPIPE", "read error: " << strerror(errno));
+    NPIPE_LOG("read error: " << strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
@@ -107,7 +106,7 @@ Device::poll(Processor& proc)
   do {
     ret = ::read(read_fd, m_read_buffer, len);
     if (ret == 0 || (ret < 0 && errno != EAGAIN)) {
-      LOG("NPIPE", "read error: " << strerror(errno));
+      NPIPE_LOG("read error: " << strerror(errno));
       return Status::HardwareLinkLost;
     }
   } while (ret < 0);
@@ -115,7 +114,7 @@ Device::poll(Processor& proc)
    * Process the data.
    */
   NPIPE_LOG("process " << len << "B");
-#if NPIPE_VERBOSE && NPIPE_HEXDUMP
+#if defined(TRANS_VERBOSE) && NPIPE_HEXDUMP
   stack::utils::hexdump(m_read_buffer, len, std::cout);
 #endif
   return proc.process(len, m_read_buffer);
@@ -157,8 +156,8 @@ ClientDevice::ClientDevice(stack::ethernet::Address const& address,
   /*
    * Print some information.
    */
-  LOG("NPIPE", "read fifo: " << rf);
-  LOG("NPIPE", "write fifo: " << wf);
+  NPIPE_LOG("read fifo: " << rf);
+  NPIPE_LOG("write fifo: " << wf);
   /*
    * Open the FIFOs.
    */
@@ -192,8 +191,8 @@ ServerDevice::ServerDevice(stack::ethernet::Address const& address,
   /*
    * Print some information.
    */
-  LOG("NPIPE", "read fifo: " << rf);
-  LOG("NPIPE", "write fifo: " << wf);
+  NPIPE_LOG("read fifo: " << rf);
+  NPIPE_LOG("write fifo: " << wf);
   /*
    * Erase the FIFOs
    */

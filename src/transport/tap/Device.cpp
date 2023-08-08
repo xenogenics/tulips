@@ -1,28 +1,26 @@
-#include <tulips/transport/tap/Device.h>
-#include <tulips/transport/Utils.h>
 #include <tulips/system/Utils.h>
+#include <tulips/transport/Utils.h>
+#include <tulips/transport/tap/Device.h>
 #include <cerrno>
 #include <stdexcept>
+#include <fcntl.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <time.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
-#include <net/if.h>
+#include <time.h>
 #include <net/if_tun.h>
 #include <net/if_types.h>
 #include <net/route.h>
-#include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <sys/ioctl.h>
 
-#define TAP_VERBOSE 1
 #define TAP_HEXDUMP 0
 
-#if TAP_VERBOSE
+#ifdef TRANS_VERBOSE
 #define TAP_LOG(__args) LOG("TAP", __args)
 #else
 #define TAP_LOG(...) ((void)0)
@@ -127,7 +125,7 @@ Device::poll(Processor& proc)
    * Call on the processor.
    */
   TAP_LOG("processing " << ret << "B");
-#if TAP_VERBOSE && TAP_HEXDUMP
+#if defined(TRANS_VERBOSE) && TAP_HEXDUMP
   stack::utils::hexdump(buffer, ret, std::cout);
 #endif
   return proc.process(ret, buffer);
@@ -184,7 +182,7 @@ Status
 Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
 {
   TAP_LOG("sending " << len << "B");
-#if TAP_VERBOSE && TAP_HEXDUMP
+#if defined(TRANS_VERBOSE) && TAP_HEXDUMP
   stack::utils::hexdump(buf, len, std::cout);
 #endif
   /*

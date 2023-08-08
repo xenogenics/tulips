@@ -5,14 +5,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define BUFFER_VERBOSE 1
-
-#if BUFFER_VERBOSE
-#define BUFFER_LOG(__args) LOG("BUFFER", __args)
-#else
-#define BUFFER_LOG(...)
-#endif
-
 namespace {
 
 static size_t
@@ -28,7 +20,6 @@ namespace tulips::system {
 CircularBuffer::CircularBuffer(const size_t hint) : m_read(), m_write()
 {
   auto size = fit(hint);
-  BUFFER_LOG("create with length: " << size << "B");
   /*
    * Create a temporary file.
    */
@@ -60,7 +51,10 @@ CircularBuffer::CircularBuffer(const size_t hint) : m_read(), m_write()
   /*
    * Map the file in the region.
    */
-  auto map_flags = MAP_FIXED | MAP_SHARED | MAP_POPULATE;
+  auto map_flags = MAP_FIXED | MAP_SHARED;
+#ifdef __linux__
+  map_flags |= MAP_POPULATE;
+#endif
   void* a = mmap(data, size, PROT_READ | PROT_WRITE, map_flags, fd, 0);
   if (a != data) {
     throw std::runtime_error("cannot map file to anonymous mapping");

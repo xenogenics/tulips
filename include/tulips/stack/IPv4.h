@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/system/Compiler.h>
+#include <array>
 #include <cstdint>
 #include <string>
 
@@ -19,6 +20,7 @@ public:
 
   Address();
   Address(Address const& o);
+  Address(std::array<uint8_t, 4> const& v);
   Address(const uint8_t a0, const uint8_t a1, const uint8_t a2,
           const uint8_t a3);
   Address(std::string_view dst);

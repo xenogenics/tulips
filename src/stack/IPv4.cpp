@@ -4,6 +4,7 @@
 #endif
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Utils.h>
+#include <cstring>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
@@ -24,6 +25,13 @@ Address::Address() : m_data(0) {}
 Address::Address(Address const& o) : m_data()
 {
   m_data = o.m_data;
+}
+
+Address::Address(std::array<uint8_t, 4> const& v) : m_data()
+{
+  Alias alias;
+  memcpy(alias.mbr, v.data(), v.size());
+  m_data = alias.raw;
 }
 
 Address::Address(const uint8_t a0, const uint8_t a1, const uint8_t a2,
