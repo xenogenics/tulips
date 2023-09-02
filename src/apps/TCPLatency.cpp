@@ -100,7 +100,8 @@ run(Options const& options, transport::Device& base_device)
    * Check if we should wrap the device in a PCAP device.
    */
   if (options.dumpPackets()) {
-    pcap_device = new transport::pcap::Device(base_device, "client.pcap");
+    pcap_device =
+      new transport::pcap::Device(logger, base_device, "client.pcap");
     device = pcap_device;
   }
   /*
@@ -378,7 +379,8 @@ run(Options const& options, transport::Device& base_device)
    * Check if we should wrap the device in a PCAP device.
    */
   if (options.dumpPackets()) {
-    pcap_device = new transport::pcap::Device(base_device, "server.pcap");
+    pcap_device =
+      new transport::pcap::Device(logger, base_device, "server.pcap");
     device = pcap_device;
   }
   /*

@@ -281,7 +281,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    */
   if (INTCP->offset > 5) {
     uint16_t nbytes = (INTCP->offset - 5) << 2;
-    Options::parse(*e, nbytes, data);
+    Options::parse(m_log, *e, nbytes, data);
   }
   /*
    * Send the SYN/ACK
@@ -346,8 +346,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
   /*
    * Print the flow information if requested.
    */
-  TCP_FLOW("-> " << getFlags(*INTCP) << " len:" << plen << " seq:" << seqno
-                 << " ack:" << ackno << " seg:" << e.m_segidx);
+  m_log.debug("FLOW", "-> ", getFlags(*INTCP), " len:", plen, " seq:", seqno,
+              " ack:", ackno, " seg:", size_t(e.m_segidx));
   /*
    * Check if the sequence number of the incoming packet is what we're
    * expecting next, except if we are expecting a SYN/ACK.
@@ -525,7 +525,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          */
         if (INTCP->offset > 5) {
           uint16_t nbytes = (INTCP->offset - 5) << 2;
-          Options::parse(e, nbytes, data);
+          Options::parse(m_log, e, nbytes, data);
         }
         /*
          * Send the connected event.

@@ -101,15 +101,17 @@ TEST(ARP_Basic, RequestResponse)
   ipv4::Address server_ip4(10, 1, 0, 2);
   ipv4::Address bcast(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  transport::shm::Device client(client_adr, client_ip4, bcast, nmask,
+  transport::shm::Device client(logger, client_adr, client_ip4, bcast, nmask,
                                 server_fifo, client_fifo);
-  transport::shm::Device server(server_adr, server_ip4, bcast, nmask,
+  transport::shm::Device server(logger, server_adr, server_ip4, bcast, nmask,
                                 client_fifo, server_fifo);
   /*
    * Build the pcap device
    */
-  transport::pcap::Device client_pcap(client, "arp_client_" + tname + ".pcap");
-  transport::pcap::Device server_pcap(server, "arp_server_" + tname + ".pcap");
+  transport::pcap::Device client_pcap(logger, client,
+                                      "arp_client_" + tname + ".pcap");
+  transport::pcap::Device server_pcap(logger, server,
+                                      "arp_server_" + tname + ".pcap");
   /*
    * Client stack
    */

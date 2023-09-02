@@ -241,11 +241,9 @@ Client::close(const ID id)
    * Close the connection.
    */
   Status res = m_tcp.close(c.conn);
-#ifdef CLIENT_VERBOSE
   if (res == Status::Ok) {
     m_log.debug("APICLI", "closing connection ", id);
   }
-#endif
   return res;
 }
 

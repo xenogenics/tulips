@@ -59,18 +59,6 @@ endif (TULIPS_TESTS)
 #
 
 option(TULIPS_TESTS "Enable tests" OFF)
-option(TULIPS_DEBUG "Enable debug logs" OFF)
-
-option(TULIPS_DEBUG_TRANSPORT "Enable transport logs" OFF)
-option(TULIPS_DEBUG_ETH "Enable ETH logs" OFF)
-option(TULIPS_DEBUG_ARP "Enable ARP logs" OFF)
-option(TULIPS_DEBUG_IP "Enable IP logs" OFF)
-option(TULIPS_DEBUG_TCP "Enable TCP logs" OFF)
-option(TULIPS_DEBUG_TCP_FLOW "Enable TCP flow logs" OFF)
-option(TULIPS_DEBUG_TCP_OPTIONS "Enable TCP options logs" OFF)
-option(TULIPS_DEBUG_SSL "Enable SSL logs" OFF)
-option(TULIPS_DEBUG_CLIENT "Enable API client logs" OFF)
-option(TULIPS_DEBUG_SERVER "Enable API server logs" OFF)
 
 option(TULIPS_ENABLE_ARP "Enable ARP support" OFF)
 option(TULIPS_ENABLE_ICMP "Enable ICMP support" OFF)
@@ -87,18 +75,6 @@ option(TULIPS_IGNORE_INCOMPATIBLE_HW "Ignore when HW lacks features (e.g. TCO)" 
 message(STATUS "[ TULIPS COMPILATION OPTIONS ]")
 
 if (TULIPS_TESTS)
-
-  set(TULIPS_DEBUG ON)
-  set(TULIPS_DEBUG_TRANSPORT ON)
-  set(TULIPS_DEBUG_ETH ON)
-  set(TULIPS_DEBUG_ARP ON)
-  set(TULIPS_DEBUG_IP ON)
-  set(TULIPS_DEBUG_TCP ON)
-  set(TULIPS_DEBUG_TCP_FLOW ON)
-  set(TULIPS_DEBUG_TCP_OPTIONS ON)
-  set(TULIPS_DEBUG_SSL ON)
-  set(TULIPS_DEBUG_CLIENT ON)
-  set(TULIPS_DEBUG_SERVER ON)
 
   set(TULIPS_ENABLE_ARP ON)
   set(TULIPS_ENABLE_ICMP ON)
@@ -119,70 +95,11 @@ if (TULIPS_TESTS)
 
 endif (TULIPS_TESTS)
 
-if (TULIPS_DEBUG)
-  add_definitions(-DTULIPS_DEBUG)
-  message(STATUS "Debug logs: ON")
-else (TULIPS_DEBUG)
-  message(STATUS "Debug logs: OFF")
-endif (TULIPS_DEBUG)
-
 if (TULIPS_ENABLE_SANITIZERS)
   message(STATUS "Sanitizers: ON")
 else (TULIPS_ENABLE_SANITIZERS)
   message(STATUS "Sanitizers: OFF")
 endif (TULIPS_ENABLE_SANITIZERS)
-
-message(STATUS "[ TULIPS LOGGING OPTIONS ]")
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_TRANSPORT)
-  add_definitions(-DTRANS_VERBOSE)
-  message(STATUS "Transport logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_TRANSPORT)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_ETH)
-  add_definitions(-DETH_VERBOSE)
-  message(STATUS "Ethernet logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_ETH)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_ARP)
-  add_definitions(-DARP_VERBOSE)
-  message(STATUS "ARP logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_ARP)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_IP)
-  add_definitions(-DIP_VERBOSE)
-  message(STATUS "IP logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_IP)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_TCP)
-  add_definitions(-DTCP_VERBOSE)
-  message(STATUS "TCP logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_TCP)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_TCP_FLOW)
-  add_definitions(-DTCP_FLOW_VERBOSE)
-  message(STATUS "TCP flow logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_TCP_FLOW)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_TCP_OPTIONS)
-  add_definitions(-DTCP_OPT_VERBOSE)
-  message(STATUS "TCP options logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_TCP_OPTIONS)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_SSL)
-  add_definitions(-DSSL_VERBOSE)
-  message(STATUS "SSL logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_SSL)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_CLIENT)
-  add_definitions(-DCLIENT_VERBOSE)
-  message(STATUS "API client logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_CLIENT)
-
-if (TULIPS_DEBUG AND TULIPS_DEBUG_SERVER)
-  add_definitions(-DSERVER_VERBOSE)
-  message(STATUS "API server logs: ON")
-endif (TULIPS_DEBUG AND TULIPS_DEBUG_SERVER)
 
 message(STATUS "[ TULIPS OFFLOAD OPTIONS ]")
 

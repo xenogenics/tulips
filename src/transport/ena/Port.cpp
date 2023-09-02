@@ -1,7 +1,6 @@
 #include <tulips/stack/Utils.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
-#include <tulips/transport/ena/Utils.h>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -27,8 +26,10 @@ namespace tulips::transport::ena {
 
 AbstractionLayer Port::s_eal;
 
-Port::Port(std::string_view ifn, const size_t width, const size_t depth)
-  : m_depth(depth)
+Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
+           const size_t depth)
+  : m_log(log)
+  , m_depth(depth)
   , m_portid(0xFFFF)
   , m_address()
   , m_mtu()
@@ -120,13 +121,13 @@ Port::Port(std::string_view ifn, const size_t width, const size_t depth)
   /*
    * Print some device information.
    */
-  ENA_LOG("driver: " << dev_info.driver_name);
-  ENA_LOG("name: " << rte_dev_name(dev_info.device));
-  ENA_LOG("hardware address: " << m_address.toString());
-  ENA_LOG("MTU: " << m_mtu);
-  ENA_LOG("queues: " << nqus);
-  ENA_LOG("descriptors: " << ndsc);
-  ENA_LOG("buffer length: " << buflen);
+  log.debug("ENA", "driver: ", dev_info.driver_name);
+  log.debug("ENA", "name: ", rte_dev_name(dev_info.device));
+  log.debug("ENA", "hardware address: ", m_address.toString());
+  log.debug("ENA", "MTU: ", m_mtu);
+  log.debug("ENA", "queues: ", nqus);
+  log.debug("ENA", "descriptors: ", ndsc);
+  log.debug("ENA", "buffer length: ", buflen);
   /*
    * Configure the device.
    */
@@ -204,8 +205,8 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(m_portid, qid, m_depth, m_retasz, m_hlen, m_hkey,
-                              m_address, m_mtu, txpool, ip, dr, nm);
+  auto* dev = new ena::Device(m_log, m_portid, qid, m_depth, m_retasz, m_hlen,
+                              m_hkey, m_address, m_mtu, txpool, ip, dr, nm);
   /*
    * Add the device queue to the raw processor.
    */
@@ -346,16 +347,11 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
    */
   m_retasz = dev_info.reta_size;
   size_t retasz_log2 = log2(m_retasz);
-#ifdef TRANS_VERBOSE
-  std::ostringstream oss;
-  for (size_t i = 0; i < m_hlen; i += 1) {
-    oss << std::setw(2) << std::setfill('0') << std::hex << uint16_t(m_hkey[i]);
-    oss << ((i + 1 < m_hlen) ? ":" : "");
-  }
+  m_log.debug("ENA", "hash key length: ", size_t(rss_conf.rss_key_len));
+#if 0
+  m_log.debug("ENA", "hash key: ", oss.str());
 #endif
-  ENA_LOG("hash key length: " << size_t(rss_conf.rss_key_len));
-  ENA_LOG("hash key: " << oss.str());
-  ENA_LOG("reta size log2: " << retasz_log2);
+  m_log.debug("ENA", "reta size log2: ", retasz_log2);
   /*
    * Reset the RETA to point all entries to the 0th queue.
    */

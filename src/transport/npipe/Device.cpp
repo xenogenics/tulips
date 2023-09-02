@@ -9,24 +9,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define NPIPE_HEXDUMP 0
-
-#ifdef TRANS_VERBOSE
-#define NPIPE_LOG(__args) LOG("NPIPE", __args)
-#else
-#define NPIPE_LOG(...) ((void)0)
-#endif
-
 namespace tulips::transport::npipe {
 
 /*
  * Base device class
  */
 
-Device::Device(stack::ethernet::Address const& address,
+Device::Device(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr)
-  : transport::Device("npipe")
+  : transport::Device(log, "npipe")
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -39,15 +31,15 @@ Device::Device(stack::ethernet::Address const& address,
   memset(m_read_buffer, 0, BUFLEN);
   memset(m_write_buffer, 0, BUFLEN);
   signal(SIGPIPE, SIG_IGN);
-  NPIPE_LOG("IP address: " << ip.toString());
-  NPIPE_LOG("netmask: " << nm.toString());
-  NPIPE_LOG("default router: " << dr.toString());
+  m_log.debug("NPIPE", "IP address: ", ip.toString());
+  m_log.debug("NPIPE", "netmask: ", nm.toString());
+  m_log.debug("NPIPE", "default router: ", dr.toString());
 }
 
 Status
 Device::prepare(uint8_t*& buf)
 {
-  NPIPE_LOG("prepare " << mss() << "B");
+  m_log.debug("NPIPE", "prepare ", mss(), "B");
   buf = m_write_buffer;
   return Status::Ok;
 }
@@ -60,23 +52,20 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    * Send the length first.
    */
   if (!write(sizeof(len), (uint8_t*)&len)) {
-    NPIPE_LOG("write error: " << strerror(errno));
+    m_log.debug("NPIPE", "write error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
    * Send the payload.
    */
   if (!write(len, buf)) {
-    NPIPE_LOG("write error: " << strerror(errno));
+    m_log.debug("NPIPE", "write error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
    * Success.
    */
-  NPIPE_LOG("commit " << len << "B");
-#if defined(TRANS_VERBOSE) && NPIPE_HEXDUMP
-  stack::utils::hexdump(buf, len, std::cout);
-#endif
+  m_log.debug("NPIPE", "commit ", len, "B");
   return Status::Ok;
 }
 
@@ -93,11 +82,11 @@ Device::poll(Processor& proc)
     if (errno == EAGAIN) {
       return Status::NoDataAvailable;
     }
-    NPIPE_LOG("read error: " << strerror(errno));
+    m_log.debug("NPIPE", "read error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   if (ret == 0) {
-    NPIPE_LOG("read error: " << strerror(errno));
+    m_log.debug("NPIPE", "read error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
@@ -106,17 +95,14 @@ Device::poll(Processor& proc)
   do {
     ret = ::read(read_fd, m_read_buffer, len);
     if (ret == 0 || (ret < 0 && errno != EAGAIN)) {
-      NPIPE_LOG("read error: " << strerror(errno));
+      m_log.debug("NPIPE", "read error: ", strerror(errno));
       return Status::HardwareLinkLost;
     }
   } while (ret < 0);
   /*
    * Process the data.
    */
-  NPIPE_LOG("process " << len << "B");
-#if defined(TRANS_VERBOSE) && NPIPE_HEXDUMP
-  stack::utils::hexdump(m_read_buffer, len, std::cout);
-#endif
+  m_log.debug("NPIPE", "process ", len, "B");
   return proc.process(len, m_read_buffer);
 }
 
@@ -146,18 +132,19 @@ Device::waitForInput(const uint64_t ns)
  * Client device class
  */
 
-ClientDevice::ClientDevice(stack::ethernet::Address const& address,
+ClientDevice::ClientDevice(system::Logger& log,
+                           stack::ethernet::Address const& address,
                            stack::ipv4::Address const& ip,
                            stack::ipv4::Address const& nm,
                            stack::ipv4::Address const& dr, std::string_view rf,
                            std::string_view wf)
-  : Device(address, ip, nm, dr)
+  : Device(log, address, ip, nm, dr)
 {
   /*
    * Print some information.
    */
-  NPIPE_LOG("read fifo: " << rf);
-  NPIPE_LOG("write fifo: " << wf);
+  m_log.debug("NPIPE", "read fifo: ", rf);
+  m_log.debug("NPIPE", "write fifo: ", wf);
   /*
    * Open the FIFOs.
    */
@@ -180,19 +167,20 @@ ClientDevice::ClientDevice(stack::ethernet::Address const& address,
  * Server device class
  */
 
-ServerDevice::ServerDevice(stack::ethernet::Address const& address,
+ServerDevice::ServerDevice(system::Logger& log,
+                           stack::ethernet::Address const& address,
                            stack::ipv4::Address const& ip,
                            stack::ipv4::Address const& nm,
                            stack::ipv4::Address const& dr, std::string_view rf,
                            std::string_view wf)
-  : Device(address, ip, nm, dr), m_rf(rf), m_wf(wf)
+  : Device(log, address, ip, nm, dr), m_rf(rf), m_wf(wf)
 {
   int ret = 0;
   /*
    * Print some information.
    */
-  NPIPE_LOG("read fifo: " << rf);
-  NPIPE_LOG("write fifo: " << wf);
+  m_log.debug("NPIPE", "read fifo: ", rf);
+  m_log.debug("NPIPE", "write fifo: ", wf);
   /*
    * Erase the FIFOs
    */

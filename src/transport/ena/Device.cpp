@@ -3,7 +3,6 @@
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/ena/Device.h>
-#include <tulips/transport/ena/Utils.h>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -26,13 +25,13 @@
 
 namespace tulips::transport::ena {
 
-Device::Device(const uint16_t port_id, const uint16_t queue_id,
-               const size_t nbuf, const size_t htsz, const size_t hlen,
-               const uint8_t* const hkey,
+Device::Device(system::Logger& log, const uint16_t port_id,
+               const uint16_t queue_id, const size_t nbuf, const size_t htsz,
+               const size_t hlen, const uint8_t* const hkey,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
-  : transport::Device("ena_" + std::to_string(queue_id))
+  : transport::Device(log, "ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
   , m_nbuf(nbuf)
@@ -50,11 +49,11 @@ Device::Device(const uint16_t port_id, const uint16_t queue_id,
   , m_mtu(mtu)
 {
   if (m_queueid > 0) {
-    ENA_LOG("port id: " << port_id);
-    ENA_LOG("queue id: " << queue_id);
-    ENA_LOG("ip address: " << m_ip.toString());
-    ENA_LOG("netmask: " << m_nm.toString());
-    ENA_LOG("router address: " << m_dr.toString());
+    log.debug("ENA", "port id: ", port_id);
+    log.debug("ENA", "queue id: ", queue_id);
+    log.debug("ENA", "ip address: ", m_ip.toString());
+    log.debug("ENA", "netmask: ", m_nm.toString());
+    log.debug("ENA", "router address: ", m_dr.toString());
   }
 }
 
@@ -87,20 +86,20 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   auto ret = rte_eth_dev_rss_reta_query(m_portid, m_reta, m_htsz);
   if (ret < 0) {
-    ENA_LOG("failed to query the RETA");
+    m_log.debug("ENA", "failed to query the RETA");
     return Status::HardwareError;
   }
   /*
    * Print the existing configuration for the index.
    */
   auto preq = m_reta[slot].reta[eidx];
-  ENA_LOG("LS hash/index: " << std::hex << hash << std::dec << "/" << indx);
-  ENA_LOG("RETA queue: " << preq);
+  m_log.debug("ENA", "LS hash/index: ", std::hex, hash, std::dec, "/", indx);
+  m_log.debug("ENA", "RETA queue: ", preq);
   /*
    * Check the configuration.
    */
   if (preq != 0 && preq != m_queueid) {
-    ENA_LOG("RETA queue allocation conflict: " << preq);
+    m_log.debug("ENA", "RETA queue allocation conflict: ", preq);
     return Status::HardwareError;
   }
   /*
@@ -120,7 +119,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
   if (ret != 0) {
-    ENA_LOG("failed to update the RETA");
+    m_log.debug("ENA", "failed to update the RETA");
     return Status::HardwareError;
   }
   /*
@@ -190,7 +189,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_IP_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
-          ENA_LOG("invalid IP checksum, dropping packet");
+          m_log.debug("ENA", "invalid IP checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -203,7 +202,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_L4_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
-          ENA_LOG("invalid L4 checksum, dropping packet");
+          m_log.debug("ENA", "invalid L4 checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -308,7 +307,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    ENA_LOG("packet preparation for TX failed: " << rte_strerror(rte_errno));
+    m_log.debug("ENA",
+                "packet preparation for TX failed: ", rte_strerror(rte_errno));
     return Status::HardwareError;
   }
   /*
@@ -316,7 +316,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    ENA_LOG("sending packet failed");
+    m_log.debug("ENA", "sending packet failed");
     return Status::HardwareError;
   }
   /*

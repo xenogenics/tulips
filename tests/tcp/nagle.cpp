@@ -232,19 +232,21 @@ protected:
     /*
      * Build the devices.
      */
-    m_client = new transport::shm::Device(m_client_adr, m_client_ip4, m_bcast,
-                                          m_nmask, m_server_fifo,
+    m_client = new transport::shm::Device(m_logger, m_client_adr, m_client_ip4,
+                                          m_bcast, m_nmask, m_server_fifo,
                                           m_client_fifo);
-    m_server = new transport::shm::Device(m_server_adr, m_server_ip4, m_bcast,
-                                          m_nmask, m_client_fifo,
+    m_server = new transport::shm::Device(m_logger, m_server_adr, m_server_ip4,
+                                          m_bcast, m_nmask, m_client_fifo,
                                           m_server_fifo);
     /*
      * Build the pcap device
      */
     std::string client_n = "tcp_nagle.client." + tname;
     std::string server_n = "tcp_nagle.server." + tname;
-    m_client_pcap = new transport::pcap::Device(*m_client, client_n + ".pcap");
-    m_server_pcap = new transport::pcap::Device(*m_server, server_n + ".pcap");
+    m_client_pcap =
+      new transport::pcap::Device(m_logger, *m_client, client_n + ".pcap");
+    m_server_pcap =
+      new transport::pcap::Device(m_logger, *m_server, server_n + ".pcap");
     /*
      * Client stack
      */

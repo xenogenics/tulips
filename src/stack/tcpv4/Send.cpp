@@ -167,8 +167,8 @@ Processor::send(Connection& e)
   /*
    * Print the flow information.
    */
-  TCP_FLOW("<- " << getFlags(*OUTTCP) << " len:0 seq:" << e.m_snd_nxt
-                 << " ack:" << e.m_rcv_nxt);
+  m_log.debug("FLOW", "<- ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
+              " ack:", e.m_rcv_nxt);
   /*
    * Update IP and Ethernet attributes
    */
@@ -218,10 +218,9 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   /*
    * Print the flow information.
    */
-  TCP_FLOW((rexmit ? "<+ " : "<- ")
-           << getFlags(*OUTTCP) << " len:" << s.m_len << " seq:" << s.m_seq
-           << " ack:" << e.m_rcv_nxt << " seg:" << e.id(s)
-           << " lvl:" << e.level());
+  m_log.debug("FLOW", (rexmit ? "<+ " : "<- "), getFlags(*OUTTCP),
+              " len:", s.m_len, " seq:", s.m_seq, " ack:", e.m_rcv_nxt,
+              " seg:", e.id(s), " lvl:", e.level());
   /*
    * Update the connection and segment state.
    */

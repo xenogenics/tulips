@@ -2,6 +2,7 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/AbstractionLayer.h>
 #include <tulips/transport/ena/RawProcessor.h>
@@ -16,7 +17,8 @@ namespace tulips::transport::ena {
 class Port
 {
 public:
-  Port(std::string_view ifn, const size_t width, const size_t depth);
+  Port(system::Logger& log, std::string_view ifn, const size_t width,
+       const size_t depth);
   ~Port();
 
   void run();
@@ -41,6 +43,7 @@ private:
                 stack::ipv4::Address::ANY);
   }
 
+  system::Logger& m_log;
   size_t m_depth;
   uint16_t m_portid;
   stack::ethernet::Address m_address;

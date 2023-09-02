@@ -1,4 +1,5 @@
 #include <tulips/stack/Utils.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/Utils.h>
 #include <array>
@@ -12,16 +13,11 @@
 #include <netinet/ether.h>
 #include <sys/ioctl.h>
 
-#ifdef TRANS_VERBOSE
-#define TRANS_LOG(__args) LOG("TRANS", __args)
-#else
-#define TRANS_LOG(...) ((void)0)
-#endif
-
 namespace {
 
 bool
-getGateway(std::string_view dev, tulips::stack::ipv4::Address& gw)
+getGateway(tulips::system::Logger& log, std::string_view dev,
+           tulips::stack::ipv4::Address& gw)
 {
   std::ifstream route("/proc/net/route");
   int line_count = 0;
@@ -29,7 +25,7 @@ getGateway(std::string_view dev, tulips::stack::ipv4::Address& gw)
    * Check if the file is valid.
    */
   if (route.bad()) {
-    TRANS_LOG("cannot open /proc/net/route");
+    log.debug("TRANS", "cannot open /proc/net/route");
     return false;
   }
   /*
@@ -74,8 +70,8 @@ getGateway(std::string_view dev, tulips::stack::ipv4::Address& gw)
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
-                        uint32_t& mtu)
+getInterfaceInformation(UNUSED system::Logger& log, std::string_view ifn,
+                        stack::ethernet::Address& hwaddr, uint32_t& mtu)
 {
   /*
    * Check that the interface name is valid.
@@ -117,7 +113,8 @@ getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
 }
 
 bool
-getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
+getInterfaceInformation(system::Logger& log, std::string_view ifn,
+                        stack::ipv4::Address& ipaddr,
                         stack::ipv4::Address& ntmask,
                         stack::ipv4::Address& draddr)
 {
@@ -156,7 +153,7 @@ getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
   /*
    * Get the IPv4 gateway address.
    */
-  if (!getGateway(ifn, draddr)) {
+  if (!getGateway(log, ifn, draddr)) {
     close(sock);
     return false;
   }

@@ -134,10 +134,10 @@ try {
   ipv4::Address server_ip4(10, 1, 0, 2);
   ipv4::Address bcast(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  transport::shm::Device client_dev(client_adr, client_ip4, bcast, nmask,
-                                    server_fifo, client_fifo);
-  transport::shm::Device server_dev(server_adr, server_ip4, bcast, nmask,
-                                    client_fifo, server_fifo);
+  transport::shm::Device client_dev(logger, client_adr, client_ip4, bcast,
+                                    nmask, server_fifo, client_fifo);
+  transport::shm::Device server_dev(logger, server_adr, server_ip4, bcast,
+                                    nmask, client_fifo, server_fifo);
   /*
    * Initialize the client.
    */

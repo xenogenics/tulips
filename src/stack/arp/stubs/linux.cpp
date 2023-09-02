@@ -24,7 +24,7 @@ send_dummy(system::Logger& log, const int sock, ipv4::Address const& ip)
   if (sendto(sock, nullptr, 0, 0, (struct sockaddr*)&servaddr,
              sizeof(servaddr)) < 0) {
     close(sock);
-    LOG("ARP", "cannot send dummy data: " << strerror(errno));
+    log.debug("ARP", "cannot send dummy data: ", strerror(errno));
     return false;
   }
   return true;
@@ -51,7 +51,7 @@ read_address(system::Logger& log, const int sock, std::string_view eth,
    */
   log.debug("ARP", "reading kernel ARP entry");
   if (ioctl(sock, SIOCGARP, (caddr_t)&areq) == -1) {
-    LOG("ARP", "SIOCGARP: " << strerror(errno));
+    log.debug("ARP", "SIOCGARP: ", strerror(errno));
     return false;
   }
   memcpy(hw.data(), areq.arp_ha.sa_data, ETHER_ADDR_LEN);
@@ -69,18 +69,18 @@ lookup(system::Logger& log, std::string_view eth,
   log.debug("ARP", "creating datagram socket");
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
-    LOG("ARP", "cannot create datagram socket: " << strerror(errno));
+    log.debug("ARP", "cannot create datagram socket: ", strerror(errno));
     return false;
   }
   /*
    * Send some dummy data over.
    */
   if (read_address(log, sock, eth, ip, hw)) {
-    LOG("ARP", "got " << hw.toString() << " for " << ip.toString());
+    log.debug("ARP", "got ", hw.toString(), " for ", ip.toString());
     close(sock);
     return true;
   }
-  log.debug("ARP", "ARP entry missing for " << ip.toString());
+  log.debug("ARP", "ARP entry missing for ", ip.toString());
   /*
    * Wait one millisecond for the ARP request to complete.
    */
@@ -90,7 +90,7 @@ lookup(system::Logger& log, std::string_view eth,
    * Try to read the address again.
    */
   bool ret = read_address(log, sock, eth, ip, hw);
-  LOG("ARP", "got " << hw.toString() << " for " << ip.toString());
+  log.debug("ARP", "got ", hw.toString(), " for ", ip.toString());
   close(sock);
   return ret;
 }

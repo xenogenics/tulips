@@ -3,12 +3,6 @@
 #include <tulips/system/Utils.h>
 #include <tulips/transport/pcap/Device.h>
 
-#ifdef TRANS_VERBOSE
-#define PCAP_LOG(__args) LOG("PCAP", __args)
-#else
-#define PCAP_LOG(...) ((void)0)
-#endif
-
 namespace tulips::transport::pcap {
 
 static void
@@ -43,8 +37,9 @@ writePacket(pcap_dumper_t* const dumper, const void* const data,
   pcap_dump((u_char*)dumper, &hdr, (const u_char*)data);
 }
 
-Device::Device(transport::Device& device, std::string_view name)
-  : transport::Device("pcap")
+Device::Device(system::Logger& log, transport::Device& device,
+               std::string_view name)
+  : transport::Device(log, "pcap")
   , m_device(device)
   , m_pcap(nullptr)
   , m_pcap_dumper(nullptr)
@@ -56,7 +51,7 @@ Device::Device(transport::Device& device, std::string_view name)
    * lead to invalid packets in the resulting PCAP.
    */
   uint32_t snaplen = m_device.mss() + stack::ethernet::HEADER_LEN;
-  PCAP_LOG("snaplen is " << snaplen);
+  m_log.debug("PCAP", "snaplen is ", snaplen);
 #ifdef __OpenBSD__
   m_pcap = pcap_open_dead(DLT_EN10MB, snaplen);
 #else

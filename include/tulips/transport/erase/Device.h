@@ -7,7 +7,7 @@ namespace tulips::transport::erase {
 class Device : public transport::Device
 {
 public:
-  Device(transport::Device& device);
+  Device(system::Logger& log, transport::Device& device);
 
   std::string_view name() const override { return m_device.name(); }
 

@@ -93,9 +93,6 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
     ++m_stats.chkerr;
     m_log.debug("IP4", "data length: ", len);
     m_log.debug("IP4", "invalid checksum: 0x", std::hex, sum, std::dec);
-#ifdef IP_VERBOSE
-    utils::hexdump(data, len, std::cout);
-#endif
     return Status::CorruptedData;
   }
 #endif

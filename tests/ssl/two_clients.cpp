@@ -236,19 +236,21 @@ protected:
     /*
      * Build the devices.
      */
-    m_client_ldev = new transport::list::Device(m_client_adr, m_client_ip4,
-                                                bcast, nmask, 9014,
-                                                m_server_list, m_client_list);
-    m_server_ldev = new transport::list::Device(m_server_adr, m_server_ip4,
-                                                bcast, nmask, 9014,
-                                                m_client_list, m_server_list);
+    m_client_ldev =
+      new transport::list::Device(m_logger, m_client_adr, m_client_ip4, bcast,
+                                  nmask, 9014, m_server_list, m_client_list);
+    m_server_ldev =
+      new transport::list::Device(m_logger, m_server_adr, m_server_ip4, bcast,
+                                  nmask, 9014, m_client_list, m_server_list);
     /*
      * Build the pcap device
      */
     std::string pcap_client = "api_2clients.client." + tname + ".pcap";
     std::string pcap_server = "api_2clients.server." + tname + ".pcap";
-    m_client_pcap = new transport::pcap::Device(*m_client_ldev, pcap_client);
-    m_server_pcap = new transport::pcap::Device(*m_server_ldev, pcap_server);
+    m_client_pcap =
+      new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
+    m_server_pcap =
+      new transport::pcap::Device(m_logger, *m_server_ldev, pcap_server);
     /*
      * Define the source root and the security files.
      */

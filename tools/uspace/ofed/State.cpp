@@ -2,10 +2,12 @@
 
 namespace tulips::tools::uspace::ofed {
 
-State::State(const bool pcap) : utils::State(), poller(pcap), ids() {}
+State::State(system::Logger& log, const bool pcap)
+  : utils::State(), poller(log, pcap), ids()
+{}
 
-State::State(std::string_view dev, const bool pcap)
-  : utils::State(), poller(dev, pcap), ids()
+State::State(system::Logger& log, std::string_view dev, const bool pcap)
+  : utils::State(), poller(log, dev, pcap), ids()
 {}
 
 }

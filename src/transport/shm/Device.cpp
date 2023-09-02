@@ -5,23 +5,15 @@
 #include <cstdlib>
 #include <ctime>
 
-#define SHM_HEXDUMP 0
-
-#ifdef TRANS_VERBOSE
-#define SHM_LOG(__args) LOG("SHM", __args)
-#else
-#define SHM_LOG(...) ((void)0)
-#endif
-
 constexpr const size_t RETRY_COUNT = 1;
 
 namespace tulips::transport::shm {
 
-Device::Device(stack::ethernet::Address const& address,
+Device::Device(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
                stack::ipv4::Address const& nm, tulips_fifo_t rf,
                tulips_fifo_t wf)
-  : transport::Device("shm")
+  : transport::Device(log, "shm")
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -67,10 +59,7 @@ Device::poll(Processor& proc)
   if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
     return Status::HardwareError;
   }
-  SHM_LOG("processing packet: " << packet->len << "B, " << packet);
-#if defined(TRANS_VERBOSE) && SHM_HEXDUMP
-  stack::utils::hexdump(packet->data, packet->len, std::cout);
-#endif
+  m_log.debug("SHM", "processing packet: ", packet->len, "B, ", packet);
   Status ret = proc.process(packet->len, packet->data);
   tulips_fifo_pop(read_fifo);
   return ret;
@@ -102,7 +91,7 @@ Device::wait(Processor& proc, const uint64_t ns)
   if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
     return Status::HardwareError;
   }
-  SHM_LOG("processing packet: " << packet->len << "B, " << packet);
+  m_log.debug("SHM", "processing packet: ", packet->len, "B, ", packet);
   Status ret = proc.process(packet->len, packet->data);
   tulips_fifo_pop(read_fifo);
   return ret;
@@ -116,7 +105,7 @@ Device::prepare(uint8_t*& buf)
   }
   Packet* packet = nullptr;
   tulips_fifo_prepare(write_fifo, (void**)&packet);
-  SHM_LOG("preparing packet: " << mss() << "B, " << packet);
+  m_log.debug("SHM", "preparing packet: ", mss(), "B, ", packet);
   buf = packet->data;
   return Status::Ok;
 }
@@ -126,11 +115,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
-  SHM_LOG("committing packet: " << len << "B, " << packet);
+  m_log.debug("SHM", "committing packet: ", len, "B, ", packet);
   packet->len = len;
-#if defined(TRANS_VERBOSE) && SHM_HEXDUMP
-  stack::utils::hexdump(packet->data, packet->len, std::cout);
-#endif
   tulips_fifo_commit(write_fifo);
   pthread_cond_signal(&m_cond);
   return Status::Ok;

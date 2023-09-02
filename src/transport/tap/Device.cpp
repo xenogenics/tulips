@@ -3,6 +3,7 @@
 #include <tulips/transport/tap/Device.h>
 #include <cerrno>
 #include <stdexcept>
+#include <string>
 #include <fcntl.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -18,19 +19,12 @@
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
 
-#define TAP_HEXDUMP 0
-
-#ifdef TRANS_VERBOSE
-#define TAP_LOG(__args) LOG("TAP", __args)
-#else
-#define TAP_LOG(...) ((void)0)
-#endif
-
 namespace tulips::transport::tap {
 
-Device::Device(std::string_view devname, stack::ipv4::Address const& ip,
-               stack::ipv4::Address const& nm, stack::ipv4::Address const& dr)
-  : transport::Device(devname)
+Device::Device(system::Logger& log, std::string_view devname,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
+               stack::ipv4::Address const& dr)
+  : transport::Device(log, devname)
   , m_address()
   , m_ip(ip)
   , m_dr(dr)
@@ -43,9 +37,9 @@ Device::Device(std::string_view devname, stack::ipv4::Address const& ip,
   /*
    * Open the TUN device.
    */
-  m_fd = open(("/dev/" + devname).c_str(), O_RDWR);
+  m_fd = open(("/dev/" + std::string(devname)).c_str(), O_RDWR);
   if (m_fd < 0) {
-    throw std::runtime_error("Cannot open " + devname +
+    throw std::runtime_error("Cannot open " + std::string(devname) +
                              " device: " + strerror(errno));
   }
   /*
@@ -81,11 +75,11 @@ Device::Device(std::string_view devname, stack::ipv4::Address const& ip,
   /*
    * Get the device information.
    */
-  TAP_LOG("MAC address: " << m_address.toString());
-  TAP_LOG("IP address: " << m_ip.toString());
-  TAP_LOG("IP gateway: " << m_dr.toString());
-  TAP_LOG("IP netmask: " << m_nm.toString());
-  TAP_LOG("MTU: " << m_mtu);
+  m_log.debug("TAP", "MAC address: ", m_address.toString());
+  m_log.debug("TAP", "IP address: ", m_ip.toString());
+  m_log.debug("TAP", "IP gateway: ", m_dr.toString());
+  m_log.debug("TAP", "IP netmask: ", m_nm.toString());
+  m_log.debug("TAP", "MTU: ", m_mtu);
   /*
    * Create the buffers.
    */
@@ -99,7 +93,7 @@ Device::~Device()
   ::close(m_fd);
   std::list<uint8_t*>::iterator it;
   for (it = m_buffers.begin(); it != m_buffers.end(); it++) {
-    delete[] * it;
+    delete[] *it;
   }
   m_buffers.clear();
 }
@@ -117,17 +111,14 @@ Device::poll(Processor& proc)
     if (errno == EAGAIN) {
       return Status::NoDataAvailable;
     } else {
-      TAP_LOG(strerror(errno));
+      m_log.debug("TAP", strerror(errno));
       return Status::HardwareError;
     }
   }
   /*
    * Call on the processor.
    */
-  TAP_LOG("processing " << ret << "B");
-#if defined(TRANS_VERBOSE) && TAP_HEXDUMP
-  stack::utils::hexdump(buffer, ret, std::cout);
-#endif
+  m_log.debug("TAP", "processing ", ret << "B");
   return proc.process(ret, buffer);
 }
 
@@ -155,7 +146,7 @@ Device::wait(Processor& proc, const uint64_t ns)
       return poll(proc);
     }
     default: {
-      TAP_LOG(strerror(errno));
+      m_log.debug("TAP", strerror(errno));
       return Status::HardwareError;
     }
   }
@@ -181,16 +172,13 @@ Device::prepare(uint8_t*& buf)
 Status
 Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
 {
-  TAP_LOG("sending " << len << "B");
-#if defined(TRANS_VERBOSE) && TAP_HEXDUMP
-  stack::utils::hexdump(buf, len, std::cout);
-#endif
+  m_log.debug("TAP", "sending " << len << "B");
   /*
    * Write the payload.
    */
   ssize_t res = write(m_fd, buf, len);
   if (res == -1) {
-    TAP_LOG(strerror(errno));
+    m_log.debug("TAP", strerror(errno));
     return Status::HardwareError;
   }
   m_buffers.push_back(buf);

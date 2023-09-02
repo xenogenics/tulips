@@ -2,6 +2,7 @@
 
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/pcap/Device.h>
@@ -17,7 +18,7 @@ class Poller
 public:
   using Ref = std::unique_ptr<Poller>;
 
-  Poller(transport::Device::Ref dev, const bool pcap);
+  Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap);
   Poller(Poller&&) = default;
   ~Poller();
 

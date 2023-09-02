@@ -4,8 +4,8 @@
 
 namespace tulips::transport::check {
 
-Device::Device(transport::Device& device)
-  : transport::Device("check")
+Device::Device(system::Logger& log, transport::Device& device)
+  : transport::Device(log, "check")
   , m_device(device)
   , m_proc(nullptr)
   , m_buffer(nullptr)

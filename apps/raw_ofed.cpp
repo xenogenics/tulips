@@ -106,9 +106,13 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
          const int cpuid)
 {
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create an OFED device
    */
-  ofed::Device ofed_device(ifn, 32);
+  ofed::Device ofed_device(logger, ifn, 32);
   transport::pcap::Device* pcap_device = nullptr;
   Device* device = &ofed_device;
   /*
@@ -116,9 +120,11 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
    */
   if (pcap) {
     if (sender) {
-      pcap_device = new transport::pcap::Device(ofed_device, "client.pcap");
+      pcap_device =
+        new transport::pcap::Device(logger, ofed_device, "client.pcap");
     } else {
-      pcap_device = new transport::pcap::Device(ofed_device, "server.pcap");
+      pcap_device =
+        new transport::pcap::Device(logger, ofed_device, "server.pcap");
     }
     device = pcap_device;
   }
@@ -132,8 +138,8 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
    * Processor
    */
   RawProcessor proc;
-  ethernet::Producer eth_prod(*device, device->address());
-  ethernet::Processor eth_proc(device->address());
+  ethernet::Producer eth_prod(logger, *device, device->address());
+  ethernet::Processor eth_proc(logger, device->address());
   eth_prod.setType(sizeof(counter)).setDestinationAddress(dst);
   eth_proc.setRawProcessor(proc);
   proc.setEthernetProducer(eth_prod).setEthernetProcessor(eth_proc);

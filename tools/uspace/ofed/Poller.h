@@ -1,5 +1,6 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/ofed/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <string>
@@ -10,8 +11,8 @@ namespace tulips::tools::uspace::ofed {
 class Poller
 {
 public:
-  Poller(const bool pcap);
-  Poller(std::string_view dev, const bool pcap);
+  Poller(system::Logger& log, const bool pcap);
+  Poller(system::Logger& log, std::string_view dev, const bool pcap);
   ~Poller();
 
   Status connect(stack::ipv4::Address const& ripaddr,
