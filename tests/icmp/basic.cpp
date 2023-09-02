@@ -53,7 +53,8 @@ TEST(ICMP_Basic, RequestResponse)
    * Client stack
    */
   ethernet::Producer client_eth_prod(logger, client_pcap, client.address());
-  ipv4::Producer client_ip4_prod(client_eth_prod, ipv4::Address(10, 1, 0, 1));
+  ipv4::Producer client_ip4_prod(logger, client_eth_prod,
+                                 ipv4::Address(10, 1, 0, 1));
   ethernet::Processor client_eth_proc(client.address());
   ipv4::Processor client_ip4_proc(ipv4::Address(10, 1, 0, 1));
   arp::Processor client_arp(client_eth_prod, client_ip4_prod);
@@ -72,7 +73,8 @@ TEST(ICMP_Basic, RequestResponse)
    * Server stack
    */
   ethernet::Producer server_eth_prod(logger, server_pcap, server.address());
-  ipv4::Producer server_ip4_prod(server_eth_prod, ipv4::Address(10, 1, 0, 2));
+  ipv4::Producer server_ip4_prod(logger, server_eth_prod,
+                                 ipv4::Address(10, 1, 0, 2));
   ethernet::Processor server_eth_proc(server.address());
   ipv4::Processor server_ip4_proc(ipv4::Address(10, 1, 0, 2));
   arp::Processor server_arp(server_eth_prod, server_ip4_prod);

@@ -34,7 +34,7 @@ Client::Client(Delegate& dlg, system::Logger& log, transport::Device& device,
   , m_dev(device)
   , m_nconn(nconn)
   , m_ethto(log, m_dev, device.address())
-  , m_ip4to(m_ethto, device.ip())
+  , m_ip4to(log, m_ethto, device.ip())
 #ifdef TULIPS_ENABLE_ARP
   , m_arp(m_ethto, m_ip4to)
 #endif

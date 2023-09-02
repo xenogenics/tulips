@@ -257,7 +257,8 @@ protected:
     m_client_evt = new Client(client_n + ".log");
     m_client_eth_prod = new ethernet::Producer(m_logger, *m_client_pcap,
                                                m_client_pcap->address());
-    m_client_ip4_prod = new ipv4::Producer(*m_client_eth_prod, m_client_ip4);
+    m_client_ip4_prod =
+      new ipv4::Producer(m_logger, *m_client_eth_prod, m_client_ip4);
     m_client_eth_proc = new ethernet::Processor(m_client_pcap->address());
     m_client_ip4_proc = new ipv4::Processor(m_client_ip4);
     m_client_tcp = new tcpv4::Processor(*m_client_pcap, *m_client_eth_prod,
@@ -279,7 +280,8 @@ protected:
     m_server_evt = new Server(server_n + ".log");
     m_server_eth_prod = new ethernet::Producer(m_logger, *m_server_pcap,
                                                m_server_pcap->address());
-    m_server_ip4_prod = new ipv4::Producer(*m_server_eth_prod, m_server_ip4);
+    m_server_ip4_prod =
+      new ipv4::Producer(m_logger, *m_server_eth_prod, m_server_ip4);
     m_server_eth_proc = new ethernet::Processor(m_server_pcap->address());
     m_server_ip4_proc = new ipv4::Processor(m_server_ip4);
     m_server_tcp = new tcpv4::Processor(*m_server_pcap, *m_server_eth_prod,

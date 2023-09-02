@@ -10,7 +10,7 @@ Server::Server(Delegate& delegate, system::Logger& log,
   : m_delegate(delegate)
   , m_log(log)
   , m_ethto(log, device, device.address())
-  , m_ip4to(m_ethto, device.ip())
+  , m_ip4to(log, m_ethto, device.ip())
 #ifdef TULIPS_ENABLE_ARP
   , m_arp(m_ethto, m_ip4to)
 #endif
