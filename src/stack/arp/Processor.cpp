@@ -4,12 +4,6 @@
 #include <tulips/system/Utils.h>
 #include <arpa/inet.h>
 
-#ifdef ARP_VERBOSE
-#define ARP_LOG(__args) LOG("ARP", __args)
-#else
-#define ARP_LOG(...) ((void)0)
-#endif
-
 #define INARP ((const Header*)data)
 #define OUTARP ((Header*)outdata)
 #define HEADER_LEN sizeof(Header)
@@ -22,8 +16,9 @@ namespace tulips::stack::arp {
 
 Processor::Entry::Entry() : ipaddr(), ethaddr(), time(0) {}
 
-Processor::Processor(ethernet::Producer& eth, ipv4::Producer& ip4)
-  : m_eth(eth), m_ipv4(ip4), m_table(), m_time(0), m_timer()
+Processor::Processor(system::Logger& log, ethernet::Producer& eth,
+                     ipv4::Producer& ip4)
+  : m_log(log), m_eth(eth), m_ipv4(ip4), m_table(), m_time(0), m_timer()
 {
   m_table.resize(TABLE_SIZE);
   m_timer.set(CLOCK_SECOND * 10);
@@ -43,7 +38,7 @@ Processor::run()
         continue;
       }
       if (m_time - e.time >= MAX_AGE) {
-        ARP_LOG("clearing entry for " << e.ipaddr.toString());
+        m_log.debug("ARP", "clearing entry for ", e.ipaddr.toString());
         e.ipaddr = ipv4::Address();
       }
     }
@@ -72,8 +67,8 @@ Processor::process(const uint16_t len, const uint8_t* const data)
        * Skip the request if it was not meant for us.
        */
       if (INARP->dipaddr != m_ipv4.hostAddress()) {
-        ARP_LOG("X " << INARP->dipaddr.toString() << " <> "
-                     << m_ipv4.hostAddress().toString());
+        m_log.debug("ARP", "X ", INARP->dipaddr.toString(), " <> ",
+                    m_ipv4.hostAddress().toString());
         break;
       }
       /*
@@ -109,9 +104,9 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       /*
        * Let the device know we have some data
        */
-      ARP_LOG("(" << m_eth.hostAddress().toString() << ", "
-                  << m_ipv4.hostAddress().toString() << ") -> "
-                  << INARP->shwaddr.toString());
+      m_log.debug("ARP", "(", m_eth.hostAddress().toString(), ", ",
+                  m_ipv4.hostAddress().toString(), ") -> ",
+                  INARP->shwaddr.toString());
       m_eth.commit(HEADER_LEN, outdata);
       return Status::Ok;
     }
@@ -128,8 +123,8 @@ Processor::process(const uint16_t len, const uint8_t* const data)
       /*
        * Register the reply in the table.
        */
-      ARP_LOG("+ " << INARP->sipaddr.toString() << " -> "
-                   << INARP->shwaddr.toString());
+      m_log.debug("ARP", "+ ", INARP->sipaddr.toString(), " -> ",
+                  INARP->shwaddr.toString());
       update(INARP->sipaddr, INARP->shwaddr);
       break;
     }
@@ -188,7 +183,7 @@ Processor::discover(ipv4::Address const& destipaddr)
   /*
    * Commit the message, return
    */
-  ARP_LOG("? " << OUTARP->dipaddr.toString());
+  m_log.debug("ARP", "? ", OUTARP->dipaddr.toString());
   return m_eth.commit(HEADER_LEN, outdata);
 }
 

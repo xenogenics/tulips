@@ -55,10 +55,10 @@ TEST(ICMP_Basic, RequestResponse)
   ethernet::Producer client_eth_prod(logger, client_pcap, client.address());
   ipv4::Producer client_ip4_prod(logger, client_eth_prod,
                                  ipv4::Address(10, 1, 0, 1));
-  ethernet::Processor client_eth_proc(client.address());
-  ipv4::Processor client_ip4_proc(ipv4::Address(10, 1, 0, 1));
-  arp::Processor client_arp(client_eth_prod, client_ip4_prod);
-  icmpv4::Processor client_icmp4(client_eth_prod, client_ip4_prod);
+  ethernet::Processor client_eth_proc(logger, client.address());
+  ipv4::Processor client_ip4_proc(logger, ipv4::Address(10, 1, 0, 1));
+  arp::Processor client_arp(logger, client_eth_prod, client_ip4_prod);
+  icmpv4::Processor client_icmp4(logger, client_eth_prod, client_ip4_prod);
   /*
    * Bind the stack
    */
@@ -75,10 +75,10 @@ TEST(ICMP_Basic, RequestResponse)
   ethernet::Producer server_eth_prod(logger, server_pcap, server.address());
   ipv4::Producer server_ip4_prod(logger, server_eth_prod,
                                  ipv4::Address(10, 1, 0, 2));
-  ethernet::Processor server_eth_proc(server.address());
-  ipv4::Processor server_ip4_proc(ipv4::Address(10, 1, 0, 2));
-  arp::Processor server_arp(server_eth_prod, server_ip4_prod);
-  icmpv4::Processor server_icmp4(server_eth_prod, server_ip4_prod);
+  ethernet::Processor server_eth_proc(logger, server.address());
+  ipv4::Processor server_ip4_proc(logger, ipv4::Address(10, 1, 0, 2));
+  arp::Processor server_arp(logger, server_eth_prod, server_ip4_prod);
+  icmpv4::Processor server_icmp4(logger, server_eth_prod, server_ip4_prod);
   /*
    * Bind the stack
    */

@@ -7,8 +7,10 @@
 
 namespace tulips::stack::icmpv4 {
 
-Processor::Processor(ethernet::Producer& eth, ipv4::Producer& ip4)
-  : m_ethout(eth)
+Processor::Processor(system::Logger& log, ethernet::Producer& eth,
+                     ipv4::Producer& ip4)
+  : m_log(log)
+  , m_ethout(eth)
   , m_ip4out(ip4)
   , m_ethin(nullptr)
   , m_ip4in(nullptr)
@@ -53,6 +55,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    * If it's a reply, mark the reply flag.
    */
   if (INICMP->type == ECHO_REPLY) {
+    m_log.debug("ICMP4", "reply from ", m_ip4in->sourceAddress().toString());
     /*
      * Get request ID and check if the request is known.
      */
@@ -70,6 +73,10 @@ Processor::process(const uint16_t len, const uint8_t* const data)
     req->m_state = Request::RESPONSE;
     return Status::Ok;
   }
+  /*
+   * Log the request.
+   */
+  m_log.debug("ICMP4", "request from ", m_ip4in->sourceAddress().toString());
   /*
    * Update the IP and Ethernet attributes.
    */

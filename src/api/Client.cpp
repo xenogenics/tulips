@@ -36,17 +36,17 @@ Client::Client(Delegate& dlg, system::Logger& log, transport::Device& device,
   , m_ethto(log, m_dev, device.address())
   , m_ip4to(log, m_ethto, device.ip())
 #ifdef TULIPS_ENABLE_ARP
-  , m_arp(m_ethto, m_ip4to)
+  , m_arp(log, m_ethto, m_ip4to)
 #endif
-  , m_ethfrom(device.address())
-  , m_ip4from(device.ip())
+  , m_ethfrom(log, device.address())
+  , m_ip4from(log, device.ip())
 #ifdef TULIPS_ENABLE_ICMP
-  , m_icmpv4from(m_ethto, m_ip4to)
+  , m_icmpv4from(log, m_ethto, m_ip4to)
 #endif
 #ifdef TULIPS_ENABLE_RAW
   , m_raw()
 #endif
-  , m_tcp(device, m_ethto, m_ip4to, *this, nconn)
+  , m_tcp(log, device, m_ethto, m_ip4to, *this, nconn)
   , m_cns()
   , m_idx()
 {

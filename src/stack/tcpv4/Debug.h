@@ -3,12 +3,6 @@
 #include <tulips/stack/TCPv4.h>
 #include <string>
 
-#ifdef TCP_VERBOSE
-#define TCP_LOG(__args) LOG("TCP", __args)
-#else
-#define TCP_LOG(...) ((void)0)
-#endif
-
 #ifdef TCP_FLOW_VERBOSE
 #define TCP_FLOW(__args) LOG("PKT", __args)
 #else

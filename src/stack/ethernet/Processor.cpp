@@ -6,16 +6,11 @@
 #include <tulips/stack/ipv4/Processor.h>
 #include <arpa/inet.h>
 
-#ifdef ETH_VERBOSE
-#define ETH_LOG(__args) LOG("ETH", __args)
-#else
-#define ETH_LOG(...) ((void)0)
-#endif
-
 namespace tulips::stack::ethernet {
 
-Processor::Processor(Address const& ha)
-  : m_hostAddress(ha)
+Processor::Processor(system::Logger& log, Address const& ha)
+  : m_log(log)
+  , m_hostAddress(ha)
   , m_srceAddress()
   , m_destAddress()
   , m_type(0)
@@ -60,7 +55,7 @@ Processor::run()
 Status
 Processor::process(const uint16_t len, const uint8_t* const data)
 {
-  ETH_LOG("processing frame: " << len << "B");
+  m_log.debug("ETH", "processing frame: ", len, "B");
   /*
    * Grab the incoming information
    */

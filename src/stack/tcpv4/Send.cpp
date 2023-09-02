@@ -49,7 +49,7 @@ Processor::sendNoDelay(Connection& e, const uint8_t flag)
 Status
 Processor::sendAbort(Connection& e)
 {
-  TCP_LOG("connection RST");
+  m_log.debug("TCP4", "connection RST");
   m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
   e.m_state = Connection::CLOSED;
   uint8_t* outdata = e.m_sdat;
@@ -67,7 +67,7 @@ Processor::sendClose(Connection& e)
    * this is the responsibility of the caller.
    */
   if (!e.hasAvailableSegments()) {
-    TCP_LOG("close() called without available segments");
+    m_log.debug("TCP4", "close() called without available segments");
     return Status::NoMoreResources;
   }
   /*
@@ -75,7 +75,7 @@ Processor::sendClose(Connection& e)
    * but Linux seems pretty bent on wanting one. So we play nice. NOTE Any data
    * pending in the send buffer is discarded.
    */
-  TCP_LOG("connection FIN wait #1");
+  m_log.debug("TCP4", "connection FIN wait #1");
   e.m_state = Connection::FIN_WAIT_1;
   Segment& seg = e.nextAvailableSegment();
   seg.set(1, e.m_snd_nxt, e.m_sdat);
@@ -95,7 +95,7 @@ Processor::sendAck(Connection& e)
   if (unlikely(e.hasPendingSendData())) {
     res = m_device.prepare(outdata);
     if (res != Status::Ok) {
-      TCP_LOG("prepare() for sendAck() failed");
+      m_log.debug("TCP4", "prepare() for sendAck() failed");
       return res;
     }
   }
@@ -284,7 +284,7 @@ Processor::rexmit(Connection& e)
      * In the SYN_RCVD state, we should retransmit our SYNACK.
      */
     case Connection::SYN_RCVD: {
-      TCP_LOG("retransmit SYNACK");
+      m_log.debug("TCP4", "retransmit SYNACK");
       Segment& seg = e.segment();
       seg.swap(e.m_sdat);
       e.resetSendBuffer();
@@ -294,7 +294,7 @@ Processor::rexmit(Connection& e)
      * In the SYN_SENT state, we retransmit out SYN.
      */
     case Connection::SYN_SENT: {
-      TCP_LOG("retransmit SYN");
+      m_log.debug("TCP4", "retransmit SYN");
       Segment& seg = e.segment();
       seg.swap(e.m_sdat);
       e.resetSendBuffer();
@@ -308,7 +308,7 @@ Processor::rexmit(Connection& e)
      * out the packet (the apprexmit label).
      */
     case Connection::ESTABLISHED: {
-      TCP_LOG("retransmit PSH");
+      m_log.debug("TCP4", "retransmit PSH");
       Segment& seg = e.segment();
       seg.swap(e.m_sdat);
       e.resetSendBuffer();
@@ -320,7 +320,7 @@ Processor::rexmit(Connection& e)
     case Connection::FIN_WAIT_1:
     case Connection::CLOSING:
     case Connection::LAST_ACK: {
-      TCP_LOG("retransmit FINACK");
+      m_log.debug("TCP4", "retransmit FINACK");
       Segment& seg = e.segment();
       seg.swap(e.m_sdat);
       e.resetSendBuffer();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/stack/Ethernet.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
 
@@ -21,7 +22,7 @@ namespace ethernet {
 class Processor : public transport::Processor
 {
 public:
-  Processor(Address const& ha);
+  Processor(system::Logger& log, Address const& ha);
 
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data) override;
@@ -55,6 +56,7 @@ public:
   }
 
 private:
+  system::Logger& m_log;
   Address m_hostAddress;
   Address m_srceAddress;
   Address m_destAddress;
