@@ -66,6 +66,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if (INIP->vhl != 0x45) {
     ++m_stats.drop;
     ++m_stats.vhlerr;
+    m_log.debug("IP4", "invalid protocol type");
     return Status::ProtocolError;
   }
   /*
@@ -74,6 +75,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if ((INIP->ipoffset[0] & 0x3f) != 0 || INIP->ipoffset[1] != 0) {
     ++m_stats.drop;
     ++m_stats.frgerr;
+    m_log.debug("IP4", "IP fragment are not supported");
     return Status::ProtocolError;
   }
   /*
@@ -81,6 +83,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
    */
   if (INIP->destipaddr != m_hostAddress) {
     ++m_stats.drop;
+    m_log.debug("IP4", "unknown destination address");
     return Status::ProtocolError;
   }
   /*

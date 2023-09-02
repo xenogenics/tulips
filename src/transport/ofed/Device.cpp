@@ -332,7 +332,7 @@ Device::postReceive(const uint16_t id)
    */
   struct ibv_recv_wr* bad_wr;
   if (ibv_post_recv(m_qp, &wr, &bad_wr) != 0) {
-    LOG("OFDED", "post receive of buffer id=" << id << "failed");
+    m_log.debug("OFED", "post receive of buffer id=", id, "failed");
     return Status::HardwareError;
   }
   return Status::Ok;
@@ -549,7 +549,7 @@ Device::poll(Processor& proc)
         const int lid = wc[j].wr_id;
         Status res = postReceive(lid);
         if (res != Status::Ok) {
-          LOG("OFDED", "re-post receive of buffer id=" << lid << "failed");
+          m_log.debug("OFED", "re-post receive of buffer id=", lid, "failed");
           return Status::HardwareError;
         }
       }
@@ -564,7 +564,7 @@ Device::poll(Processor& proc)
     const int id = wc[i].wr_id;
     Status res = postReceive(id);
     if (res != Status::Ok) {
-      LOG("OFDED", "re-post receive of buffer id=" << id << "failed");
+      m_log.debug("OFED", "re-post receive of buffer id=", id, "failed");
       return Status::HardwareError;
     }
   }
@@ -686,8 +686,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    * Reject the request if the MSS provided is too small for the job.
    */
   if (len > (m_hwmtu + stack::ethernet::HEADER_LEN) && mss <= header_len) {
-    LOG("OFED",
-        "mss=" << mss << " for hwmtu=" << m_hwmtu << " and len=" << len);
+    m_log.debug("OFED", "mss=", mss, " for hwmtu=", m_hwmtu, " and len=", len);
     return Status::InvalidArgument;
   }
   /*
@@ -748,8 +747,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   struct ibv_send_wr* bad_wr;
   if (ibv_post_send(m_qp, &wr, &bad_wr) != 0) {
-    LOG("OFED",
-        "post send of buffer len=" << len << " failed, " << strerror(errno));
+    m_log.debug("OFED", "post send of buffer len=", len, " failed, ",
+                strerror(errno));
     return Status::HardwareError;
   }
   m_log.debug("OFED", "commit buffer ", (void*)buf, " len ", len);

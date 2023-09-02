@@ -142,7 +142,7 @@ try {
    * Initialize the client.
    */
   defaults::ClientDelegate client_delegate;
-  Client client(client_delegate, logger, client_dev, 1);
+  Client client(logger, client_delegate, client_dev, 1);
   /*
    * Open a connection.
    */
@@ -152,7 +152,7 @@ try {
    * Initialize the server
    */
   defaults::ServerDelegate server_delegate;
-  Server server(server_delegate, logger, server_dev, 1);
+  Server server(logger, server_delegate, server_dev, 1);
   server.listen(1234, nullptr);
   /*
    * Set the alarm

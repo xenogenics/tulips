@@ -114,11 +114,11 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new Client(m_client_delegate, m_logger, *m_client_pcap, 2);
+    m_client = new Client(m_logger, m_client_delegate, *m_client_pcap, 2);
     /*
      * Create the server.
      */
-    m_server = new Server(m_server_delegate, m_logger, *m_server_pcap, 2);
+    m_server = new Server(m_logger, m_server_delegate, *m_server_pcap, 2);
   }
 
   void TearDown() override

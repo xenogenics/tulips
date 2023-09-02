@@ -139,12 +139,12 @@ protected:
     /*
      * Create the clients.
      */
-    m_client1 = new Client(m_client_delegate1, m_logger, *m_client_pcap, 1);
-    m_client2 = new Client(m_client_delegate2, m_logger, *m_client_pcap, 1);
+    m_client1 = new Client(m_logger, m_client_delegate1, *m_client_pcap, 1);
+    m_client2 = new Client(m_logger, m_client_delegate2, *m_client_pcap, 1);
     /*
      * Create the server.
      */
-    m_server = new Server(m_server_delegate, m_logger, *m_server_pcap, 2);
+    m_server = new Server(m_logger, m_server_delegate, *m_server_pcap, 2);
     /*
      * Server listens.
      */

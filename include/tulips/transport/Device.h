@@ -41,7 +41,6 @@ public:
   Device(system::Logger& log, std::string_view name)
     : m_log(log), m_name(name), m_hints(0)
   {}
-
   ~Device() override = default;
 
   /**

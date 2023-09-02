@@ -12,9 +12,9 @@ class Client
   , public interface::Client::Delegate
 {
 public:
-  Client(interface::Client::Delegate& delegate, system::Logger& log,
+  Client(system::Logger& log, interface::Client::Delegate& delegate,
          transport::Device& device, const size_t nconn, const Protocol type);
-  Client(interface::Client::Delegate& delegate, system::Logger& log,
+  Client(system::Logger& log, interface::Client::Delegate& delegate,
          transport::Device& device, const size_t nconn, const Protocol type,
          std::string_view cert, std::string_view key);
   ~Client() override;

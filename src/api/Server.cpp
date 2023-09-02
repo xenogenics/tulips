@@ -5,10 +5,10 @@ namespace tulips {
 
 using namespace stack;
 
-Server::Server(Delegate& delegate, system::Logger& log,
+Server::Server(system::Logger& log, Delegate& delegate,
                transport::Device& device, const size_t nconn)
-  : m_delegate(delegate)
-  , m_log(log)
+  : m_log(log)
+  , m_delegate(delegate)
   , m_ethto(log, device, device.address())
   , m_ip4to(log, m_ethto, device.ip())
 #ifdef TULIPS_ENABLE_ARP

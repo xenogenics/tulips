@@ -7,13 +7,13 @@
 
 namespace tulips::ssl {
 
-Client::Client(interface::Client::Delegate& delegate, system::Logger& log,
+Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
                transport::Device& device, const size_t nconn,
                const Protocol type)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_client(*this, log, device, nconn)
+  , m_client(log, *this, device, nconn)
   , m_context(nullptr)
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
@@ -43,10 +43,10 @@ Client::Client(interface::Client::Delegate& delegate, system::Logger& log,
   }
 }
 
-Client::Client(interface::Client::Delegate& delegate, system::Logger& log,
+Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
                transport::Device& device, const size_t nconn,
                const Protocol type, std::string_view cert, std::string_view key)
-  : Client(delegate, log, device, nconn, type)
+  : Client(log, delegate, device, nconn, type)
 {
   int err = 0;
   /*

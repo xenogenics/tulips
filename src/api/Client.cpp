@@ -2,8 +2,6 @@
 #include <tulips/stack/ARP.h>
 #include <tulips/system/Compiler.h>
 
-#define LOG(_l, ...) m_log(system::Logger::Level::_l, "CLIENT", __VA_ARGS__)
-
 namespace tulips {
 
 using namespace stack;
@@ -27,10 +25,10 @@ Client::Connection::Connection()
  * Client class definition.
  */
 
-Client::Client(Delegate& dlg, system::Logger& log, transport::Device& device,
+Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
                const size_t nconn)
-  : m_delegate(dlg)
-  , m_log(log)
+  : m_log(log)
+  , m_delegate(dlg)
   , m_dev(device)
   , m_nconn(nconn)
   , m_ethto(log, m_dev, device.address())
@@ -145,8 +143,9 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       if (!m_ip4to.isLocal(addr)) {
         addr = m_ip4to.defaultRouterAddress();
       }
-      if (!arp::lookup(m_dev.name(), addr, rhwaddr)) {
-        LOG("CLIENT", "hardware translation missing for " << addr.toString());
+      if (!arp::lookup(m_log, m_dev.name(), addr, rhwaddr)) {
+        m_log.debug("APICLI", "hardware translation missing for ",
+                    addr.toString());
         ret = Status::HardwareTranslationMissing;
         break;
       }
@@ -411,7 +410,8 @@ Client::onSent(UNUSED tcpv4::Connection& c)
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return;
   }
   d.history.push_back(d.pre);

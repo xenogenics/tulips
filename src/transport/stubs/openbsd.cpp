@@ -18,7 +18,8 @@
 namespace {
 
 static bool
-getDefaultRoute(system::Logger& log, tulips::stack::ipv4::Address const& ip,
+getDefaultRoute(tulips::system::Logger& log,
+                tulips::stack::ipv4::Address const& ip,
                 tulips::stack::ipv4::Address& dr)
 {
   int mib[7];
@@ -42,14 +43,14 @@ getDefaultRoute(system::Logger& log, tulips::stack::ipv4::Address const& ip,
    */
   while (1) {
     if (sysctl(mib, 7, nullptr, &needed, nullptr, 0) == -1) {
-      LOG("ARP", "route-sysctl-estimate");
+      log.debug("ARP", "route-sysctl-estimate");
     }
     if (needed == 0) {
       log.debug("TRANS", "sysctl failed");
       return false;
     }
     if ((buf = (char*)realloc(buf, needed)) == nullptr) {
-      LOG("ARP", "malloc");
+      log.debug("ARP", "malloc");
     }
     if (sysctl(mib, 7, buf, &needed, nullptr, 0) == -1) {
       log.debug("TRANS", strerror(errno));

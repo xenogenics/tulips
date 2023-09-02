@@ -4,19 +4,19 @@
 #include <string>
 
 #define PRINT_EXP_CAP(__flags, __cap)                                          \
-  LOG("OFED",                                                                  \
-      #__cap << " = " << std::boolalpha                                        \
-             << (bool)(((__flags).device_cap_flags_ex & (__cap)) == (__cap)))
+  m_log.debug("OFED", #__cap, " = ", std::boolalpha,                           \
+              (bool)(((__flags).device_cap_flags_ex & (__cap)) == (__cap)))
 
 #define PRINT_WC_FLAG(__wc, __flag)                                            \
-  LOG("OFED", #__flag << " = " << std::boolalpha                               \
-                      << (bool)(((__wc).exp_wc_flags & (__flag)) == (__flag)))
+  m_log.debug("OFED", #__flag, " = ", std::boolalpha,                          \
+              (bool)(((__wc).exp_wc_flags & (__flag)) == (__flag)))
 
 #define HAS_TSO(__caps)                                                        \
   ((__caps).max_tso > 0 && ((__caps).supported_qpts | IBV_QPT_RAW_PACKET))
 
 bool getInterfaceDeviceAndPortIds(std::string_view ifn, std::string& name,
                                   int& portid);
+
 bool isSupportedDevice(std::string_view ifn);
 
 bool findSupportedInterface(std::string& ifn);

@@ -8,8 +8,6 @@
 #include <string>
 #include <openssl/ssl.h>
 
-#define LOG(_l, ...) m_log(system::Logger::Level::_l, "SSLCLI", __VA_ARGS__)
-
 #define AS_SSL(__c) (reinterpret_cast<SSL_CTX*>(__c))
 
 namespace tulips::ssl {

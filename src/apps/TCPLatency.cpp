@@ -113,11 +113,11 @@ run(Options const& options, transport::Device& base_device)
    */
   interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(delegate, logger, *device, 1,
+    client = new tulips::ssl::Client(logger, delegate, *device, 1,
                                      tulips::ssl::Protocol::TLS,
                                      options.sslCert(), options.sslKey());
   } else {
-    client = new tulips::Client(delegate, logger, *device, 1);
+    client = new tulips::Client(logger, delegate, *device, 1);
   }
   /*
    * Set the CPU affinity.
@@ -389,11 +389,11 @@ run(Options const& options, transport::Device& base_device)
   interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
-      delegate, logger, *device, options.connections(),
+      logger, delegate, *device, options.connections(),
       tulips::ssl::Protocol::TLS, options.sslCert(), options.sslKey());
   } else {
     server =
-      new tulips::Server(delegate, logger, *device, options.connections());
+      new tulips::Server(logger, delegate, *device, options.connections());
   }
   /*
    * Listen to the local ports.

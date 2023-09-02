@@ -260,12 +260,12 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new ssl::Client(m_client_delegate, m_logger, *m_client_pcap, 2,
+    m_client = new ssl::Client(m_logger, m_client_delegate, *m_client_pcap, 2,
                                tulips::ssl::Protocol::TLS, cert, key);
     /*
      * Create the server.
      */
-    m_server = new ssl::Server(m_server_delegate, m_logger, *m_server_pcap, 2,
+    m_server = new ssl::Server(m_logger, m_server_delegate, *m_server_pcap, 2,
                                tulips::ssl::Protocol::TLS, cert, key);
     /*
      * Server listens.

@@ -11,7 +11,7 @@ class Server
   , public interface::Server::Delegate
 {
 public:
-  Server(interface::Server::Delegate& delegate, system::Logger& log,
+  Server(system::Logger& log, interface::Server::Delegate& delegate,
          transport::Device& device, const size_t nconn,
          const ssl::Protocol type, std::string_view cert, std::string_view key);
   ~Server() override;

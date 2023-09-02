@@ -21,7 +21,7 @@ class Server
   , public stack::tcpv4::EventHandler
 {
 public:
-  Server(Delegate& delegate, system::Logger& log, transport::Device& device,
+  Server(system::Logger& log, Delegate& delegate, transport::Device& device,
          const size_t nconn);
 
   inline Status run() override { return m_ethfrom.run(); }
@@ -83,8 +83,8 @@ private:
 
   void onSent(UNUSED stack::tcpv4::Connection& e) override {}
 
-  Delegate& m_delegate;
   system::Logger& m_log;
+  Delegate& m_delegate;
   stack::ethernet::Producer m_ethto;
   stack::ipv4::Producer m_ip4to;
 #ifdef TULIPS_ENABLE_ARP

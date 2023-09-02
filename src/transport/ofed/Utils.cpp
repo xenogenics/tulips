@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include <tulips/system/Logger.h>
 #include <tulips/system/Utils.h>
 #include <cstring>
 #include <fstream>
@@ -19,7 +20,6 @@ getInterfaceDriverName(std::string_view ifn, std::string& drv)
   sprintf(path, "/sys/class/net/%.*s/device/driver", (int)ifn.length(),
           ifn.data());
   if (readlink(path, target, PATH_MAX) < 0) {
-    LOG("OFED", "cannot readlink() " << path);
     return false;
   }
   std::vector<std::string> parts;

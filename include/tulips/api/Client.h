@@ -23,7 +23,7 @@ class Client
   , public stack::tcpv4::EventHandler
 {
 public:
-  Client(Delegate& dlg, system::Logger& log, transport::Device& device,
+  Client(system::Logger& log, Delegate& dlg, transport::Device& device,
          const size_t nconn);
   ~Client() override = default;
 
@@ -141,8 +141,8 @@ private:
                    const uint32_t len, const uint32_t alen,
                    uint8_t* const sdata, uint32_t& slen) override;
 
-  Delegate& m_delegate;
   system::Logger& m_log;
+  Delegate& m_delegate;
   transport::Device& m_dev;
   size_t m_nconn;
   stack::ethernet::Producer m_ethto;

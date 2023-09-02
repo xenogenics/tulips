@@ -44,7 +44,7 @@ getinetaddr(system::Logger& log, std::string_view host, struct in_addr* inap)
 }
 
 static bool
-search(in_addr_t const& addr, ethernet::Address& lladdr)
+search(system::Logger& log, in_addr_t const& addr, ethernet::Address& lladdr)
 {
   int mib[7];
   size_t needed;
@@ -68,21 +68,21 @@ search(in_addr_t const& addr, ethernet::Address& lladdr)
    */
   while (1) {
     if (sysctl(mib, 7, nullptr, &needed, nullptr, 0) == -1) {
-      LOG("ARP", "route-sysctl-estimate");
+      log.debug("ARP", "route-sysctl-estimate");
     }
     if (needed == 0) {
       log.debug("ARP", "sysctl failed");
       return false;
     }
     if ((buf = (char*)realloc(buf, needed)) == nullptr) {
-      LOG("ARP", "malloc");
+      log.debug("ARP", "malloc");
     }
     if (sysctl(mib, 7, buf, &needed, nullptr, 0) == -1) {
       log.debug("ARP", strerror(errno));
       if (errno == ENOMEM) {
         continue;
       }
-      LOG("ARP", "actual retrieval of routing table");
+      log.debug("ARP", "actual retrieval of routing table");
     }
     lim = buf + needed;
     break;
@@ -119,7 +119,7 @@ get(system::Logger& log, std::string_view host, ethernet::Address& addr)
 {
   struct sockaddr_inarp sin = { sizeof(sin), AF_INET, 0, { 0 }, { 0 }, 0, 0 };
   return getinetaddr(log, host, &sin.sin_addr) &&
-         search(sin.sin_addr.s_addr, addr);
+         search(log, sin.sin_addr.s_addr, addr);
 }
 
 bool

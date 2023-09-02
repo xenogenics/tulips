@@ -92,7 +92,7 @@ try {
    * Initialize the client.
    */
   defaults::ClientDelegate client_delegate;
-  ssl::Client client(client_delegate, logger, cdev, 1, ssl::Protocol::TLS,
+  ssl::Client client(logger, client_delegate, cdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   /*
    * Open a connection.
@@ -103,7 +103,7 @@ try {
    * Initialize the server
    */
   ServerDelegate server_delegate;
-  ssl::Server server(server_delegate, logger, sdev, 1, ssl::Protocol::TLS,
+  ssl::Server server(logger, server_delegate, sdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   server.listen(1234, nullptr);
   /*

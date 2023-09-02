@@ -18,7 +18,7 @@ Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap)
   , m_device(pcap ? (transport::Device*)m_pcap
                   : (transport::Device*)m_dev.get())
   , m_delegate()
-  , m_client(m_delegate, log, *m_device, 32)
+  , m_client(log, m_delegate, *m_device, 32)
   , m_run(true)
   , m_thread()
   , m_mutex()

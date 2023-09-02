@@ -5,14 +5,14 @@
 
 namespace tulips::ssl {
 
-Server::Server(interface::Server::Delegate& delegate, system::Logger& log,
+Server::Server(system::Logger& log, interface::Server::Delegate& delegate,
                transport::Device& device, const size_t nconn,
                const ssl::Protocol type, std::string_view cert,
                std::string_view key)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_server(*this, log, device, nconn)
+  , m_server(log, *this, device, nconn)
   , m_context(nullptr)
 {
   int err = 0;
