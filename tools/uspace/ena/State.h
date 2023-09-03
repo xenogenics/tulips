@@ -1,6 +1,5 @@
 #pragma once
 
-#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
@@ -16,10 +15,9 @@ using IDs = std::map<Client::ID, size_t>;
 class State : public utils::State
 {
 public:
-  State(system::Logger& log, std::string_view iff, const bool pcap = false);
+  State(std::string_view iff, const bool pcap = false);
   ~State() override;
 
-  system::Logger& logger;
   std::string interface;
   transport::ena::Port port;
   bool with_pcap;

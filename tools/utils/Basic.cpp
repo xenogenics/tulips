@@ -50,6 +50,26 @@ public:
  * Quit.
  */
 
+class Log : public Command
+{
+public:
+  Log() : Command("print the log") {}
+
+  void help(UNUSED Arguments const& args) override
+  {
+    std::cout << "Print the log." << std::endl;
+  }
+
+  void execute(State& s, UNUSED Arguments const& args) override
+  {
+    std::cout << s.logger.content();
+  }
+};
+
+/*
+ * Quit.
+ */
+
 class Quit : public Command
 {
 public:
@@ -74,6 +94,7 @@ void
 populate(Commands& cmds)
 {
   cmds["help"] = new Help;
+  cmds["log"] = new Log;
   cmds["quit"] = new Quit;
 }
 

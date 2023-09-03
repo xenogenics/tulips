@@ -77,10 +77,6 @@ try {
   TCLAP::SwitchArg pcpA("P", "pcap", "Capture packets", cmdL);
   cmdL.parse(argc, argv);
   /*
-   * Create the console logger.
-   */
-  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
-  /*
    * Linenoise.
    */
   linenoiseSetCompletionCallback(completion);
@@ -89,7 +85,7 @@ try {
   /*
    * Commands.
    */
-  ofed::State state(logger, pcpA.isSet());
+  ofed::State state(pcpA.isSet());
   basic::populate(state.commands);
   ofed::connection::populate(state.commands);
   /*

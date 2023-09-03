@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/system/Logger.h>
 #include <utils/Command.h>
 
 namespace tulips::tools::utils {
@@ -11,6 +12,7 @@ struct State
 
   bool keep_running;
   Commands commands;
+  system::BufferedLogger logger;
 };
 
 }
