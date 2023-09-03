@@ -1,7 +1,9 @@
 #pragma once
 
+#include <tulips/system/SpinLock.h>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <string_view>
 
@@ -100,6 +102,34 @@ protected:
   {
     std::cout << "[ " << std::setw(8) << hdr << " ] " << value << std::endl;
   }
+};
+
+/*
+ * Buffered logger class.
+ */
+
+class BufferedLogger final : public Logger
+{
+public:
+  BufferedLogger(const Level level) : Logger(level), m_lock(), m_stream() {}
+
+  std::string content()
+  {
+
+    std::lock_guard<system::SpinLock> lock(m_lock);
+    return m_stream.str();
+  }
+
+protected:
+  void flush(std::string_view hdr, std::string&& value) final
+  {
+    std::lock_guard<system::SpinLock> lock(m_lock);
+    m_stream << "[ " << std::setw(8) << hdr << " ] " << value << std::endl;
+  }
+
+private:
+  system::SpinLock m_lock;
+  std::ostringstream m_stream;
 };
 
 }
