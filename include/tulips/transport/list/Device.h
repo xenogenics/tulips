@@ -3,6 +3,7 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <cstdlib>
 #include <limits>
@@ -32,7 +33,7 @@ public:
 
   using List = std::list<Packet*>;
 
-  Device(stack::ethernet::Address const& address,
+  Device(system::Logger& log, stack::ethernet::Address const& address,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
          stack::ipv4::Address const& nm, const uint32_t mtu, List& rf,
          List& wf);

@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
@@ -91,7 +92,8 @@ class API_TwoClients : public ::testing::Test
 {
 public:
   API_TwoClients()
-    : m_client_list()
+    : m_logger(system::Logger::Level::Trace)
+    , m_client_list()
     , m_server_list()
     , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
@@ -119,28 +121,30 @@ protected:
     /*
      * Build the devices.
      */
-    m_client_ldev = new transport::list::Device(m_client_adr, m_client_ip4,
-                                                bcast, nmask, 1514,
-                                                m_server_list, m_client_list);
-    m_server_ldev = new transport::list::Device(m_server_adr, m_server_ip4,
-                                                bcast, nmask, 1514,
-                                                m_client_list, m_server_list);
+    m_client_ldev =
+      new transport::list::Device(m_logger, m_client_adr, m_client_ip4, bcast,
+                                  nmask, 1514, m_server_list, m_client_list);
+    m_server_ldev =
+      new transport::list::Device(m_logger, m_server_adr, m_server_ip4, bcast,
+                                  nmask, 1514, m_client_list, m_server_list);
     /*
      * Build the pcap device
      */
     std::string pcap_client = "api_2clients.client." + tname + ".pcap";
     std::string pcap_server = "api_2clients.server." + tname + ".pcap";
-    m_client_pcap = new transport::pcap::Device(*m_client_ldev, pcap_client);
-    m_server_pcap = new transport::pcap::Device(*m_server_ldev, pcap_server);
+    m_client_pcap =
+      new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
+    m_server_pcap =
+      new transport::pcap::Device(m_logger, *m_server_ldev, pcap_server);
     /*
      * Create the clients.
      */
-    m_client1 = new Client(m_client_delegate1, *m_client_pcap, 1);
-    m_client2 = new Client(m_client_delegate2, *m_client_pcap, 1);
+    m_client1 = new Client(m_logger, m_client_delegate1, *m_client_pcap, 1);
+    m_client2 = new Client(m_logger, m_client_delegate2, *m_client_pcap, 1);
     /*
      * Create the server.
      */
-    m_server = new Server(m_server_delegate, *m_server_pcap, 2);
+    m_server = new Server(m_logger, m_server_delegate, *m_server_pcap, 2);
     /*
      * Server listens.
      */
@@ -167,6 +171,7 @@ protected:
     delete m_server_ldev;
   }
 
+  system::ConsoleLogger m_logger;
   transport::list::Device::List m_client_list;
   transport::list::Device::List m_server_list;
   ethernet::Address m_client_adr;

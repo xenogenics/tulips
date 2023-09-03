@@ -2,6 +2,7 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
 
@@ -34,7 +35,7 @@ public:
     size_t chkerr; // Number of packets dropped due to IP checksum errors.
   };
 
-  Processor(Address const& ha);
+  Processor(system::Logger& log, Address const& ha);
 
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data) override;
@@ -74,6 +75,7 @@ public:
   }
 
 private:
+  system::Logger& m_log;
   Address m_hostAddress;
   Address m_srceAddress;
   Address m_destAddress;

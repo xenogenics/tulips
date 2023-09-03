@@ -1,13 +1,6 @@
 #include <tulips/api/Client.h>
 #include <tulips/stack/ARP.h>
 #include <tulips/system/Compiler.h>
-#include <tulips/system/Utils.h>
-
-#ifdef CLIENT_VERBOSE
-#define CLIENT_LOG(__args) LOG("CLIENT", __args)
-#else
-#define CLIENT_LOG(...) ((void)0)
-#endif
 
 namespace tulips {
 
@@ -32,24 +25,26 @@ Client::Connection::Connection()
  * Client class definition.
  */
 
-Client::Client(Delegate& dlg, transport::Device& device, const size_t nconn)
-  : m_delegate(dlg)
+Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
+               const size_t nconn)
+  : m_log(log)
+  , m_delegate(dlg)
   , m_dev(device)
   , m_nconn(nconn)
-  , m_ethto(m_dev, device.address())
-  , m_ip4to(m_ethto, device.ip())
+  , m_ethto(log, m_dev, device.address())
+  , m_ip4to(log, m_ethto, device.ip())
 #ifdef TULIPS_ENABLE_ARP
-  , m_arp(m_ethto, m_ip4to)
+  , m_arp(log, m_ethto, m_ip4to)
 #endif
-  , m_ethfrom(device.address())
-  , m_ip4from(device.ip())
+  , m_ethfrom(log, device.address())
+  , m_ip4from(log, device.ip())
 #ifdef TULIPS_ENABLE_ICMP
-  , m_icmpv4from(m_ethto, m_ip4to)
+  , m_icmpv4from(log, m_ethto, m_ip4to)
 #endif
 #ifdef TULIPS_ENABLE_RAW
   , m_raw()
 #endif
-  , m_tcp(device, m_ethto, m_ip4to, *this, nconn)
+  , m_tcp(log, device, m_ethto, m_ip4to, *this, nconn)
   , m_cns()
   , m_idx()
 {
@@ -131,7 +126,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
        * Discover the remote address is we don't have a translation.
        */
       if (!m_arp.has(ripaddr)) {
-        CLIENT_LOG("closed -> resolving(" << ripaddr.toString() << ")");
+        m_log.debug("APICLI", "closed -> resolving(", ripaddr.toString(), ")");
         ret = m_arp.discover(ripaddr);
         if (ret == Status::Ok) {
           c.state = Connection::State::Resolving;
@@ -148,8 +143,9 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       if (!m_ip4to.isLocal(addr)) {
         addr = m_ip4to.defaultRouterAddress();
       }
-      if (!arp::lookup(m_dev.name(), addr, rhwaddr)) {
-        LOG("CLIENT", "hardware translation missing for " << addr.toString());
+      if (!arp::lookup(m_log, m_dev.name(), addr, rhwaddr)) {
+        m_log.debug("APICLI", "hardware translation missing for ",
+                    addr.toString());
         ret = Status::HardwareTranslationMissing;
         break;
       }
@@ -157,7 +153,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       /*
        * Connect the client.
        */
-      CLIENT_LOG("closed -> connecting(" << ripaddr.toString() << ")");
+      m_log.debug("APICLI", "closed -> connecting(", ripaddr.toString(), ")");
       ret = m_tcp.connect(rhwaddr, ripaddr, rport, c.conn);
       if (ret == Status::Ok) {
         c.state = Connection::State::Connecting;
@@ -171,7 +167,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       if (m_arp.has(ripaddr)) {
         ethernet::Address rhwaddr;
         m_arp.query(ripaddr, rhwaddr);
-        CLIENT_LOG("closed -> connecting(" << ripaddr.toString() << ")");
+        m_log.debug("APICLI", "closed -> connecting(", ripaddr.toString(), ")");
         ret = m_tcp.connect(rhwaddr, ripaddr, rport, c.conn);
         if (ret == Status::Ok) {
           c.state = Connection::State::Connecting;
@@ -189,7 +185,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       break;
     }
     case Connection::State::Connected: {
-      CLIENT_LOG("connected");
+      m_log.debug("APICLI", "connected");
       ret = Status::Ok;
       break;
     }
@@ -204,7 +200,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
 Status
 Client::abort(const ID id)
 {
-  CLIENT_LOG("closing connection " << id);
+  m_log.debug("APICLI", "closing connection ", id);
   /*
    * Check if connection ID is valid.
    */
@@ -244,11 +240,9 @@ Client::close(const ID id)
    * Close the connection.
    */
   Status res = m_tcp.close(c.conn);
-#ifdef CLIENT_VERBOSE
   if (res == Status::Ok) {
-    CLIENT_LOG("closing connection " << id);
+    m_log.debug("APICLI", "closing connection ", id);
   }
-#endif
   return res;
 }
 
@@ -348,10 +342,11 @@ void
 Client::onConnected(tcpv4::Connection& c)
 {
   ID id = m_idx[c.id()];
-  CLIENT_LOG("connection " << c.id() << ":" << id << " connected");
+  m_log.debug("APICLI", "connection ", c.id(), ":", id, " connected");
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return;
   }
   uint8_t options = 0;
@@ -363,11 +358,12 @@ Client::onConnected(tcpv4::Connection& c)
 void
 Client::onAborted(tcpv4::Connection& c)
 {
-  CLIENT_LOG("connection aborted, closing");
+  m_log.debug("APICLI", "connection aborted, closing");
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return;
   }
   d.state = Connection::State::Closed;
@@ -378,11 +374,12 @@ Client::onAborted(tcpv4::Connection& c)
 void
 Client::onTimedOut(tcpv4::Connection& c)
 {
-  CLIENT_LOG("connection timed out, closing");
+  m_log.debug("APICLI", "connection timed out, closing");
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return;
   }
   d.state = Connection::State::Closed;
@@ -393,11 +390,12 @@ Client::onTimedOut(tcpv4::Connection& c)
 void
 Client::onClosed(tcpv4::Connection& c)
 {
-  CLIENT_LOG("connection closed");
+  m_log.debug("APICLI", "connection closed");
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return;
   }
   d.state = Connection::State::Closed;
@@ -412,7 +410,8 @@ Client::onSent(UNUSED tcpv4::Connection& c)
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return;
   }
   d.history.push_back(d.pre);
@@ -426,7 +425,8 @@ Client::onAcked(tcpv4::Connection& c)
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return Action::Abort;
   }
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
@@ -444,7 +444,8 @@ Client::onAcked(stack::tcpv4::Connection& c, const uint32_t alen,
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return Action::Abort;
   }
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
@@ -462,7 +463,8 @@ Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return Action::Abort;
   }
   return m_delegate.onNewData(id, c.cookie(), data, len);
@@ -476,7 +478,8 @@ Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
   if (d.conn != c.id()) {
-    CLIENT_LOG("invalid connection for handle " << c.id() << ", ignoring");
+    m_log.debug("APICLI", "invalid connection for handle ", c.id(),
+                ", ignoring");
     return Action::Abort;
   }
   return m_delegate.onNewData(id, c.cookie(), data, len, alen, sdata, slen);

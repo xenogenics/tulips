@@ -3,24 +3,20 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#ifdef SERVER_VERBOSE
-#define SERVER_LOG(__args) LOG("SSLSRV", __args)
-#else
-#define SERVER_LOG(...) ((void)0)
-#endif
-
 namespace tulips::ssl {
 
-Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
-               const size_t nconn, const ssl::Protocol type,
-               std::string_view cert, std::string_view key)
+Server::Server(system::Logger& log, interface::Server::Delegate& delegate,
+               transport::Device& device, const size_t nconn,
+               const ssl::Protocol type, std::string_view cert,
+               std::string_view key)
   : m_delegate(delegate)
+  , m_log(log)
   , m_dev(device)
-  , m_server(*this, device, nconn)
+  , m_server(log, *this, device, nconn)
   , m_context(nullptr)
 {
   int err = 0;
-  SERVER_LOG("protocol: " << ssl::toString(type));
+  m_log.debug("SSLSRV", "protocol: ", ssl::toString(type));
   /*
    * Initialize the SSL library.
    */
@@ -46,7 +42,7 @@ Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_certificate_file failed");
   }
-  SERVER_LOG("using certificate: " << cert);
+  m_log.debug("SSLSRV", "using certificate: ", cert);
   /*
    * Indicate the key file to be used.
    */
@@ -56,7 +52,7 @@ Server::Server(interface::Server::Delegate& delegate, transport::Device& device,
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_PrivateKey_file failed");
   }
-  SERVER_LOG("using key: " << key);
+  m_log.debug("SSLSRV", "using key: ", key);
   /*
    * Make sure the key and certificate file match.
    */
@@ -111,16 +107,17 @@ Server::close(const ID id)
    */
   switch (e) {
     case 0: {
-      SERVER_LOG("SSL shutdown sent");
+      m_log.debug("SSLSRV", "SSL shutdown sent");
       flush(id, cookie);
       return Status::OperationInProgress;
     }
     case 1: {
-      SERVER_LOG("shutdown completed");
+      m_log.debug("SSLSRV", "shutdown completed");
       return m_server.close(id);
     }
     default: {
-      SERVER_LOG("SSL_shutdown error: " << ssl::errorToString(c.ssl, e));
+      auto error = ssl::errorToString(c.ssl, e);
+      m_log.error("SSLSRV", "SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
   }
@@ -171,7 +168,7 @@ void*
 Server::onConnected(ID const& id, void* const cookie, uint8_t& opts)
 {
   void* user = m_delegate.onConnected(id, cookie, opts);
-  auto* c = new Context(AS_SSL(m_context), m_dev.mss(), user);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
   c->state = Context::State::Accept;
   return c;
 }

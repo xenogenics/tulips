@@ -9,8 +9,10 @@ constexpr const uint8_t TTL = 64;
 
 namespace tulips::stack::ipv4 {
 
-Producer::Producer(ethernet::Producer& prod, Address const& ha)
-  : m_eth(prod)
+Producer::Producer(system::Logger& log, ethernet::Producer& prod,
+                   Address const& ha)
+  : m_log(log)
+  , m_eth(prod)
   , m_hostAddress(ha)
   , m_destAddress()
   , m_defaultRouterAddress()
@@ -81,6 +83,7 @@ Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
    * Commit the buffer.
    */
   m_stats.sent += 1;
+  m_log.debug("IP4", "committing packet: ", len, "B");
   return m_eth.commit(outlen, outdata, mss);
 }
 

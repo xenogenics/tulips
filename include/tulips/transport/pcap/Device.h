@@ -16,7 +16,7 @@ class Device
   , public Processor
 {
 public:
-  Device(transport::Device& device, std::string_view name);
+  Device(system::Logger& log, transport::Device& device, std::string_view name);
   ~Device() override;
 
   std::string_view name() const override { return m_device.name(); }

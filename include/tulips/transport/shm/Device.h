@@ -4,6 +4,7 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/Device.h>
 #include <limits>
@@ -15,7 +16,7 @@ namespace tulips::transport::shm {
 class Device : public transport::Device
 {
 public:
-  Device(stack::ethernet::Address const& address,
+  Device(system::Logger& log, stack::ethernet::Address const& address,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
          stack::ipv4::Address const& nm, tulips_fifo_t rf, tulips_fifo_t wf);
   ~Device() override;

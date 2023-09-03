@@ -8,6 +8,7 @@
 #include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/EventHandler.h>
 #include <tulips/system/Buffer.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Timer.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/Processor.h>
@@ -49,8 +50,9 @@ struct Statistics
 class Processor : public transport::Processor
 {
 public:
-  Processor(transport::Device& device, ethernet::Producer& eth,
-            ipv4::Producer& ip4, EventHandler& h, const size_t nconn);
+  Processor(system::Logger& log, transport::Device& device,
+            ethernet::Producer& eth, ipv4::Producer& ip4, EventHandler& h,
+            const size_t nconn);
 
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data) override;
@@ -177,6 +179,7 @@ private:
 
   Status rexmit(Connection& e);
 
+  system::Logger& m_log;
   transport::Device& m_device;
   ethernet::Producer& m_ethto;
   ipv4::Producer& m_ipv4to;

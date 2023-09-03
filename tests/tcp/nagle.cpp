@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Processor.h>
@@ -186,7 +187,8 @@ class TCP_Nagle : public ::testing::Test
 {
 public:
   TCP_Nagle()
-    : m_client_fifo(nullptr)
+    : m_logger(system::Logger::Level::Trace)
+    , m_client_fifo(nullptr)
     , m_server_fifo(nullptr)
     , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
@@ -230,30 +232,35 @@ protected:
     /*
      * Build the devices.
      */
-    m_client = new transport::shm::Device(m_client_adr, m_client_ip4, m_bcast,
-                                          m_nmask, m_server_fifo,
+    m_client = new transport::shm::Device(m_logger, m_client_adr, m_client_ip4,
+                                          m_bcast, m_nmask, m_server_fifo,
                                           m_client_fifo);
-    m_server = new transport::shm::Device(m_server_adr, m_server_ip4, m_bcast,
-                                          m_nmask, m_client_fifo,
+    m_server = new transport::shm::Device(m_logger, m_server_adr, m_server_ip4,
+                                          m_bcast, m_nmask, m_client_fifo,
                                           m_server_fifo);
     /*
      * Build the pcap device
      */
     std::string client_n = "tcp_nagle.client." + tname;
     std::string server_n = "tcp_nagle.server." + tname;
-    m_client_pcap = new transport::pcap::Device(*m_client, client_n + ".pcap");
-    m_server_pcap = new transport::pcap::Device(*m_server, server_n + ".pcap");
+    m_client_pcap =
+      new transport::pcap::Device(m_logger, *m_client, client_n + ".pcap");
+    m_server_pcap =
+      new transport::pcap::Device(m_logger, *m_server, server_n + ".pcap");
     /*
      * Client stack
      */
     m_client_evt = new Client(client_n + ".log");
-    m_client_eth_prod =
-      new ethernet::Producer(*m_client_pcap, m_client_pcap->address());
-    m_client_ip4_prod = new ipv4::Producer(*m_client_eth_prod, m_client_ip4);
-    m_client_eth_proc = new ethernet::Processor(m_client_pcap->address());
-    m_client_ip4_proc = new ipv4::Processor(m_client_ip4);
-    m_client_tcp = new tcpv4::Processor(*m_client_pcap, *m_client_eth_prod,
-                                        *m_client_ip4_prod, *m_client_evt, 1);
+    m_client_eth_prod = new ethernet::Producer(m_logger, *m_client_pcap,
+                                               m_client_pcap->address());
+    m_client_ip4_prod =
+      new ipv4::Producer(m_logger, *m_client_eth_prod, m_client_ip4);
+    m_client_eth_proc =
+      new ethernet::Processor(m_logger, m_client_pcap->address());
+    m_client_ip4_proc = new ipv4::Processor(m_logger, m_client_ip4);
+    m_client_tcp = new tcpv4::Processor(m_logger, *m_client_pcap,
+                                        *m_client_eth_prod, *m_client_ip4_prod,
+                                        *m_client_evt, 1);
     /*
      * Client processor binding
      */
@@ -269,13 +276,16 @@ protected:
      * Server stack
      */
     m_server_evt = new Server(server_n + ".log");
-    m_server_eth_prod =
-      new ethernet::Producer(*m_server_pcap, m_server_pcap->address());
-    m_server_ip4_prod = new ipv4::Producer(*m_server_eth_prod, m_server_ip4);
-    m_server_eth_proc = new ethernet::Processor(m_server_pcap->address());
-    m_server_ip4_proc = new ipv4::Processor(m_server_ip4);
-    m_server_tcp = new tcpv4::Processor(*m_server_pcap, *m_server_eth_prod,
-                                        *m_server_ip4_prod, *m_server_evt, 1);
+    m_server_eth_prod = new ethernet::Producer(m_logger, *m_server_pcap,
+                                               m_server_pcap->address());
+    m_server_ip4_prod =
+      new ipv4::Producer(m_logger, *m_server_eth_prod, m_server_ip4);
+    m_server_eth_proc =
+      new ethernet::Processor(m_logger, m_server_pcap->address());
+    m_server_ip4_proc = new ipv4::Processor(m_logger, m_server_ip4);
+    m_server_tcp = new tcpv4::Processor(m_logger, *m_server_pcap,
+                                        *m_server_eth_prod, *m_server_ip4_prod,
+                                        *m_server_evt, 1);
     /*
      * Server processor binding
      */
@@ -330,6 +340,7 @@ protected:
     tulips_fifo_destroy(&m_server_fifo);
   }
 
+  system::ConsoleLogger m_logger;
   tulips_fifo_t m_client_fifo;
   tulips_fifo_t m_server_fifo;
   ethernet::Address m_client_adr;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/stack/Ethernet.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Producer.h>
 #include <cstdint>
 #include <cstring>
@@ -12,7 +13,7 @@ namespace tulips::stack::ethernet {
 class Producer : public transport::Producer
 {
 public:
-  Producer(transport::Producer& prod, Address const& ha);
+  Producer(system::Logger& log, transport::Producer& prod, Address const& ha);
 
   uint32_t mss() const override { return m_prod.mss() - HEADER_LEN; }
 
@@ -35,6 +36,7 @@ public:
   }
 
 private:
+  system::Logger& m_log;
   transport::Producer& m_prod;
   Address m_hostAddress;
   Address m_destAddress;

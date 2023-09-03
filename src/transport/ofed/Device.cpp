@@ -18,7 +18,6 @@
 #include <sys/mman.h>
 #include <infiniband/verbs.h>
 
-#define OFED_HEXDUMP 0
 /*
  * Enable OFED_CAPTSOB to limit the TSO segment to 64KB. This is required to
  * debug large segment with the PCAP transport enabled as IP packets cannot be
@@ -26,16 +25,10 @@
  */
 #define OFED_CAPTSOB 0 // NOLINT
 
-#ifdef TRANS_VERBOSE
-#define OFED_LOG(__args) LOG("OFED", __args)
-#else
-#define OFED_LOG(...) ((void)0)
-#endif
-
 namespace tulips::transport::ofed {
 
-Device::Device(const uint16_t nbuf)
-  : transport::Device()
+Device::Device(system::Logger& log, const uint16_t nbuf)
+  : transport::Device(log, "ofed")
   , m_nbuf(nbuf)
   , m_pending(0)
   , m_port(0)
@@ -76,8 +69,8 @@ Device::Device(const uint16_t nbuf)
   construct(ifn, nbuf);
 }
 
-Device::Device(std::string_view ifn, const uint16_t nbuf)
-  : transport::Device(ifn)
+Device::Device(system::Logger& log, std::string_view ifn, const uint16_t nbuf)
+  : transport::Device(log, ifn)
   , m_nbuf(nbuf)
   , m_pending(0)
   , m_port(0)
@@ -125,7 +118,7 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
   /*
    * Check if there are any device available.
    */
-  OFED_LOG("using network interface: " << ifn);
+  m_log.debug("OFED", "using network interface: ", ifn);
   if (ndev == 0) {
     ibv_free_device_list(devlist);
     throw std::runtime_error("No OFED-compatible device found");
@@ -151,30 +144,30 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
     ibv_free_device_list(devlist);
     throw std::runtime_error("Requested device not found");
   }
-  OFED_LOG("name: " << device->name);
-  OFED_LOG("dev_name: " << device->dev_name);
-  OFED_LOG("dev_path: " << device->dev_path);
-  OFED_LOG("ibdev_path: " << device->ibdev_path);
+  m_log.debug("OFED", "name: ", device->name);
+  m_log.debug("OFED", "dev_name: ", device->dev_name);
+  m_log.debug("OFED", "dev_path: ", device->dev_path);
+  m_log.debug("OFED", "ibdev_path: ", device->ibdev_path);
   /*
    * Get lladdr and MTU.
    */
-  if (!utils::getInterfaceInformation(ifn, m_address, m_hwmtu)) {
+  if (!utils::getInterfaceInformation(m_log, ifn, m_address, m_hwmtu)) {
     throw std::runtime_error("Cannot read device's lladdr and mtu");
   }
-  OFED_LOG("hardware address: " << m_address.toString());
-  OFED_LOG("MTU: " << m_hwmtu);
+  m_log.debug("OFED", "hardware address: ", m_address.toString());
+  m_log.debug("OFED", "MTU: ", m_hwmtu);
   m_mtu = m_hwmtu;
   m_buflen = m_hwmtu + stack::ethernet::HEADER_LEN;
-  OFED_LOG("send buffer length: " << m_buflen);
+  m_log.debug("OFED", "send buffer length: ", m_buflen);
   /*
    * Get L3 addresses.
    */
-  if (!utils::getInterfaceInformation(ifn, m_ip, m_nm, m_dr)) {
+  if (!utils::getInterfaceInformation(m_log, ifn, m_ip, m_nm, m_dr)) {
     throw std::runtime_error("Cannot read device's L3 addresses");
   }
-  OFED_LOG("ip address: " << m_ip.toString());
-  OFED_LOG("netmask: " << m_nm.toString());
-  OFED_LOG("router address: " << m_dr.toString());
+  m_log.debug("OFED", "ip address: ", m_ip.toString());
+  m_log.debug("OFED", "netmask: ", m_nm.toString());
+  m_log.debug("OFED", "router address: ", m_dr.toString());
   /*
    * Open the device.
    */
@@ -203,7 +196,7 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
 #ifdef TULIPS_HAS_HW_CHECKSUM
   if (!(deva.device_cap_flags_ex & IBV_DEVICE_RAW_IP_CSUM)) {
 #ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    OFED_LOG("IP checksum offload not supported by device, ignored");
+    m_log.debug("OFED", "IP checksum offload not supported by device, ignored");
 #else
     throw std::runtime_error("Device does not support IP checksum offload");
 #endif
@@ -214,17 +207,17 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
    */
 #ifdef TULIPS_HAS_HW_TSO
   if (HAS_TSO(deva.tso_caps)) {
-    OFED_LOG("max TSO length: " << deva.tso_caps.max_tso);
+    m_log.debug("OFED", "max TSO length: " << deva.tso_caps.max_tso);
 #if OFED_CAPTSOB
     m_buflen = 65536;
-    OFED_LOG("updated limit send buffer length: " << m_buflen);
+    m_log.debug("OFED", "updated limit send buffer length: " << m_buflen);
 #else
     m_buflen = deva.tso_caps.max_tso;
-    OFED_LOG("updated send buffer length: " << m_buflen);
+    m_log.debug("OFED", "updated send buffer length: " << m_buflen);
 #endif
   } else {
 #ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    OFED_LOG("TSO not supported by device, ignored");
+    m_log.debug("OFED", "TSO not supported by device, ignored");
 #else
     throw std::runtime_error("Device does not support TSO");
 #endif
@@ -339,7 +332,7 @@ Device::postReceive(const uint16_t id)
    */
   struct ibv_recv_wr* bad_wr;
   if (ibv_post_recv(m_qp, &wr, &bad_wr) != 0) {
-    LOG("OFDED", "post receive of buffer id=" << id << "failed");
+    m_log.debug("OFED", "post receive of buffer id=", id, "failed");
     return Status::HardwareError;
   }
   return Status::Ok;
@@ -468,13 +461,13 @@ Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   ibv_flow* f = ibv_create_flow(m_qp, (ibv_flow_attr*)&flow);
   if (f == nullptr) {
-    OFED_LOG("cannot create TCP/UDP FLOW");
+    m_log.debug("OFED", "cannot create TCP/UDP FLOW");
     return Status::HardwareError;
   }
   /*
    * Register the flow.
    */
-  OFED_LOG("TCP/UDP flow for port " << lport << " created");
+  m_log.debug("OFED", "TCP/UDP flow for port ", lport, " created");
   m_filters[lport] = f;
   return Status::Ok;
 }
@@ -505,13 +498,13 @@ Device::poll(Processor& proc)
    */
   cqn = ibv_poll_cq(m_recvcq, m_nbuf, wc);
   if (cqn < 0) {
-    OFED_LOG("polling recv completion queue failed");
+    m_log.debug("OFED", "polling recv completion queue failed");
     return Status::HardwareError;
   }
   if (cqn == 0) {
     return Status::NoDataAvailable;
   }
-  OFED_LOG(cqn << " buffers available");
+  m_log.debug("OFED", cqn, " buffers available");
   /*
    * Process the buffers.
    */
@@ -521,11 +514,8 @@ Device::poll(Processor& proc)
     int id = wc[i].wr_id;
     size_t len = wc[i].byte_len;
     const uint8_t* addr = m_recvbuf + size_t(id) * RECV_BUFLEN;
-    OFED_LOG("processing id=" << id << " addr=" << (void*)addr
-                              << " len=" << len);
-#if defined(TRANS_VERBOSE) && OFED_HEXDUMP
-    stack::utils::hexdump(addr, wc[i].byte_len, std::cout);
-#endif
+    m_log.debug("OFED", "processing id=", id, " addr=", (void*)addr,
+                " len=", len);
     /*
      * Validate the IP checksums
      */
@@ -533,7 +523,7 @@ Device::poll(Processor& proc)
     if (wc[i].wc_flags & IBV_FLOW_SPEC_IPV4) {
       if (m_hints & Device::VALIDATE_IP_CSUM) {
         if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
-          OFED_LOG("invalid IP checksum, dropping packet");
+          m_log.debug("OFED", "invalid IP checksum, dropping packet");
           continue;
         }
       }
@@ -541,7 +531,7 @@ Device::poll(Processor& proc)
     if (wc[i].wc_flags & IBV_FLOW_SPEC_TCP) {
       if (m_hints & Device::VALIDATE_L4_CSUM) {
         if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
-          OFED_LOG("invalid TCP/UDP checksum, dropping packet");
+          m_log.debug("OFED", "invalid TCP/UDP checksum, dropping packet");
           continue;
         }
       }
@@ -559,7 +549,7 @@ Device::poll(Processor& proc)
         const int lid = wc[j].wr_id;
         Status res = postReceive(lid);
         if (res != Status::Ok) {
-          LOG("OFDED", "re-post receive of buffer id=" << lid << "failed");
+          m_log.debug("OFED", "re-post receive of buffer id=", lid, "failed");
           return Status::HardwareError;
         }
       }
@@ -574,7 +564,7 @@ Device::poll(Processor& proc)
     const int id = wc[i].wr_id;
     Status res = postReceive(id);
     if (res != Status::Ok) {
-      LOG("OFDED", "re-post receive of buffer id=" << id << "failed");
+      m_log.debug("OFED", "re-post receive of buffer id=", id, "failed");
       return Status::HardwareError;
     }
   }
@@ -605,7 +595,7 @@ Device::wait(Processor& proc, const uint64_t ns)
    * Request a notification.
    */
   if (ibv_req_notify_cq(m_recvcq, 0) != 0) {
-    OFED_LOG("requesting notification failed");
+    m_log.debug("OFED", "requesting notification failed");
     return Status::HardwareError;
   }
   /*
@@ -631,7 +621,7 @@ Device::wait(Processor& proc, const uint64_t ns)
     ibv_cq* cq = nullptr;
     void* context = nullptr;
     if (ibv_get_cq_event(m_comp, &cq, &context) != 0) {
-      OFED_LOG("getting notification failed");
+      m_log.debug("OFED", "getting notification failed");
       return Status::HardwareError;
     }
     m_events += 1;
@@ -652,7 +642,7 @@ Device::prepare(uint8_t*& buf)
    */
   cqn = ibv_poll_cq(m_sendcq, m_nbuf, wc);
   if (cqn < 0) {
-    OFED_LOG("polling send completion queue failed");
+    m_log.debug("OFED", "polling send completion queue failed");
     return Status::HardwareError;
   }
   /*
@@ -674,7 +664,7 @@ Device::prepare(uint8_t*& buf)
     return Status::HardwareError;
   }
   buf = *buffer;
-  OFED_LOG("prepare buffer " << (void*)buf);
+  m_log.debug("OFED", "prepare buffer ", (void*)buf);
   tulips_fifo_pop(m_fifo);
   return Status::Ok;
 }
@@ -689,15 +679,14 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 #ifdef TULIPS_HAS_HW_TSO
   uint32_t header_len;
   if (!stack::utils::headerLength(buf, len, header_len)) {
-    OFED_LOG("cannot get packet header length");
+    m_log.debug("OFED", "cannot get packet header length");
     return Status::IncompleteData;
   }
   /*
    * Reject the request if the MSS provided is too small for the job.
    */
   if (len > (m_hwmtu + stack::ethernet::HEADER_LEN) && mss <= header_len) {
-    LOG("OFED",
-        "mss=" << mss << " for hwmtu=" << m_hwmtu << " and len=" << len);
+    m_log.debug("OFED", "mss=", mss, " for hwmtu=", m_hwmtu, " and len=", len);
     return Status::InvalidArgument;
   }
   /*
@@ -706,7 +695,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   uint16_t lmss = mss;
   if (mss == 0 || mss > m_hwmtu - header_len) {
     lmss = m_hwmtu + stack::ethernet::HEADER_LEN - header_len;
-    OFED_LOG("adjusting request MSS from " << mss << " to " << lmss);
+    m_log.debug("OFED", "adjusting request MSS from " << mss << " to " << lmss);
   }
 #endif
   /*
@@ -758,14 +747,11 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   struct ibv_send_wr* bad_wr;
   if (ibv_post_send(m_qp, &wr, &bad_wr) != 0) {
-    LOG("OFED",
-        "post send of buffer len=" << len << " failed, " << strerror(errno));
+    m_log.debug("OFED", "post send of buffer len=", len, " failed, ",
+                strerror(errno));
     return Status::HardwareError;
   }
-  OFED_LOG("commit buffer " << (void*)buf << " len " << len);
-#if defined(TRANS_VERBOSE) && OFED_HEXDUMP
-  stack::utils::hexdump(buf, len, std::cout);
-#endif
+  m_log.debug("OFED", "commit buffer ", (void*)buf, " len ", len);
   return Status::Ok;
 }
 

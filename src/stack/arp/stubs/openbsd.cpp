@@ -1,5 +1,6 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Utils.h>
 #include <cerrno>
 #include <cstdlib>
@@ -17,16 +18,10 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 
-#ifdef ARP_VERBOSE
-#define ARP_LOG(__args) LOG("ARP", __args)
-#else
-#define ARP_LOG(...)
-#endif
-
 namespace tulips::stack::arp::stub {
 
 static bool
-getinetaddr(std::string_view host, struct in_addr* inap)
+getinetaddr(system::Logger& log, std::string_view host, struct in_addr* inap)
 {
   struct hostent* hp;
   auto shost = std::string(host);
@@ -34,11 +29,11 @@ getinetaddr(std::string_view host, struct in_addr* inap)
    * Loop-up the host address.
    */
   if (inet_aton(shost.c_str(), inap) == 1) {
-    ARP_LOG("inet_aton for " << host << " succeeded");
+    log.debug("ARP", "inet_aton for " << host << " succeeded");
     return true;
   }
   if ((hp = gethostbyname(shost.c_str())) == nullptr) {
-    ARP_LOG("gethostbyname for " << host << " failed");
+    log.debug("ARP", "gethostbyname for " << host << " failed");
     return false;
   }
   /*
@@ -49,7 +44,7 @@ getinetaddr(std::string_view host, struct in_addr* inap)
 }
 
 static bool
-search(in_addr_t const& addr, ethernet::Address& lladdr)
+search(system::Logger& log, in_addr_t const& addr, ethernet::Address& lladdr)
 {
   int mib[7];
   size_t needed;
@@ -73,26 +68,26 @@ search(in_addr_t const& addr, ethernet::Address& lladdr)
    */
   while (1) {
     if (sysctl(mib, 7, nullptr, &needed, nullptr, 0) == -1) {
-      LOG("ARP", "route-sysctl-estimate");
+      log.debug("ARP", "route-sysctl-estimate");
     }
     if (needed == 0) {
-      ARP_LOG("sysctl failed");
+      log.debug("ARP", "sysctl failed");
       return false;
     }
     if ((buf = (char*)realloc(buf, needed)) == nullptr) {
-      LOG("ARP", "malloc");
+      log.debug("ARP", "malloc");
     }
     if (sysctl(mib, 7, buf, &needed, nullptr, 0) == -1) {
-      ARP_LOG(strerror(errno));
+      log.debug("ARP", strerror(errno));
       if (errno == ENOMEM) {
         continue;
       }
-      LOG("ARP", "actual retrieval of routing table");
+      log.debug("ARP", "actual retrieval of routing table");
     }
     lim = buf + needed;
     break;
   }
-  ARP_LOG("found: " << needed);
+  log.debug("ARP", "found: " << needed);
   /*
    * Search for a match.
    */
@@ -104,7 +99,7 @@ search(in_addr_t const& addr, ethernet::Address& lladdr)
     sin = (struct sockaddr_inarp*)(next + rtm->rtm_hdrlen);
     sdl = (struct sockaddr_dl*)(sin + 1);
     if (addr != sin->sin_addr.s_addr) {
-      ARP_LOG("skipping " << inet_ntoa(sin->sin_addr));
+      log.debug("ARP", "skipping " << inet_ntoa(sin->sin_addr));
       continue;
     }
     u_char* cp = (u_char*)LLADDR(sdl);
@@ -120,16 +115,18 @@ search(in_addr_t const& addr, ethernet::Address& lladdr)
 }
 
 static bool
-get(std::string_view host, ethernet::Address& addr)
+get(system::Logger& log, std::string_view host, ethernet::Address& addr)
 {
   struct sockaddr_inarp sin = { sizeof(sin), AF_INET, 0, { 0 }, { 0 }, 0, 0 };
-  return getinetaddr(host, &sin.sin_addr) && search(sin.sin_addr.s_addr, addr);
+  return getinetaddr(log, host, &sin.sin_addr) &&
+         search(log, sin.sin_addr.s_addr, addr);
 }
 
 bool
-lookup(std::string_view eth, ipv4::Address const& ip, ethernet::Address& hw)
+lookup(system::Logger& log, std::string_view eth, ipv4::Address const& ip,
+       ethernet::Address& hw)
 {
-  return get(ip.toString(), hw);
+  return get(log, ip.toString(), hw);
 }
 
 }

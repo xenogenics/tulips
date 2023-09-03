@@ -78,6 +78,10 @@ try {
   TCLAP::SwitchArg pcpA("P", "pcap", "Capture packets", cmdL);
   cmdL.parse(argc, argv);
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Linenoise.
    */
   linenoiseSetCompletionCallback(completion);
@@ -86,7 +90,7 @@ try {
   /*
    * Commands.
    */
-  ena::State state(iffA.getValue(), pcpA.isSet());
+  ena::State state(logger, iffA.getValue(), pcpA.isSet());
   basic::populate(state.commands);
   ena::connection::populate(state.commands);
   ena::poller::populate(state.commands);

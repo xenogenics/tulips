@@ -8,18 +8,13 @@
 #include <tulips/system/Utils.h>
 #include <arpa/inet.h>
 
-#ifdef IP_VERBOSE
-#define IP_LOG(__args) LOG("IP", __args)
-#else
-#define IP_LOG(...) ((void)0)
-#endif
-
 #define INIP ((const Header*)data)
 
 namespace tulips::stack::ipv4 {
 
-Processor::Processor(Address const& ha)
-  : m_hostAddress(ha)
+Processor::Processor(system::Logger& log, Address const& ha)
+  : m_log(log)
+  , m_hostAddress(ha)
   , m_srceAddress()
   , m_destAddress()
   , m_proto(0)
@@ -71,6 +66,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if (INIP->vhl != 0x45) {
     ++m_stats.drop;
     ++m_stats.vhlerr;
+    m_log.debug("IP4", "invalid protocol type");
     return Status::ProtocolError;
   }
   /*
@@ -79,6 +75,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if ((INIP->ipoffset[0] & 0x3f) != 0 || INIP->ipoffset[1] != 0) {
     ++m_stats.drop;
     ++m_stats.frgerr;
+    m_log.debug("IP4", "IP fragment are not supported");
     return Status::ProtocolError;
   }
   /*
@@ -86,6 +83,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
    */
   if (INIP->destipaddr != m_hostAddress) {
     ++m_stats.drop;
+    m_log.debug("IP4", "unknown destination address");
     return Status::ProtocolError;
   }
   /*
@@ -96,11 +94,8 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if (sum != 0xffff) {
     ++m_stats.drop;
     ++m_stats.chkerr;
-    IP_LOG("data length: " << len);
-    IP_LOG("invalid checksum: 0x" << std::hex << sum << std::dec);
-#ifdef IP_VERBOSE
-    utils::hexdump(data, len, std::cout);
-#endif
+    m_log.debug("IP4", "data length: ", len);
+    m_log.debug("IP4", "invalid checksum: 0x", std::hex, sum, std::dec);
     return Status::CorruptedData;
   }
 #endif

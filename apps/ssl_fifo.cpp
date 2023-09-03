@@ -1,3 +1,4 @@
+#include "tulips/system/Logger.h"
 #include <tulips/api/Defaults.h>
 #include <tulips/ssl/Client.h>
 #include <tulips/ssl/Server.h>
@@ -58,6 +59,10 @@ try {
   Options opts(cmd);
   cmd.parse(argc, argv);
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create the transport FIFOs
    */
   tulips_fifo_t cfifo = TULIPS_FIFO_DEFAULT_VALUE;
@@ -76,18 +81,18 @@ try {
   ipv4::Address sip4(10, 1, 0, 2);
   ipv4::Address bcast(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  shm::Device cshm(cadr, cip4, bcast, nmask, sfifo, cfifo);
-  shm::Device sshm(sadr, sip4, bcast, nmask, cfifo, sfifo);
+  shm::Device cshm(logger, cadr, cip4, bcast, nmask, sfifo, cfifo);
+  shm::Device sshm(logger, sadr, sip4, bcast, nmask, cfifo, sfifo);
   /*
    * Create PCAP devices.
    */
-  transport::pcap::Device cdev(cshm, "ssl_client.pcap");
-  transport::pcap::Device sdev(sshm, "ssl_server.pcap");
+  transport::pcap::Device cdev(logger, cshm, "ssl_client.pcap");
+  transport::pcap::Device sdev(logger, sshm, "ssl_server.pcap");
   /*
    * Initialize the client.
    */
   defaults::ClientDelegate client_delegate;
-  ssl::Client client(client_delegate, cdev, 1, ssl::Protocol::TLS,
+  ssl::Client client(logger, client_delegate, cdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   /*
    * Open a connection.
@@ -98,7 +103,7 @@ try {
    * Initialize the server
    */
   ServerDelegate server_delegate;
-  ssl::Server server(server_delegate, sdev, 1, ssl::Protocol::TLS,
+  ssl::Server server(logger, server_delegate, sdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   server.listen(1234, nullptr);
   /*

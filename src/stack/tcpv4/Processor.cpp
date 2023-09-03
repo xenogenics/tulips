@@ -15,9 +15,11 @@
 
 namespace tulips::stack::tcpv4 {
 
-Processor::Processor(transport::Device& device, ethernet::Producer& eth,
-                     ipv4::Producer& ip4, EventHandler& h, const size_t nconn)
-  : m_device(device)
+Processor::Processor(system::Logger& log, transport::Device& device,
+                     ethernet::Producer& eth, ipv4::Producer& ip4,
+                     EventHandler& h, const size_t nconn)
+  : m_log(log)
+  , m_device(device)
   , m_ethto(eth)
   , m_ipv4to(ip4)
   , m_handler(h)
@@ -95,7 +97,7 @@ Processor::run()
        * If it timed out, close the connection.
        */
       if (e.m_timer == TIME_WAIT_TIMEOUT) {
-        TCP_LOG("connection closed");
+        m_log.debug("TCP4", "connection closed");
         m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
         e.m_state = Connection::CLOSED;
         continue;
@@ -120,7 +122,7 @@ Processor::run()
     if (e.m_nrtx == MAXRTX || ((e.m_state == Connection::SYN_SENT ||
                                 e.m_state == Connection::SYN_RCVD) &&
                                e.m_nrtx == MAXSYNRTX)) {
-      TCP_LOG("aborting the connection");
+      m_log.debug("TCP4", "aborting the connection");
       m_handler.onTimedOut(e);
       return sendAbort(e);
     }
@@ -132,11 +134,12 @@ Processor::run()
     /*
      * Ok, so we need to retransmit.
      */
-    TCP_LOG("automatic repeat request (" << e.m_nrtx << "/" << MAXRTX << ")");
-    TCP_LOG("segments available? " << std::boolalpha
-                                   << e.hasAvailableSegments());
-    TCP_LOG("segments outstanding? " << std::boolalpha
-                                     << e.hasOutstandingSegments());
+    m_log.debug("TCP4", "automatic repeat request (", (size_t)e.m_nrtx, "/",
+                MAXRTX, ")");
+    m_log.debug("TCP4", "segments available? ", std::boolalpha,
+                e.hasAvailableSegments());
+    m_log.debug("TCP4", "segments outstanding? ", std::boolalpha,
+                e.hasOutstandingSegments());
     return rexmit(e);
   }
   return Status::Ok;
@@ -156,10 +159,10 @@ Processor::process(const uint16_t len, const uint8_t* const data)
   if (csum != 0xffff) {
     m_stats.drop += 1;
     m_stats.chkerr += 1;
-    LOG("TCP", "invalid checksum ("
-                 << m_ipv4from->sourceAddress().toString() << ", "
-                 << m_ipv4from->destinationAddress().toString() << ", " << len
-                 << ", 0x" << std::hex << csum << std::dec << ")");
+    m_log.debug("TCP", "invalid checksum (",
+                m_ipv4from->sourceAddress().toString(), ", ",
+                m_ipv4from->destinationAddress().toString(), ", ", len, ", 0x",
+                std::hex, csum, std::dec, ")");
     return Status::CorruptedData;
   }
 #endif
@@ -183,7 +186,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    * send a RST.
    */
   if ((INTCP->flags & Flag::CTL) != Flag::SYN) {
-    TCP_LOG("no connection waiting for a SYN/ACK");
+    m_log.debug("TCP4", "no connection waiting for a SYN/ACK");
     return reset(len, data);
   }
   uint16_t tmp16 = INTCP->destport;
@@ -278,7 +281,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    */
   if (INTCP->offset > 5) {
     uint16_t nbytes = (INTCP->offset - 5) << 2;
-    Options::parse(*e, nbytes, data);
+    Options::parse(m_log, *e, nbytes, data);
   }
   /*
    * Send the SYN/ACK
@@ -328,7 +331,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    * reset is within our advertised window before we accept the reset.
    */
   if (INTCP->flags & Flag::RST) {
-    TCP_LOG("connection aborted");
+    m_log.debug("TCP4", "connection aborted");
     m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
     e.m_state = Connection::CLOSED;
     m_handler.onAborted(e);
@@ -343,8 +346,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
   /*
    * Print the flow information if requested.
    */
-  TCP_FLOW("-> " << getFlags(*INTCP) << " len:" << plen << " seq:" << seqno
-                 << " ack:" << ackno << " seg:" << e.m_segidx);
+  m_log.debug("FLOW", "-> ", getFlags(*INTCP), " len:", plen, " seq:", seqno,
+              " ack:", ackno, " seg:", size_t(e.m_segidx));
   /*
    * Check if the sequence number of the incoming packet is what we're
    * expecting next, except if we are expecting a SYN/ACK.
@@ -359,7 +362,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * Send an ACK with the proper seqno if the received seqno is wrong.
        */
       if (seqno != e.m_rcv_nxt) {
-        TCP_LOG("sequence ACK: in=" << seqno << " exp=" << e.m_rcv_nxt);
+        m_log.debug("TCP4", "sequence ACK: in=", seqno, " exp=", e.m_rcv_nxt);
         return sendAck(e);
       }
     }
@@ -399,8 +402,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          */
         if (e.window() != e.window(window)) {
           e.m_window = window;
-          TCP_LOG("peer window updated to wnd: " << e.window()
-                                                 << " on seq:" << ackno);
+          m_log.debug("TCP4", "peer window updated to wnd: ", e.window(),
+                      " on seq:", ackno);
           /*
            * Do RTT estimation, unless we have done retransmissions. There is no
            * reason to have a REXMIT at this point.
@@ -413,7 +416,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
         /*
          * In the case of an OoO packet, let the ARQ do its job.
          */
-        TCP_LOG("peer rexmit request on seq:" << ackno);
+        m_log.debug("TCP4", "peer rexmit request on seq:", ackno);
         return rexmit(e);
       }
       /*
@@ -479,7 +482,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * Process the ACK data if any.
        */
       if (e.m_ackdata) {
-        TCP_LOG("connection established");
+        m_log.debug("TCP4", "connection established");
         /*
          * Send the connection event.
          */
@@ -510,7 +513,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        */
       if (e.m_ackdata &&
           (INTCP->flags & Flag::CTL) == (Flag::SYN | Flag::ACK)) {
-        TCP_LOG("connection established");
+        m_log.debug("TCP4", "connection established");
         /*
          * Update the connection info
          */
@@ -522,7 +525,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          */
         if (INTCP->offset > 5) {
           uint16_t nbytes = (INTCP->offset - 5) << 2;
-          Options::parse(e, nbytes, data);
+          Options::parse(m_log, e, nbytes, data);
         }
         /*
          * Send the connected event.
@@ -567,7 +570,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          * If some of our data is still in flight, ignore the FIN.
          */
         if (e.hasOutstandingSegments()) {
-          TCP_LOG("FIN received but outstanding data");
+          m_log.debug("TCP4", "FIN received but outstanding data");
           return Status::Ok;
         }
         /*
@@ -584,7 +587,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          * Acknowledge the FIN. If we are here there is no more outstanding
          * segment, so one must be available.
          */
-        TCP_LOG("connection last ACK");
+        m_log.debug("TCP4", "connection last ACK");
         e.m_state = Connection::LAST_ACK;
         Segment& seg = e.nextAvailableSegment();
         seg.set(1, e.m_snd_nxt, e.m_sdat);
@@ -806,7 +809,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
      */
     case Connection::LAST_ACK: {
       if (e.m_ackdata) {
-        TCP_LOG("connection closed");
+        m_log.debug("TCP4", "connection closed");
         m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
         e.m_state = Connection::CLOSED;
         m_handler.onClosed(e);
@@ -827,11 +830,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        */
       if (INTCP->flags & Flag::FIN) {
         if (e.m_ackdata) {
-          TCP_LOG("connection time-wait");
+          m_log.debug("TCP4", "connection time-wait");
           e.m_state = Connection::TIME_WAIT;
           e.m_timer = 0;
         } else {
-          TCP_LOG("connection closing");
+          m_log.debug("TCP4", "connection closing");
           e.m_state = Connection::CLOSING;
         }
         e.m_rcv_nxt += 1;
@@ -842,7 +845,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * Otherwise, if we received an ACK, moved to FIN_WAIT_2.
        */
       else if (e.m_ackdata) {
-        TCP_LOG("Connection FIN wait #2");
+        m_log.debug("TCP4", "Connection FIN wait #2");
         e.m_state = Connection::FIN_WAIT_2;
         return Status::Ok;
       }
@@ -862,7 +865,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * If we get a FIN, moved to TIME_WAIT.
        */
       if (INTCP->flags & Flag::FIN) {
-        TCP_LOG("connection time-wait");
+        m_log.debug("TCP4", "connection time-wait");
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
         e.m_timer = 0;
@@ -894,7 +897,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * Switch to FIN_WAIT_1. There is no more outstanding segment here so we
        * can grab one.
        */
-      TCP_LOG("connection FIN wait #1");
+      m_log.debug("TCP4", "connection FIN wait #1");
       e.m_state = Connection::FIN_WAIT_1;
       Segment& seg = e.nextAvailableSegment();
       seg.set(1, e.m_snd_nxt, e.m_sdat);
@@ -915,7 +918,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
     }
     case Connection::CLOSING: {
       if (e.m_ackdata) {
-        TCP_LOG("connection time-wait");
+        m_log.debug("TCP4", "connection time-wait");
         e.m_state = Connection::TIME_WAIT;
         e.m_timer = 0;
       }

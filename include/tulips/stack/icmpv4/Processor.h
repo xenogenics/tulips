@@ -5,6 +5,7 @@
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/icmpv4/Request.h>
 #include <tulips/stack/ipv4/Processor.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
 #include <map>
@@ -14,7 +15,7 @@ namespace tulips::stack::icmpv4 {
 class Processor : public transport::Processor
 {
 public:
-  Processor(ethernet::Producer& eth, ipv4::Producer& ip4);
+  Processor(system::Logger& log, ethernet::Producer& eth, ipv4::Producer& ip4);
 
   Status run() override { return Status::Ok; }
   Status process(const uint16_t len, const uint8_t* const data) override;
@@ -43,6 +44,7 @@ public:
 private:
   using Requests = std::map<Request::ID, Request*>;
 
+  system::Logger& m_log;
   ethernet::Producer& m_ethout;
   ipv4::Producer& m_ip4out;
   ethernet::Processor* m_ethin;

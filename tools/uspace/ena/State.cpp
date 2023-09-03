@@ -4,10 +4,11 @@
 
 namespace tulips::tools::uspace::ena {
 
-State::State(std::string_view iff, const bool pcap)
+State::State(system::Logger& log, std::string_view iff, const bool pcap)
   : utils::State()
+  , logger(log)
   , interface(iff)
-  , port(iff, 8, 32)
+  , port(log, iff, 8, 32)
   , with_pcap(pcap)
   , pollers()
   , m_run(true)

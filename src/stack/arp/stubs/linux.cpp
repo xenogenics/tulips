@@ -1,5 +1,6 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Utils.h>
 #include <cerrno>
 #include <cstring>
@@ -9,35 +10,29 @@
 #include <netinet/ether.h>
 #include <sys/ioctl.h>
 
-#ifdef ARP_VERBOSE
-#define ARP_LOG(__args) LOG("ARP", __args)
-#else
-#define ARP_LOG(...) ((void)0)
-#endif
-
 namespace tulips::stack::arp::stub {
 
 static bool
-send_dummy(const int sock, ipv4::Address const& ip)
+send_dummy(system::Logger& log, const int sock, ipv4::Address const& ip)
 {
   struct sockaddr_in servaddr;
   memset((char*)&servaddr, 0, sizeof(servaddr));
   servaddr.sin_family = AF_INET;
   servaddr.sin_port = htons(12345);
   memcpy((void*)&servaddr.sin_addr, ip.data(), 4);
-  ARP_LOG("sending dummy data to " << ip.toString());
+  log.debug("ARP", "sending dummy data to ", ip.toString());
   if (sendto(sock, nullptr, 0, 0, (struct sockaddr*)&servaddr,
              sizeof(servaddr)) < 0) {
     close(sock);
-    LOG("ARP", "cannot send dummy data: " << strerror(errno));
+    log.debug("ARP", "cannot send dummy data: ", strerror(errno));
     return false;
   }
   return true;
 }
 
 static bool
-read_address(const int sock, std::string_view eth, ipv4::Address const& ip,
-             ethernet::Address& hw)
+read_address(system::Logger& log, const int sock, std::string_view eth,
+             ipv4::Address const& ip, ethernet::Address& hw)
 {
   struct arpreq areq;
   struct sockaddr_in* sin;
@@ -54,9 +49,9 @@ read_address(const int sock, std::string_view eth, ipv4::Address const& ip,
   /*
    * Run the ARP request.
    */
-  ARP_LOG("reading kernel ARP entry");
+  log.debug("ARP", "reading kernel ARP entry");
   if (ioctl(sock, SIOCGARP, (caddr_t)&areq) == -1) {
-    LOG("ARP", "SIOCGARP: " << strerror(errno));
+    log.debug("ARP", "SIOCGARP: ", strerror(errno));
     return false;
   }
   memcpy(hw.data(), areq.arp_ha.sa_data, ETHER_ADDR_LEN);
@@ -64,37 +59,38 @@ read_address(const int sock, std::string_view eth, ipv4::Address const& ip,
 }
 
 bool
-lookup(std::string_view eth, tulips::stack::ipv4::Address const& ip,
+lookup(system::Logger& log, std::string_view eth,
+       tulips::stack::ipv4::Address const& ip,
        tulips::stack::ethernet::Address& hw)
 {
   /*
    * Create a dummy socket.
    */
-  ARP_LOG("creating datagram socket");
+  log.debug("ARP", "creating datagram socket");
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
-    LOG("ARP", "cannot create datagram socket: " << strerror(errno));
+    log.debug("ARP", "cannot create datagram socket: ", strerror(errno));
     return false;
   }
   /*
    * Send some dummy data over.
    */
-  if (read_address(sock, eth, ip, hw)) {
-    LOG("ARP", "got " << hw.toString() << " for " << ip.toString());
+  if (read_address(log, sock, eth, ip, hw)) {
+    log.debug("ARP", "got ", hw.toString(), " for ", ip.toString());
     close(sock);
     return true;
   }
-  ARP_LOG("ARP entry missing for " << ip.toString());
+  log.debug("ARP", "ARP entry missing for ", ip.toString());
   /*
    * Wait one millisecond for the ARP request to complete.
    */
-  send_dummy(sock, ip);
+  send_dummy(log, sock, ip);
   usleep(1000);
   /*
    * Try to read the address again.
    */
-  bool ret = read_address(sock, eth, ip, hw);
-  LOG("ARP", "got " << hw.toString() << " for " << ip.toString());
+  bool ret = read_address(log, sock, eth, ip, hw);
+  log.debug("ARP", "got ", hw.toString(), " for ", ip.toString());
   close(sock);
   return ret;
 }

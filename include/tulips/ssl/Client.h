@@ -12,11 +12,11 @@ class Client
   , public interface::Client::Delegate
 {
 public:
-  Client(interface::Client::Delegate& delegate, transport::Device& device,
-         const size_t nconn, const Protocol type);
-  Client(interface::Client::Delegate& delegate, transport::Device& device,
-         const size_t nconn, const Protocol type, std::string_view cert,
-         std::string_view key);
+  Client(system::Logger& log, interface::Client::Delegate& delegate,
+         transport::Device& device, const size_t nconn, const Protocol type);
+  Client(system::Logger& log, interface::Client::Delegate& delegate,
+         transport::Device& device, const size_t nconn, const Protocol type,
+         std::string_view cert, std::string_view key);
   ~Client() override;
 
   /**
@@ -74,6 +74,7 @@ private:
   Status flush(const ID id, void* const cookie);
 
   interface::Client::Delegate& m_delegate;
+  system::Logger& m_log;
   transport::Device& m_dev;
   tulips::Client m_client;
   void* m_context;

@@ -1,20 +1,16 @@
 #include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/Options.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Utils.h>
 #include <cstdint>
 #include <ostream>
 #include <arpa/inet.h>
 
-#ifdef TCP_OPT_VERBOSE
-#define OPT_LOG(__args) LOG("TCP", __args)
-#else
-#define OPT_LOG(...) ((void)0)
-#endif
-
 namespace tulips::stack::tcpv4::Options {
 
 void
-parse(Connection& e, const uint16_t len, const uint8_t* const data)
+parse(system::Logger& log, Connection& e, const uint16_t len,
+      const uint8_t* const data)
 {
   /*
    * Get the number of options bytes
@@ -47,7 +43,7 @@ parse(Connection& e, const uint16_t len, const uint8_t* const data)
        * An MSS option with the right option length.
        */
       uint16_t nmss = omss > e.m_initialmss ? e.m_initialmss : omss;
-      OPT_LOG("initial MSS update: " << e.m_initialmss << " -> " << nmss);
+      log.debug("TCP", "initial MSS update: ", e.m_initialmss, " -> ", nmss);
       e.m_initialmss = nmss;
     }
     /*

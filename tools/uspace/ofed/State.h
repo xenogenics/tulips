@@ -11,8 +11,8 @@ using IDs = std::set<Client::ID>;
 
 struct State : public utils::State
 {
-  State(const bool pcap = false);
-  State(std::string_view dev, const bool pcap = false);
+  State(system::Logger& log, const bool pcap = false);
+  State(system::Logger& log, std::string_view dev, const bool pcap = false);
 
   Poller poller;
   IDs ids;

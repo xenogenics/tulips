@@ -20,16 +20,20 @@ try {
     return __LINE__;
   }
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create the tunnel device.
    */
   transport::npipe::Device* device;
   if (opts.isSender()) {
     device = new transport::npipe::ClientDevice(
-      opts.linkAddress(), opts.source(), opts.mask(), opts.route(),
+      logger, opts.linkAddress(), opts.source(), opts.mask(), opts.route(),
       "server.fifo", "client.fifo");
   } else {
     device = new transport::npipe::ServerDevice(
-      opts.linkAddress(), opts.source(), opts.mask(), opts.route(),
+      logger, opts.linkAddress(), opts.source(), opts.mask(), opts.route(),
       "client.fifo", "server.fifo");
   }
   /*

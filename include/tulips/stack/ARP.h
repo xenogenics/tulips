@@ -3,6 +3,7 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <cstdint>
 #include <string>
 
@@ -27,7 +28,8 @@ struct Header
   ipv4::Address dipaddr;
 } PACKED;
 
-bool lookup(std::string_view eth, tulips::stack::ipv4::Address const& ip,
+bool lookup(system::Logger& log, std::string_view eth,
+            tulips::stack::ipv4::Address const& ip,
             tulips::stack::ethernet::Address& hw);
 
 }

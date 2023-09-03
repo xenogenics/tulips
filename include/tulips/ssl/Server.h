@@ -11,9 +11,9 @@ class Server
   , public interface::Server::Delegate
 {
 public:
-  Server(interface::Server::Delegate& delegate, transport::Device& device,
-         const size_t nconn, const ssl::Protocol type, std::string_view cert,
-         std::string_view key);
+  Server(system::Logger& log, interface::Server::Delegate& delegate,
+         transport::Device& device, const size_t nconn,
+         const ssl::Protocol type, std::string_view cert, std::string_view key);
   ~Server() override;
 
   inline Status run() override { return m_server.run(); }
@@ -60,6 +60,7 @@ private:
   Status flush(const ID id, void* const cookie);
 
   interface::Server::Delegate& m_delegate;
+  system::Logger& m_log;
   transport::Device& m_dev;
   tulips::Server m_server;
   void* m_context;

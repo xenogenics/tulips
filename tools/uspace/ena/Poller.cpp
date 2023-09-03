@@ -10,14 +10,15 @@ namespace tulips::tools::uspace::ena::poller {
  * Poller.
  */
 
-Poller::Poller(transport::Device::Ref dev, const bool pcap)
+Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap)
   : m_capture(pcap)
   , m_dev(std::move(dev))
-  , m_pcap(pcap ? new transport::pcap::Device(*m_dev, m_dev->name()) : nullptr)
+  , m_pcap(pcap ? new transport::pcap::Device(log, *m_dev, m_dev->name())
+                : nullptr)
   , m_device(pcap ? (transport::Device*)m_pcap
                   : (transport::Device*)m_dev.get())
   , m_delegate()
-  , m_client(m_delegate, *m_device, 32)
+  , m_client(log, m_delegate, *m_device, 32)
   , m_run(true)
   , m_thread()
   , m_mutex()
@@ -271,7 +272,8 @@ public:
     /*
      * Create a new poller.
      */
-    s.pollers.emplace_back(new Poller(s.port.next(ip, dr, nm), s.with_pcap));
+    s.pollers.emplace_back(
+      new Poller(s.logger, s.port.next(ip, dr, nm), s.with_pcap));
     /*
      * Print the poller ID.
      */

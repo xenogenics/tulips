@@ -3,6 +3,7 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <string>
 
@@ -11,7 +12,7 @@ namespace tulips::transport::npipe {
 class Device : public transport::Device
 {
 public:
-  Device(stack::ethernet::Address const& address,
+  Device(system::Logger& log, stack::ethernet::Address const& address,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
          stack::ipv4::Address const& dr);
 
@@ -85,7 +86,7 @@ protected:
 class ClientDevice : public Device
 {
 public:
-  ClientDevice(stack::ethernet::Address const& address,
+  ClientDevice(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr, std::string_view rf,
                std::string_view wf);
@@ -94,7 +95,7 @@ public:
 class ServerDevice : public Device
 {
 public:
-  ServerDevice(stack::ethernet::Address const& address,
+  ServerDevice(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr, std::string_view rf,
                std::string_view wf);

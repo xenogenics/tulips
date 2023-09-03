@@ -4,6 +4,7 @@
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/system/Timer.h>
 #include <tulips/transport/Processor.h>
 #include <vector>
@@ -14,7 +15,7 @@ namespace tulips::stack::arp {
 class Processor : public transport::Processor
 {
 public:
-  Processor(ethernet::Producer& eth, ipv4::Producer& ip4);
+  Processor(system::Logger& log, ethernet::Producer& eth, ipv4::Producer& ip4);
 
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data) override;
@@ -39,6 +40,7 @@ private:
 
   ipv4::Address const& hopAddress(ipv4::Address const& addr) const;
 
+  system::Logger& m_log;
   ethernet::Producer& m_eth;
   ipv4::Producer& m_ipv4;
   Table m_table;

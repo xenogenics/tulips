@@ -76,7 +76,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
    */
   ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
   if (ret != Status::Ok) {
-    TCP_LOG("registering client-side filter failed");
+    m_log.debug("TCP4", "registering client-side filter failed");
     return ret;
   }
   /*
@@ -165,7 +165,7 @@ Processor::close(Connection::ID const& id)
    * If we are already busy, return OK.
    */
   if (c.hasOutstandingSegments()) {
-    TCP_LOG("connection close");
+    m_log.debug("TCP4", "connection close");
     c.m_state = Connection::CLOSE;
     return Status::Ok;
   }

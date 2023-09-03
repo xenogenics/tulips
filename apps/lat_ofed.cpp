@@ -20,13 +20,17 @@ try {
     return __LINE__;
   }
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create an OFED device.
    */
   ofed::Device* device = nullptr;
   if (opts.hasInterface()) {
-    device = new ofed::Device(opts.interface(), 1024);
+    device = new ofed::Device(logger, opts.interface(), 1024);
   } else {
-    device = new ofed::Device(1024);
+    device = new ofed::Device(logger, 1024);
   }
   /*
    * Call the main function.

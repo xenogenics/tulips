@@ -20,8 +20,8 @@ public:
   static constexpr int POST_RECV_THRESHOLD = 32;
   static constexpr uint32_t RECV_BUFLEN = 2 * 1024;
 
-  Device(const uint16_t nbuf);
-  Device(std::string_view ifn, const uint16_t nbuf);
+  Device(system::Logger& log, const uint16_t nbuf);
+  Device(system::Logger& log, std::string_view ifn, const uint16_t nbuf);
   ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }

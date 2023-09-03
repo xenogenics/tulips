@@ -2,6 +2,7 @@
 
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/ethernet/Producer.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Producer.h>
 #include <cstdint>
 #include <string>
@@ -16,7 +17,7 @@ public:
     size_t sent; // Number of sent packets at the IP layer.
   };
 
-  Producer(ethernet::Producer& prod, Address const& ha);
+  Producer(system::Logger& log, ethernet::Producer& prod, Address const& ha);
 
   uint32_t mss() const override { return m_eth.mss() - HEADER_LEN; }
 
@@ -57,6 +58,7 @@ public:
   }
 
 private:
+  system::Logger& m_log;
   ethernet::Producer& m_eth;
   Address m_hostAddress;
   Address m_destAddress;

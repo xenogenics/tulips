@@ -1,7 +1,8 @@
 #pragma once
 
-#include "tulips/stack/IPv4.h"
 #include <tulips/api/Status.h>
+#include <tulips/stack/IPv4.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/Producer.h>
 #include <memory>
@@ -37,8 +38,9 @@ public:
    */
   static constexpr uint32_t DEFAULT_MTU = 1500;
 
-  Device() : m_name(), m_hints(0) {}
-  Device(std::string_view name) : m_name(name), m_hints(0) {}
+  Device(system::Logger& log, std::string_view name)
+    : m_log(log), m_name(name), m_hints(0)
+  {}
   ~Device() override = default;
 
   /**
@@ -164,6 +166,7 @@ public:
   void hint(const Hint h) { m_hints |= h; }
 
 protected:
+  system::Logger& m_log;
   std::string m_name;
   uint16_t m_hints;
 };

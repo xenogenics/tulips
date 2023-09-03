@@ -15,16 +15,11 @@
 #include <sys/ioctl.h>
 #include <sys/sysctl.h>
 
-#ifdef TRANS_VERBOSE
-#define TRANS_LOG(__args) LOG("TRANS", __args)
-#else
-#define TRANS_LOG(...) ((void)0)
-#endif
-
 namespace {
 
 static bool
-getDefaultRoute(tulips::stack::ipv4::Address const& ip,
+getDefaultRoute(tulips::system::Logger& log,
+                tulips::stack::ipv4::Address const& ip,
                 tulips::stack::ipv4::Address& dr)
 {
   int mib[7];
@@ -48,17 +43,17 @@ getDefaultRoute(tulips::stack::ipv4::Address const& ip,
    */
   while (1) {
     if (sysctl(mib, 7, nullptr, &needed, nullptr, 0) == -1) {
-      LOG("ARP", "route-sysctl-estimate");
+      log.debug("ARP", "route-sysctl-estimate");
     }
     if (needed == 0) {
-      TRANS_LOG("sysctl failed");
+      log.debug("TRANS", "sysctl failed");
       return false;
     }
     if ((buf = (char*)realloc(buf, needed)) == nullptr) {
-      LOG("ARP", "malloc");
+      log.debug("ARP", "malloc");
     }
     if (sysctl(mib, 7, buf, &needed, nullptr, 0) == -1) {
-      TRANS_LOG(strerror(errno));
+      log.debug("TRANS", strerror(errno));
       if (errno == ENOMEM) {
         continue;
       }
@@ -66,7 +61,7 @@ getDefaultRoute(tulips::stack::ipv4::Address const& ip,
     lim = buf + needed;
     break;
   }
-  TRANS_LOG("found: " << needed);
+  log.debug("TRANS", "found: ", needed);
   /*
    * Search for a match.
    */
@@ -93,8 +88,8 @@ getDefaultRoute(tulips::stack::ipv4::Address const& ip,
 namespace tulips::transport::utils {
 
 bool
-getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
-                        uint32_t& mtu)
+getInterfaceInformation(system::Logger& log, std::string_view ifn,
+                        stack::ethernet::Address& hwaddr, uint32_t& mtu)
 {
   /*
    * Get the ethernet address.
@@ -120,7 +115,7 @@ getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
    */
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (sock < 0) {
-    TRANS_LOG(strerror(errno));
+    log.debug("TRANS", strerror(errno));
     return false;
   }
   /*
@@ -129,7 +124,7 @@ getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
   struct ifreq ifreq;
   memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
   if (ioctl(sock, SIOCGIFMTU, &ifreq) < 0) {
-    TRANS_LOG(strerror(errno));
+    log.debug("TRANS", strerror(errno));
     close(sock);
     return false;
   }
@@ -142,7 +137,8 @@ getInterfaceInformation(std::string_view ifn, stack::ethernet::Address& hwaddr,
 }
 
 bool
-getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
+getInterfaceInformation(system::Logger& log, std::string_view ifn,
+                        stack::ipv4::Address& ipaddr,
                         stack::ipv4::Address& draddr,
                         stack::ipv4::Address& ntmask)
 {
@@ -151,7 +147,7 @@ getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
    */
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (sock < 0) {
-    TRANS_LOG(strerror(errno));
+    log.debug("TRANS", strerror(errno));
     return false;
   }
   /*
@@ -160,7 +156,7 @@ getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
   struct ifreq ifreq;
   memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
   if (ioctl(sock, SIOCGIFADDR, &ifreq) < 0) {
-    TRANS_LOG(strerror(errno));
+    log.debug("TRANS", strerror(errno));
     close(sock);
     return false;
   }
@@ -168,7 +164,7 @@ getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
   /*
    * Get the IPv4 default route address.
    */
-  if (!getDefaultRoute(ipaddr, draddr)) {
+  if (!getDefaultRoute(log, ipaddr, draddr)) {
     return false;
   }
   /*
@@ -176,7 +172,7 @@ getInterfaceInformation(std::string_view ifn, stack::ipv4::Address& ipaddr,
    */
   memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
   if (ioctl(sock, SIOCGIFNETMASK, &ifreq) < 0) {
-    TRANS_LOG(strerror(errno));
+    log.debug("TRANS", strerror(errno));
     close(sock);
     return false;
   }

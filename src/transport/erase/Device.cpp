@@ -4,8 +4,8 @@
 
 namespace tulips::transport::erase {
 
-Device::Device(transport::Device& device)
-  : transport::Device("erase"), m_device(device)
+Device::Device(system::Logger& log, transport::Device& device)
+  : transport::Device(log, "erase"), m_device(device)
 {}
 
 Status

@@ -79,6 +79,10 @@ TEST(ARP_Basic, RequestResponse)
   std::string tname(
     ::testing::UnitTest::GetInstance()->current_test_info()->name());
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Create the transport FIFOs
    */
   tulips_fifo_t client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
@@ -97,23 +101,26 @@ TEST(ARP_Basic, RequestResponse)
   ipv4::Address server_ip4(10, 1, 0, 2);
   ipv4::Address bcast(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  transport::shm::Device client(client_adr, client_ip4, bcast, nmask,
+  transport::shm::Device client(logger, client_adr, client_ip4, bcast, nmask,
                                 server_fifo, client_fifo);
-  transport::shm::Device server(server_adr, server_ip4, bcast, nmask,
+  transport::shm::Device server(logger, server_adr, server_ip4, bcast, nmask,
                                 client_fifo, server_fifo);
   /*
    * Build the pcap device
    */
-  transport::pcap::Device client_pcap(client, "arp_client_" + tname + ".pcap");
-  transport::pcap::Device server_pcap(server, "arp_server_" + tname + ".pcap");
+  transport::pcap::Device client_pcap(logger, client,
+                                      "arp_client_" + tname + ".pcap");
+  transport::pcap::Device server_pcap(logger, server,
+                                      "arp_server_" + tname + ".pcap");
   /*
    * Client stack
    */
-  ethernet::Producer client_eth_prod(client_pcap, client.address());
-  ipv4::Producer client_ip4_prod(client_eth_prod, ipv4::Address(10, 1, 0, 1));
-  ipv4::Processor client_ip4_proc(ipv4::Address(10, 1, 0, 1));
-  ethernet::Processor client_eth_proc(client.address());
-  arp::Processor client_arp(client_eth_prod, client_ip4_prod);
+  ethernet::Producer client_eth_prod(logger, client_pcap, client.address());
+  ipv4::Producer client_ip4_prod(logger, client_eth_prod,
+                                 ipv4::Address(10, 1, 0, 1));
+  ipv4::Processor client_ip4_proc(logger, ipv4::Address(10, 1, 0, 1));
+  ethernet::Processor client_eth_proc(logger, client.address());
+  arp::Processor client_arp(logger, client_eth_prod, client_ip4_prod);
   ClientProcessor client_proc;
   /*
    * Bind the stack
@@ -126,11 +133,12 @@ TEST(ARP_Basic, RequestResponse)
   /*
    * Server stack
    */
-  ethernet::Producer server_eth_prod(server_pcap, server.address());
-  ipv4::Producer server_ip4_prod(server_eth_prod, ipv4::Address(10, 1, 0, 2));
-  ethernet::Processor server_eth_proc(server.address());
-  ipv4::Processor server_ip4_proc(ipv4::Address(10, 1, 0, 2));
-  arp::Processor server_arp(server_eth_prod, server_ip4_prod);
+  ethernet::Producer server_eth_prod(logger, server_pcap, server.address());
+  ipv4::Producer server_ip4_prod(logger, server_eth_prod,
+                                 ipv4::Address(10, 1, 0, 2));
+  ethernet::Processor server_eth_proc(logger, server.address());
+  ipv4::Processor server_ip4_proc(logger, ipv4::Address(10, 1, 0, 2));
+  arp::Processor server_arp(logger, server_eth_prod, server_ip4_prod);
   ServerProcessor server_proc;
   /*
    * Bind the stack

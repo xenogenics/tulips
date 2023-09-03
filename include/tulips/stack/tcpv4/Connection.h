@@ -200,7 +200,8 @@ private:
    */
 
   friend class Processor;
-  friend void Options::parse(Connection&, const uint16_t, const uint8_t* const);
+  friend void Options::parse(system::Logger&, Connection&, const uint16_t,
+                             const uint8_t* const);
 
 } __attribute__((aligned(64)));
 

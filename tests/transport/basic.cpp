@@ -120,6 +120,10 @@ TEST(Transport_Basic, SharedMemory)
   tulips_fifo_t client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_t server_fifo = TULIPS_FIFO_DEFAULT_VALUE;
   /*
+   * Create the console logger.
+   */
+  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  /*
    * Build the FIFOs
    */
   tulips_fifo_create(64, 32, &client_fifo);
@@ -133,9 +137,9 @@ TEST(Transport_Basic, SharedMemory)
   stack::ipv4::Address server_ip4(10, 1, 0, 2);
   stack::ipv4::Address bcast(10, 1, 0, 254);
   stack::ipv4::Address nmask(255, 255, 255, 0);
-  transport::shm::Device client(client_adr, client_ip4, bcast, nmask,
+  transport::shm::Device client(logger, client_adr, client_ip4, bcast, nmask,
                                 server_fifo, client_fifo);
-  transport::shm::Device server(server_adr, server_ip4, bcast, nmask,
+  transport::shm::Device server(logger, server_adr, server_ip4, bcast, nmask,
                                 client_fifo, server_fifo);
   /*
    * Start the threads
