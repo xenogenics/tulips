@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/system/Compiler.h>
 #include <tulips/system/SpinLock.h>
 #include <iomanip>
 #include <iostream>
@@ -58,29 +59,31 @@ public:
   }
 
 protected:
-  virtual void flush(std::string_view hdr, std::string&& value) = 0;
+  virtual void flush(const Level level, std::string_view hdr,
+                     std::string&& value) = 0;
 
 private:
   template<typename... Args>
   void log(const Level level, std::string_view hdr, Args&&... args)
   {
     if (level <= m_level) {
-      log(hdr, args...);
+      unpack(level, hdr, args...);
     }
   }
 
   template<typename Arg, typename... Args>
-  void log(std::string_view hdr, Arg&& arg, Args&&... args)
+  void unpack(const Level level, std::string_view hdr, Arg&& arg,
+              Args&&... args)
   {
     m_buffer << arg;
-    log(hdr, args...);
+    log(level, hdr, args...);
   }
 
   template<typename Arg>
-  void log(std::string_view hdr, Arg&& arg)
+  void unpack(const Level level, std::string_view hdr, Arg&& arg)
   {
     m_buffer << arg;
-    flush(hdr, m_buffer.str());
+    flush(level, hdr, m_buffer.str());
     m_buffer.str("");
   }
 
@@ -98,7 +101,8 @@ public:
   ConsoleLogger(const Level level) : Logger(level) {}
 
 protected:
-  void flush(std::string_view hdr, std::string&& value) final
+  void flush(UNUSED const Level level, std::string_view hdr,
+             std::string&& value) final
   {
     std::cout << "[ " << std::setw(8) << hdr << " ] " << value << std::endl;
   }
@@ -121,7 +125,8 @@ public:
   }
 
 protected:
-  void flush(std::string_view hdr, std::string&& value) final
+  void flush(UNUSED const Level level, std::string_view hdr,
+             std::string&& value) final
   {
     std::lock_guard<system::SpinLock> lock(m_lock);
     m_stream << "[ " << std::setw(8) << hdr << " ] " << value << std::endl;

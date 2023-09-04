@@ -14,7 +14,8 @@ public:
   std::string_view data() const { return m_data; }
 
 protected:
-  void flush(UNUSED std::string_view hdr, std::string&& value) override
+  void flush(UNUSED const Level level, UNUSED std::string_view hdr,
+             std::string&& value) override
   {
     m_data = value;
   }
