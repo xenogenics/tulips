@@ -19,11 +19,11 @@ class Logger
 public:
   enum class Level : uint8_t
   {
-    Error,
-    Warning,
-    Info,
-    Debug,
-    Trace
+    Error = 0,
+    Warning = 1,
+    Info = 2,
+    Debug = 3,
+    Trace = 4
   };
 
   Logger(const Level level) : m_level(level) {}
