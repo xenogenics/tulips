@@ -58,7 +58,7 @@ public:
     /*
      * Create a connection.
      */
-    Client::ID id;
+    api::Client::ID id;
     switch (s.pollers[poller]->connect(ip, port, id)) {
       case Status::Ok: {
         std::cout << "OK - " << id << std::endl;
@@ -111,7 +111,7 @@ public:
     /*
      * Parse the port socket.
      */
-    Client::ID c;
+    api::Client::ID c;
     std::istringstream(args[1]) >> c;
     /*
      * Check if the connection exists.
@@ -225,7 +225,7 @@ public:
     /*
      * Parse the port socket.
      */
-    Client::ID id;
+    api::Client::ID id;
     std::istringstream(args[1]) >> id;
     /*
      * Check if the connection exists.

@@ -16,7 +16,7 @@
 #include <vector>
 #include <unistd.h>
 
-namespace tulips {
+namespace tulips::api {
 
 class Client
   : public interface::Client

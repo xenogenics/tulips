@@ -3,7 +3,7 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Server.h>
 
-namespace tulips::defaults {
+namespace tulips::api::defaults {
 
 class ClientDelegate : public Client::Delegate
 {

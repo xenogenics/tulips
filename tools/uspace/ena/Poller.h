@@ -23,14 +23,14 @@ public:
   ~Poller();
 
   Status connect(stack::ipv4::Address const& ripaddr,
-                 const stack::tcpv4::Port rport, Client::ID& id);
+                 const stack::tcpv4::Port rport, api::Client::ID& id);
 
-  Status close(const Client::ID id);
+  Status close(const api::Client::ID id);
 
-  Status get(const Client::ID id, stack::ipv4::Address& ripaddr,
+  Status get(const api::Client::ID id, stack::ipv4::Address& ripaddr,
              stack::tcpv4::Port& lport, stack::tcpv4::Port& rport);
 
-  Status write(const Client::ID id, std::string_view data);
+  Status write(const api::Client::ID id, std::string_view data);
 
 private:
   enum class Action
@@ -55,8 +55,8 @@ private:
   transport::Device::Ref m_dev;
   transport::pcap::Device* m_pcap;
   transport::Device* m_device;
-  defaults::ClientDelegate m_delegate;
-  Client m_client;
+  api::defaults::ClientDelegate m_delegate;
+  api::Client m_client;
   volatile bool m_run;
   pthread_t m_thread;
   pthread_mutex_t m_mutex;
@@ -65,7 +65,7 @@ private:
   stack::ipv4::Address m_ripaddr;
   stack::tcpv4::Port m_lport;
   stack::tcpv4::Port m_rport;
-  Client::ID m_id;
+  api::Client::ID m_id;
   Status m_status;
   std::string m_data;
 };

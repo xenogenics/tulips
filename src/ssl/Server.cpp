@@ -12,7 +12,7 @@ Server::Server(system::Logger& log, interface::Server::Delegate& delegate,
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_server(log, *this, device, nconn)
+  , m_server(std::make_unique<api::Server>(log, *this, device, nconn))
   , m_context(nullptr)
 {
   int err = 0;
@@ -80,7 +80,7 @@ Server::close(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_server.cookie(id);
+  void* cookie = m_server->cookie(id);
   if (cookie == nullptr) {
     return Status::InvalidArgument;
   }
@@ -113,7 +113,7 @@ Server::close(const ID id)
     }
     case 1: {
       m_log.debug("SSLSRV", "shutdown completed");
-      return m_server.close(id);
+      return m_server->close(id);
     }
     default: {
       auto error = ssl::errorToString(c.ssl, e);
@@ -126,7 +126,7 @@ Server::close(const ID id)
 bool
 Server::isClosed(const ID id) const
 {
-  return m_server.isClosed(id);
+  return m_server->isClosed(id);
 }
 
 Status
@@ -136,7 +136,7 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Grab the context.
    */
-  void* cookie = m_server.cookie(id);
+  void* cookie = m_server->cookie(id);
   if (cookie == nullptr) {
     return Status::InvalidArgument;
   }
@@ -258,7 +258,7 @@ Server::flush(const ID id, void* const cookie)
     return Status::Ok;
   }
   uint32_t rem = 0;
-  Status res = m_server.send(id, len, ssl::bio::readAt(c.bout), rem);
+  Status res = m_server->send(id, len, ssl::bio::readAt(c.bout), rem);
   if (res != Status::Ok) {
     c.blocked = res == Status::OperationInProgress;
     return res;

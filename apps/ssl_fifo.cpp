@@ -19,10 +19,10 @@ enum class ClientState
   Close
 };
 
-class ServerDelegate : public defaults::ServerDelegate
+class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    const uint8_t* const data, const uint32_t len) override
   {
     std::string res((const char*)data, len);
@@ -30,7 +30,7 @@ public:
     return Action::Continue;
   }
 
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    const uint8_t* const data, const uint32_t len,
                    UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                    UNUSED uint32_t& slen) override
@@ -91,13 +91,13 @@ try {
   /*
    * Initialize the client.
    */
-  defaults::ClientDelegate client_delegate;
+  api::defaults::ClientDelegate client_delegate;
   ssl::Client client(logger, client_delegate, cdev, 1, ssl::Protocol::TLS,
                      opts.crt.getValue(), opts.key.getValue());
   /*
    * Open a connection.
    */
-  Client::ID id;
+  api::Client::ID id;
   client.open(id);
   /*
    * Initialize the server

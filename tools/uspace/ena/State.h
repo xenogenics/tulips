@@ -10,7 +10,7 @@
 
 namespace tulips::tools::uspace::ena {
 
-using IDs = std::map<Client::ID, size_t>;
+using IDs = std::map<api::Client::ID, size_t>;
 
 class State : public utils::State
 {

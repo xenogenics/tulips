@@ -23,11 +23,11 @@ public:
    * Device interface.
    */
 
-  inline Status run() override { return m_client.run(); }
+  inline Status run() override { return m_client->run(); }
 
   inline Status process(const uint16_t len, const uint8_t* const data) override
   {
-    return m_client.process(len, data);
+    return m_client->process(len, data);
   }
 
   /**
@@ -76,7 +76,7 @@ private:
   interface::Client::Delegate& m_delegate;
   system::Logger& m_log;
   transport::Device& m_dev;
-  tulips::Client m_client;
+  std::unique_ptr<tulips::api::Client> m_client;
   void* m_context;
 };
 

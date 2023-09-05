@@ -13,12 +13,12 @@ using namespace stack;
 
 namespace {
 
-class ClientDelegate : public defaults::ClientDelegate
+class ClientDelegate : public api::defaults::ClientDelegate
 {
 public:
   ClientDelegate() : m_data_received(false) {}
 
-  tulips::Action onNewData(UNUSED Client::ID const& id,
+  tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
                            UNUSED const uint32_t len) override
@@ -27,7 +27,7 @@ public:
     return tulips::Action::Continue;
   }
 
-  tulips::Action onNewData(UNUSED Client::ID const& id,
+  tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
                            UNUSED const uint32_t len,
@@ -45,21 +45,21 @@ private:
   bool m_data_received;
 };
 
-class ServerDelegate : public defaults::ServerDelegate
+class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
-  using Connections = std::list<tulips::Server::ID>;
+  using Connections = std::list<tulips::api::Server::ID>;
 
   ServerDelegate() : m_connections(), m_send_back(false) {}
 
-  void* onConnected(Server::ID const& id, UNUSED void* const cookie,
+  void* onConnected(api::Server::ID const& id, UNUSED void* const cookie,
                     UNUSED uint8_t& opts) override
   {
     m_connections.push_back(id);
     return nullptr;
   }
 
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    const uint8_t* const data, const uint32_t len,
                    const uint32_t alen, uint8_t* const sdata,
                    uint32_t& slen) override
@@ -71,7 +71,7 @@ public:
     return Action::Continue;
   }
 
-  void onClosed(tulips::Server::ID const& id,
+  void onClosed(tulips::api::Server::ID const& id,
                 UNUSED void* const cookie) override
   {
     m_connections.remove(id);
@@ -110,7 +110,7 @@ public:
   {}
 
   void connectClient(ipv4::Address const& dst_ip, const int port,
-                     Client::ID& id)
+                     api::Client::ID& id)
   {
     /*
      * Client tries to connect, establish a connection.
@@ -139,7 +139,7 @@ public:
     ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   }
 
-  void abortClient(const Client::ID& id)
+  void abortClient(const api::Client::ID& id)
   {
     /*
      * Client tries to close.
@@ -154,7 +154,7 @@ public:
     ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   }
 
-  void disconnectClient(const Client::ID& id)
+  void disconnectClient(const api::Client::ID& id)
   {
     /*
      * Client tries to close.
@@ -176,7 +176,7 @@ public:
   }
 
   void connect1stClient(ipv4::Address const& dst_ip, const int port,
-                        Client::ID& id)
+                        api::Client::ID& id)
   {
     ASSERT_EQ(Status::Ok, m_client->open(id));
     /*
@@ -192,7 +192,7 @@ public:
   }
 
   void connect2ndClient(ipv4::Address const& dst_ip, const int port,
-                        Client::ID& id)
+                        api::Client::ID& id)
   {
     ASSERT_EQ(Status::Ok, m_client->open(id));
     /*
@@ -201,7 +201,7 @@ public:
     connectClient(dst_ip, port, id);
   }
 
-  void disconnectClientFromServer(const Server::ID id)
+  void disconnectClientFromServer(const api::Server::ID id)
   {
     ASSERT_EQ(Status::OperationInProgress, m_server->close(id));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
@@ -311,7 +311,7 @@ protected:
 
 TEST_F(SSL_TwoClients, ConnectTwoAndAbort)
 {
-  Client::ID id[2] = { Client::DEFAULT_ID, Client::DEFAULT_ID };
+  api::Client::ID id[2] = { api::Client::DEFAULT_ID, api::Client::DEFAULT_ID };
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connect the clients.
@@ -333,7 +333,7 @@ TEST_F(SSL_TwoClients, ConnectTwoAndAbort)
 
 TEST_F(SSL_TwoClients, ConnectTwoAndClose)
 {
-  Client::ID id[2] = { Client::DEFAULT_ID, Client::DEFAULT_ID };
+  api::Client::ID id[2] = { api::Client::DEFAULT_ID, api::Client::DEFAULT_ID };
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connect the clients.
@@ -355,7 +355,7 @@ TEST_F(SSL_TwoClients, ConnectTwoAndClose)
 
 TEST_F(SSL_TwoClients, ConnectTwoAndCloseFromServer)
 {
-  Client::ID id[2] = { Client::DEFAULT_ID, Client::DEFAULT_ID };
+  api::Client::ID id[2] = { api::Client::DEFAULT_ID, api::Client::DEFAULT_ID };
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connect the clients.
@@ -366,20 +366,20 @@ TEST_F(SSL_TwoClients, ConnectTwoAndCloseFromServer)
   /*
    * Disconnect the first connection.
    */
-  tulips::Server::ID c0 = m_server_delegate.connections().front();
+  tulips::api::Server::ID c0 = m_server_delegate.connections().front();
   disconnectClientFromServer(c0);
   ASSERT_EQ(1, m_server_delegate.connections().size());
   /*
    * Disconnect the second connection.
    */
-  tulips::Server::ID c1 = m_server_delegate.connections().front();
+  tulips::api::Server::ID c1 = m_server_delegate.connections().front();
   disconnectClientFromServer(c1);
   ASSERT_EQ(0, m_server_delegate.connections().size());
 }
 
 TEST_F(SSL_TwoClients, ConnectSendAndClose)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connect client.
@@ -405,7 +405,7 @@ TEST_F(SSL_TwoClients, ConnectSendAndClose)
 
 TEST_F(SSL_TwoClients, ConnectSendReceiveAndClose)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Ask the server to send the data back.

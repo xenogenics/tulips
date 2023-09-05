@@ -2,7 +2,7 @@
 #include <tulips/stack/ARP.h>
 #include <tulips/system/Compiler.h>
 
-namespace tulips {
+namespace tulips::api {
 
 using namespace stack;
 

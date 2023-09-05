@@ -54,7 +54,7 @@ Poller::~Poller()
 
 Status
 Poller::connect(stack::ipv4::Address const& ripaddr,
-                const stack::tcpv4::Port rport, Client::ID& id)
+                const stack::tcpv4::Port rport, api::Client::ID& id)
 {
   Status result;
   pthread_mutex_lock(&m_mutex);
@@ -83,7 +83,7 @@ Poller::connect(stack::ipv4::Address const& ripaddr,
 }
 
 Status
-Poller::close(const Client::ID id)
+Poller::close(const api::Client::ID id)
 {
   Status result;
   pthread_mutex_lock(&m_mutex);
@@ -102,7 +102,7 @@ Poller::close(const Client::ID id)
 }
 
 Status
-Poller::get(const Client::ID id, stack::ipv4::Address& ripaddr,
+Poller::get(const api::Client::ID id, stack::ipv4::Address& ripaddr,
             stack::tcpv4::Port& lport, stack::tcpv4::Port& rport)
 {
   Status result;
@@ -125,7 +125,7 @@ Poller::get(const Client::ID id, stack::ipv4::Address& ripaddr,
 }
 
 Status
-Poller::write(const Client::ID id, std::string_view data)
+Poller::write(const api::Client::ID id, std::string_view data)
 {
   Status result;
   pthread_mutex_lock(&m_mutex);
