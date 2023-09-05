@@ -8,12 +8,12 @@
 namespace tulips::ssl {
 
 Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
-               transport::Device& device, const size_t nconn,
+               transport::Device& device, [[maybe_unused]] const size_t nconn,
                const Protocol type)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_client(log, *this, device, nconn)
+  , m_client(std::make_unique<tulips::Client>(log, *this, device, nconn))
   , m_context(nullptr)
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
@@ -85,7 +85,7 @@ Client::~Client()
 Status
 Client::open(ID& id)
 {
-  Status res = m_client.open(id);
+  Status res = m_client->open(id);
   if (res != Status::Ok) {
     return res;
   }
@@ -97,16 +97,16 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
                 const stack::tcpv4::Port rport)
 {
 
-  void* cookie = m_client.cookie(id);
+  void* cookie = m_client->cookie(id);
   /*
    * If the cookie is nullptr, we are not connected yet.
    */
   if (cookie == nullptr) {
-    Status res = m_client.connect(id, ripaddr, rport);
+    Status res = m_client->connect(id, ripaddr, rport);
     if (res != Status::Ok) {
       return res;
     }
-    cookie = m_client.cookie(id);
+    cookie = m_client->cookie(id);
   }
   /*
    * Perform the handshake.
@@ -169,7 +169,7 @@ Client::abort(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_client.cookie(id);
+  void* cookie = m_client->cookie(id);
   if (cookie == nullptr) {
     return Status::InvalidArgument;
   }
@@ -183,7 +183,7 @@ Client::abort(const ID id)
   /*
    * Abort the connection.
    */
-  return m_client.abort(id);
+  return m_client->abort(id);
 }
 
 Status
@@ -192,7 +192,7 @@ Client::close(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_client.cookie(id);
+  void* cookie = m_client->cookie(id);
   if (cookie == nullptr) {
     return Status::NotConnected;
   }
@@ -225,7 +225,7 @@ Client::close(const ID id)
     }
     case 1: {
       m_log.debug("SSLCLI", "shutdown completed");
-      return m_client.close(id);
+      return m_client->close(id);
     }
     default: {
       auto error = ssl::errorToString(c.ssl, e);
@@ -238,7 +238,7 @@ Client::close(const ID id)
 bool
 Client::isClosed(const ID id) const
 {
-  return m_client.isClosed(id);
+  return m_client->isClosed(id);
 }
 
 Status
@@ -248,7 +248,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Grab the context.
    */
-  void* cookie = m_client.cookie(id);
+  void* cookie = m_client->cookie(id);
   if (cookie == nullptr) {
     return Status::InvalidArgument;
   }
@@ -279,7 +279,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
 system::Clock::Value
 Client::averageLatency(const ID id)
 {
-  return m_client.averageLatency(id);
+  return m_client->averageLatency(id);
 }
 
 void*
@@ -378,7 +378,7 @@ Client::flush(const ID id, void* const cookie)
     return Status::Ok;
   }
   uint32_t rem = 0;
-  Status res = m_client.send(id, len, ssl::bio::readAt(c.bout), rem);
+  Status res = m_client->send(id, len, ssl::bio::readAt(c.bout), rem);
   if (res != Status::Ok) {
     c.blocked = res == Status::OperationInProgress;
     return res;
