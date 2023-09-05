@@ -176,12 +176,12 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
 
-if (TULIPS_SANITIZERS)
+if (TULIPS_ENABLE_SANITIZERS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
   add_link_options(-fsanitize=address)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
   add_link_options(-fsanitize=undefined)
-endif (TULIPS_SANITIZERS)
+endif (TULIPS_ENABLE_SANITIZERS)
 
 #
 # Per-compiler options
