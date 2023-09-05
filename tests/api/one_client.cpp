@@ -14,12 +14,12 @@ using namespace stack;
 
 namespace {
 
-class ServerDelegate : public defaults::ServerDelegate
+class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
   ServerDelegate() : m_listenCookie(0), m_action(Action::Continue), m_opts(0) {}
 
-  void* onConnected(UNUSED Server::ID const& id, void* const cookie,
+  void* onConnected(UNUSED api::Server::ID const& id, void* const cookie,
                     uint8_t& opts) override
   {
     if (cookie != nullptr) {
@@ -29,7 +29,7 @@ public:
     return nullptr;
   }
 
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    UNUSED const uint8_t* const data, UNUSED const uint32_t len,
                    UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                    UNUSED uint32_t& slen) override
@@ -114,11 +114,11 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new Client(m_logger, m_client_delegate, *m_client_pcap, 2);
+    m_client = new api::Client(m_logger, m_client_delegate, *m_client_pcap, 2);
     /*
      * Create the server.
      */
-    m_server = new Server(m_logger, m_server_delegate, *m_server_pcap, 2);
+    m_server = new api::Server(m_logger, m_server_delegate, *m_server_pcap, 2);
   }
 
   void TearDown() override
@@ -158,17 +158,17 @@ protected:
   transport::list::Device* m_server_ldev;
   transport::pcap::Device* m_client_pcap;
   transport::pcap::Device* m_server_pcap;
-  defaults::ClientDelegate m_client_delegate;
-  Client* m_client;
+  api::defaults::ClientDelegate m_client_delegate;
+  api::Client* m_client;
   ServerDelegate m_server_delegate;
-  Server* m_server;
+  api::Server* m_server;
 };
 
 TEST_F(API_OneClient, OpenClose)
 {
-  Client::ID id1 = Client::DEFAULT_ID;
-  Client::ID id2 = Client::DEFAULT_ID;
-  Client::ID id3 = Client::DEFAULT_ID;
+  api::Client::ID id1 = api::Client::DEFAULT_ID;
+  api::Client::ID id2 = api::Client::DEFAULT_ID;
+  api::Client::ID id3 = api::Client::DEFAULT_ID;
   ASSERT_EQ(Status::Ok, m_client->open(id1));
   ASSERT_EQ(Status::Ok, m_client->open(id2));
   ASSERT_EQ(Status::NoMoreResources, m_client->open(id3));
@@ -178,7 +178,7 @@ TEST_F(API_OneClient, OpenClose)
 
 TEST_F(API_OneClient, ListenConnectAndAbort)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   // Server listens
   m_server->listen(12345, nullptr);
@@ -210,7 +210,7 @@ TEST_F(API_OneClient, ListenConnectAndAbort)
 
 TEST_F(API_OneClient, ListenConnectAndClose)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   // Server listens
   m_server->listen(12345, nullptr);
@@ -259,7 +259,7 @@ TEST_F(API_OneClient, ListenConnectAndClose)
 
 TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens
@@ -308,7 +308,7 @@ TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
 
 TEST_F(API_OneClient, ConnectCookie)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   size_t cookie = 0xdeadbeef;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
@@ -335,7 +335,7 @@ TEST_F(API_OneClient, ConnectCookie)
 
 TEST_F(API_OneClient, ConnectTwo)
 {
-  Client::ID id1 = Client::DEFAULT_ID, id2 = Client::DEFAULT_ID;
+  api::Client::ID id1 = api::Client::DEFAULT_ID, id2 = api::Client::DEFAULT_ID;
   size_t cookie = 0xdeadbeef;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
@@ -372,7 +372,7 @@ TEST_F(API_OneClient, ConnectTwo)
 
 TEST_F(API_OneClient, ConnectAndCloseTwo)
 {
-  Client::ID id1 = Client::DEFAULT_ID, id2 = Client::DEFAULT_ID;
+  api::Client::ID id1 = api::Client::DEFAULT_ID, id2 = api::Client::DEFAULT_ID;
   size_t cookie = 0xdeadbeef;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
@@ -437,7 +437,7 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
 
 TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens.
@@ -479,7 +479,7 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)
 
 TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens.

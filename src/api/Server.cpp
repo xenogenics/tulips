@@ -1,7 +1,7 @@
 #include <tulips/api/Server.h>
 #include <arpa/inet.h>
 
-namespace tulips {
+namespace tulips::api {
 
 using namespace stack;
 

@@ -14,12 +14,12 @@ using namespace stack;
 
 namespace {
 
-class ServerDelegate : public defaults::ServerDelegate
+class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
   ServerDelegate() : m_action(Action::Continue) {}
 
-  tulips::Action onNewData(UNUSED Client::ID const& id,
+  tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie, const uint8_t* const data,
                            UNUSED const uint32_t len,
                            UNUSED const uint32_t alen,
@@ -62,7 +62,7 @@ public:
   {}
 
   void connectClient(ipv4::Address const& dst_ip, const uint16_t port,
-                     Client::ID& id)
+                     api::Client::ID& id)
   {
     /*
      * Client opens a connection.
@@ -183,7 +183,7 @@ protected:
   transport::list::Device* m_server_ldev;
   transport::pcap::Device* m_client_pcap;
   transport::pcap::Device* m_server_pcap;
-  defaults::ClientDelegate m_client_delegate;
+  api::defaults::ClientDelegate m_client_delegate;
   ssl::Client* m_client;
   ServerDelegate m_server_delegate;
   ssl::Server* m_server;
@@ -191,7 +191,7 @@ protected:
 
 TEST_F(SSL_OneClient, ListenConnectAndAbort)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens
@@ -216,7 +216,7 @@ TEST_F(SSL_OneClient, ListenConnectAndAbort)
 
 TEST_F(SSL_OneClient, ListenConnectAndClose)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens
@@ -252,7 +252,7 @@ TEST_F(SSL_OneClient, ListenConnectAndClose)
 
 TEST_F(SSL_OneClient, ListenConnectAndCloseFromServer)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens
@@ -288,7 +288,7 @@ TEST_F(SSL_OneClient, ListenConnectAndCloseFromServer)
 
 TEST_F(SSL_OneClient, ListenConnectSendAndAbortFromServer)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens
@@ -319,7 +319,7 @@ TEST_F(SSL_OneClient, ListenConnectSendAndAbortFromServer)
 
 TEST_F(SSL_OneClient, ListenConnectSendAndCloseFromServer)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Server listens

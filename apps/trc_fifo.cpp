@@ -27,10 +27,10 @@ static size_t cumul = 0;
  * Server state
  */
 
-class ServerDelegate : public defaults::ServerDelegate
+class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    UNUSED const uint8_t* const data,
                    UNUSED const uint32_t len) override
   {
@@ -39,7 +39,7 @@ public:
     return Action::Continue;
   }
 
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    UNUSED const uint8_t* const data, UNUSED const uint32_t len,
                    UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                    UNUSED uint32_t& slen) override
@@ -141,18 +141,18 @@ try {
   /*
    * Initialize the client.
    */
-  defaults::ClientDelegate client_delegate;
-  Client client(logger, client_delegate, client_dev, 1);
+  api::defaults::ClientDelegate client_delegate;
+  api::Client client(logger, client_delegate, client_dev, 1);
   /*
    * Open a connection.
    */
-  Client::ID id;
+  api::Client::ID id;
   client.open(id);
   /*
    * Initialize the server
    */
-  defaults::ServerDelegate server_delegate;
-  Server server(logger, server_delegate, server_dev, 1);
+  api::defaults::ServerDelegate server_delegate;
+  api::Server server(logger, server_delegate, server_dev, 1);
   server.listen(1234, nullptr);
   /*
    * Set the alarm

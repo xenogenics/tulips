@@ -14,7 +14,7 @@
 #include <map>
 #include <unistd.h>
 
-namespace tulips {
+namespace tulips::api {
 
 class Server
   : public interface::Server

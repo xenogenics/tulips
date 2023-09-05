@@ -62,7 +62,7 @@ private:
   interface::Server::Delegate& m_delegate;
   system::Logger& m_log;
   transport::Device& m_dev;
-  tulips::Server m_server;
+  api::Server m_server;
   void* m_context;
 };
 

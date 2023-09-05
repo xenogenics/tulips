@@ -13,12 +13,12 @@ using namespace stack;
 
 namespace {
 
-class ClientDelegate : public defaults::ClientDelegate
+class ClientDelegate : public api::defaults::ClientDelegate
 {
 public:
   ClientDelegate() : m_data_received(false) {}
 
-  tulips::Action onNewData(UNUSED Client::ID const& id,
+  tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
                            UNUSED const uint32_t len) override
@@ -27,7 +27,7 @@ public:
     return tulips::Action::Continue;
   }
 
-  tulips::Action onNewData(UNUSED Client::ID const& id,
+  tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
                            UNUSED const uint32_t len,
@@ -45,21 +45,21 @@ private:
   bool m_data_received;
 };
 
-class ServerDelegate : public defaults::ServerDelegate
+class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
-  using Connections = std::list<tulips::Server::ID>;
+  using Connections = std::list<tulips::api::Server::ID>;
 
   ServerDelegate() : m_connections(), m_send_back(false) {}
 
-  void* onConnected(Server::ID const& id, UNUSED void* const cookie,
+  void* onConnected(api::Server::ID const& id, UNUSED void* const cookie,
                     UNUSED uint8_t& opts) override
   {
     m_connections.push_back(id);
     return nullptr;
   }
 
-  Action onNewData(UNUSED Server::ID const& id, UNUSED void* const cookie,
+  Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    const uint8_t* const data, const uint32_t len,
                    const uint32_t alen, uint8_t* const sdata,
                    uint32_t& slen) override
@@ -71,7 +71,7 @@ public:
     return Action::Continue;
   }
 
-  void onClosed(tulips::Server::ID const& id,
+  void onClosed(tulips::api::Server::ID const& id,
                 UNUSED void* const cookie) override
   {
     m_connections.remove(id);
@@ -139,12 +139,14 @@ protected:
     /*
      * Create the clients.
      */
-    m_client1 = new Client(m_logger, m_client_delegate1, *m_client_pcap, 1);
-    m_client2 = new Client(m_logger, m_client_delegate2, *m_client_pcap, 1);
+    m_client1 =
+      new api::Client(m_logger, m_client_delegate1, *m_client_pcap, 1);
+    m_client2 =
+      new api::Client(m_logger, m_client_delegate2, *m_client_pcap, 1);
     /*
      * Create the server.
      */
-    m_server = new Server(m_logger, m_server_delegate, *m_server_pcap, 2);
+    m_server = new api::Server(m_logger, m_server_delegate, *m_server_pcap, 2);
     /*
      * Server listens.
      */
@@ -184,15 +186,15 @@ protected:
   transport::pcap::Device* m_server_pcap;
   ClientDelegate m_client_delegate1;
   ClientDelegate m_client_delegate2;
-  Client* m_client1;
-  Client* m_client2;
+  api::Client* m_client1;
+  api::Client* m_client2;
   ServerDelegate m_server_delegate;
-  Server* m_server;
+  api::Server* m_server;
 };
 
 TEST_F(API_TwoClients, ConnectTwo)
 {
-  Client::ID id1 = Client::DEFAULT_ID, id2 = Client::DEFAULT_ID;
+  api::Client::ID id1 = api::Client::DEFAULT_ID, id2 = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connection client 1.
@@ -231,7 +233,7 @@ TEST_F(API_TwoClients, ConnectTwo)
 
 TEST_F(API_TwoClients, ConnectTwoAndDisconnectFromServer)
 {
-  Client::ID id1 = Client::DEFAULT_ID, id2 = Client::DEFAULT_ID;
+  api::Client::ID id1 = api::Client::DEFAULT_ID, id2 = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connection client 1.
@@ -269,7 +271,7 @@ TEST_F(API_TwoClients, ConnectTwoAndDisconnectFromServer)
    * Disconnect the first connection.
    */
   ASSERT_EQ(2, m_server_delegate.connections().size());
-  tulips::Server::ID c0 = m_server_delegate.connections().front();
+  tulips::api::Server::ID c0 = m_server_delegate.connections().front();
   ASSERT_EQ(Status::Ok, m_server->close(c0));
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client1));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
@@ -280,7 +282,7 @@ TEST_F(API_TwoClients, ConnectTwoAndDisconnectFromServer)
    * Disconnect the second connection.
    */
   ASSERT_EQ(1, m_server_delegate.connections().size());
-  tulips::Server::ID c1 = m_server_delegate.connections().front();
+  tulips::api::Server::ID c1 = m_server_delegate.connections().front();
   ASSERT_EQ(Status::Ok, m_server->close(c1));
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client2));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
@@ -295,7 +297,7 @@ TEST_F(API_TwoClients, ConnectTwoAndDisconnectFromServer)
 
 TEST_F(API_TwoClients, ConnectSend)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Connect client.
@@ -329,7 +331,7 @@ TEST_F(API_TwoClients, ConnectSend)
 
 TEST_F(API_TwoClients, ConnectSendReceive)
 {
-  Client::ID id = Client::DEFAULT_ID;
+  api::Client::ID id = api::Client::DEFAULT_ID;
   ipv4::Address dst_ip(10, 1, 0, 2);
   /*
    * Ask the server to send the data back.

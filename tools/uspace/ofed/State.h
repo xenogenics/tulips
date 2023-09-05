@@ -7,7 +7,7 @@
 
 namespace tulips::tools::uspace::ofed {
 
-using IDs = std::set<Client::ID>;
+using IDs = std::set<api::Client::ID>;
 
 struct State : public utils::State
 {

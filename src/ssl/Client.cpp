@@ -13,7 +13,7 @@ Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_client(std::make_unique<tulips::Client>(log, *this, device, nconn))
+  , m_client(std::make_unique<tulips::api::Client>(log, *this, device, nconn))
   , m_context(nullptr)
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
