@@ -73,6 +73,18 @@ Server::unlisten(const stack::tcpv4::Port port)
   m_cookies.erase(htons(port));
 }
 
+void
+Server::setOptions(const ID id, const uint8_t options)
+{
+  m_tcp.setOptions(id, options);
+}
+
+void
+Server::clearOptions(const ID id, const uint8_t options)
+{
+  m_tcp.clearOptions(id, options);
+}
+
 Status
 Server::close(const ID id)
 {
@@ -105,12 +117,10 @@ Server::cookie(const ID id) const
 void
 Server::onConnected(tcpv4::Connection& c)
 {
-  uint8_t opts = 0;
   void* srvdata = m_cookies[c.localPort()];
-  void* appdata = m_delegate.onConnected(c.id(), srvdata, opts);
+  void* appdata = m_delegate.onConnected(c.id(), srvdata);
   m_log.debug("APISRV", "connection ", c.id(), " connected");
   c.setCookie(appdata);
-  c.setOptions(opts);
 }
 
 void

@@ -13,10 +13,10 @@ class Client
 {
 public:
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-         transport::Device& device, const size_t nconn, const Protocol type);
+         transport::Device& device, const Protocol type, const size_t nconn);
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-         transport::Device& device, const size_t nconn, const Protocol type,
-         std::string_view cert, std::string_view key);
+         transport::Device& device, const Protocol type, std::string_view cert,
+         std::string_view key, const size_t nconn);
   ~Client() override;
 
   /**
@@ -34,7 +34,9 @@ public:
    * Client interface.
    */
 
-  Status open(ID& id) override;
+  using api::interface::Client::open;
+
+  Status open(const uint8_t options, ID& id) override;
 
   Status connect(const ID id, stack::ipv4::Address const& ripaddr,
                  const stack::tcpv4::Port rport) override;
@@ -54,7 +56,7 @@ public:
    * Client delegate.
    */
 
-  void* onConnected(ID const& id, void* const cookie, uint8_t& opts) override;
+  void* onConnected(ID const& id, void* const cookie) override;
 
   Action onAcked(ID const& id, void* const cookie) override;
 

@@ -14,6 +14,40 @@
 namespace tulips::stack::tcpv4 {
 
 Status
+Processor::setOptions(Connection::ID const& id, const uint8_t options)
+{
+  /*
+   * Check if the connection is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  Connection& c = m_conns[id];
+  /*
+   * Set the options.
+   */
+  c.setOptions(options);
+  return Status::Ok;
+}
+
+Status
+Processor::clearOptions(Connection::ID const& id, const uint8_t options)
+{
+  /*
+   * Check if the connection is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  Connection& c = m_conns[id];
+  /*
+   * Clear the options.
+   */
+  c.clearOptions(options);
+  return Status::Ok;
+}
+
+Status
 Processor::connect(ethernet::Address const& rhwaddr,
                    ipv4::Address const& ripaddr, const Port rport,
                    Connection::ID& id)
@@ -128,7 +162,7 @@ Status
 Processor::abort(Connection::ID const& id)
 {
   /*
-   * Check if the connection is valid
+   * Check if the connection is valid.
    */
   if (id >= m_nconn) {
     return Status::InvalidConnection;
@@ -152,7 +186,7 @@ Status
 Processor::close(Connection::ID const& id)
 {
   /*
-   * Check if the connection is valid
+   * Check if the connection is valid.
    */
   if (id >= m_nconn) {
     return Status::InvalidConnection;
@@ -181,7 +215,7 @@ bool
 Processor::isClosed(Connection::ID const& id) const
 {
   /*
-   * Check if the connection is valid
+   * Check if the connection is valid.
    */
   if (id >= m_nconn) {
     return true;

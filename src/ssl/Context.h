@@ -36,7 +36,7 @@ struct Context
   };
 
   Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
-          void* cookie = nullptr);
+          const api::interface::Client::ID id, void* const cookie);
   ~Context();
 
   /**
@@ -302,11 +302,12 @@ struct Context
 
   system::Logger& log;
   size_t buflen;
+  api::interface::Client::ID id;
+  void* cookie;
   BIO* bin;
   BIO* bout;
   SSL* ssl;
   State state;
-  void* cookie;
   bool blocked;
   uint8_t* rdbf;
 };

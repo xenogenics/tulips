@@ -52,8 +52,8 @@ public:
 
   ServerDelegate() : m_connections(), m_send_back(false) {}
 
-  void* onConnected(api::Server::ID const& id, UNUSED void* const cookie,
-                    UNUSED uint8_t& opts) override
+  void* onConnected(api::Server::ID const& id,
+                    UNUSED void* const cookie) override
   {
     m_connections.push_back(id);
     return nullptr;
@@ -260,13 +260,13 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new ssl::Client(m_logger, m_client_delegate, *m_client_pcap, 2,
-                               tulips::ssl::Protocol::TLS, cert, key);
+    m_client = new ssl::Client(m_logger, m_client_delegate, *m_client_pcap,
+                               tulips::ssl::Protocol::TLS, cert, key, 2);
     /*
      * Create the server.
      */
-    m_server = new ssl::Server(m_logger, m_server_delegate, *m_server_pcap, 2,
-                               tulips::ssl::Protocol::TLS, cert, key);
+    m_server = new ssl::Server(m_logger, m_server_delegate, *m_server_pcap,
+                               tulips::ssl::Protocol::TLS, cert, key, 2);
     /*
      * Server listens.
      */

@@ -6,9 +6,8 @@
 namespace tulips::ssl {
 
 Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               const ssl::Protocol type, std::string_view cert,
-               std::string_view key)
+               transport::Device& device, const ssl::Protocol type,
+               std::string_view cert, std::string_view key, const size_t nconn)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
@@ -165,10 +164,9 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
 }
 
 void*
-Server::onConnected(ID const& id, void* const cookie, uint8_t& opts)
+Server::onConnected(ID const& id, void* const cookie)
 {
-  void* user = m_delegate.onConnected(id, cookie, opts);
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
   c->state = Context::State::Accept;
   return c;
 }
@@ -229,10 +227,22 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * Grab the context.
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
+  auto pre = c.state;
   /*
    * Write the data in the input BIO.
    */
-  return c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto res = c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto post = c.state;
+  /*
+   * Check for the ready state transition.
+   */
+  if (pre == Context::State::Accept && post == Context::State::Ready) {
+    c.cookie = m_delegate.onConnected(c.id, c.cookie);
+  }
+  /*
+   * Done.
+   */
+  return res;
 }
 
 void

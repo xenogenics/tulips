@@ -30,8 +30,7 @@ struct Delegate
    *
    * @return a user-defined state for the connection.
    */
-  virtual void* onConnected(ID const& id, void* const cookie,
-                            uint8_t& opts) = 0;
+  virtual void* onConnected(ID const& id, void* const cookie) = 0;
 
   /**
    * Callback when a packet has been acked. The delegate is not permitted
@@ -119,7 +118,17 @@ public:
    *
    * @return the status of the operation.
    */
-  virtual Status open(ID& id) = 0;
+  virtual Status open(ID& id) { return open(0, id); }
+
+  /**
+   * Open a new connection, with options.
+   *
+   * @param options the TCP options to use.
+   * @param id the new connection handle.
+   *
+   * @return the status of the operation.
+   */
+  virtual Status open(const uint8_t options, ID& id) = 0;
 
   /**
    * Connect a handle to a remote server using its IP and port.
@@ -193,6 +202,8 @@ public:
   using ID = stack::tcpv4::Connection::ID;
   using Delegate = interface::Delegate<ID>;
 
+  static constexpr ID DEFAULT_ID = -1;
+
   /**
    * Instruct the server to listen to a particular TCP port.
    *
@@ -207,6 +218,26 @@ public:
    * @param port the port to forget.
    */
   virtual void unlisten(const stack::tcpv4::Port port) = 0;
+
+  /**
+   * Set TCP options on a given connection.
+   *
+   * @param id the connection's handle.
+   * @param options the options to set.
+   *
+   * @return the status of the operation.
+   */
+  virtual void setOptions(const ID id, const uint8_t options) = 0;
+
+  /**
+   * Clear TCP options on a given connection.
+   *
+   * @param id the connection's handle.
+   * @param options the options to clear.
+   *
+   * @return the status of the operation.
+   */
+  virtual void clearOptions(const ID id, const uint8_t options) = 0;
 
   /**
    * Close a connection.

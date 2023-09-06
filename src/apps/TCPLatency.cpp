@@ -56,17 +56,11 @@ enum class State
 class Delegate : public api::defaults::ClientDelegate
 {
 public:
-  Delegate(const bool nodelay) : m_nodelay(nodelay) {}
-
   void* onConnected(UNUSED tulips::api::Client::ID const& id,
-                    UNUSED void* const cookie, uint8_t& opts) override
+                    UNUSED void* const cookie) override
   {
-    opts = m_nodelay ? tcpv4::Connection::NO_DELAY : 0;
     return nullptr;
   }
-
-private:
-  bool m_nodelay;
 };
 
 int
@@ -107,15 +101,15 @@ run(Options const& options, transport::Device& base_device)
   /*
    * Define the client delegate.
    */
-  Client::Delegate delegate(options.noDelay());
+  Client::Delegate delegate;
   /*
    * Build the client.
    */
   api::interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(logger, delegate, *device, 1,
+    client = new tulips::ssl::Client(logger, delegate, *device,
                                      tulips::ssl::Protocol::TLS,
-                                     options.sslCert(), options.sslKey());
+                                     options.sslCert(), options.sslKey(), 1);
   } else {
     client = new tulips::api::Client(logger, delegate, *device, 1);
   }
@@ -131,7 +125,8 @@ run(Options const& options, transport::Device& base_device)
    * Open a connection.
    */
   tulips::api::Client::ID id;
-  client->open(id);
+  auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
+  client->open(opts, id);
   /*
    * Latency timer.
    */
@@ -304,7 +299,16 @@ namespace Server {
 class Delegate : public api::defaults::ServerDelegate
 {
 public:
-  Delegate() : m_next(0), m_bytes(0) {}
+  Delegate(const uint8_t options)
+    : m_options(options), m_next(0), m_bytes(0), m_server(nullptr)
+  {}
+
+  void* onConnected(const api::Server::ID& id,
+                    [[maybe_unused]] void* const cookie) override
+  {
+    m_server->setOptions(id, m_options);
+    return nullptr;
+  }
 
   Action onNewData(UNUSED tulips::api::Server::ID const& id,
                    UNUSED void* const cookie, const uint8_t* const data,
@@ -335,6 +339,8 @@ public:
     return Action::Continue;
   }
 
+  void setServer(api::interface::Server* server) { m_server = server; }
+
   double throughput(const uint64_t sec)
   {
     static uint64_t prev = 0;
@@ -344,8 +350,10 @@ public:
   }
 
 private:
+  uint8_t m_options;
   size_t m_next;
   uint64_t m_bytes;
+  api::interface::Server* m_server;
 };
 
 int
@@ -374,7 +382,8 @@ run(Options const& options, transport::Device& base_device)
    * Run as receiver.
    */
   size_t iter = 0;
-  Delegate delegate;
+  auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
+  Delegate delegate(opts);
   /*
    * Check if we should wrap the device in a PCAP device.
    */
@@ -389,12 +398,13 @@ run(Options const& options, transport::Device& base_device)
   api::interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
-      logger, delegate, *device, options.connections(),
-      tulips::ssl::Protocol::TLS, options.sslCert(), options.sslKey());
+      logger, delegate, *device, tulips::ssl::Protocol::TLS, options.sslCert(),
+      options.sslKey(), options.connections());
   } else {
     server =
       new tulips::api::Server(logger, delegate, *device, options.connections());
   }
+  delegate.setServer(server);
   /*
    * Listen to the local ports.
    */

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/api/Interface.h>
+#include <cstdint>
 #ifdef TULIPS_ENABLE_ARP
 #include <tulips/stack/arp/Processor.h>
 #endif
@@ -34,6 +35,10 @@ public:
   void listen(const stack::tcpv4::Port port, void* cookie) override;
 
   void unlisten(const stack::tcpv4::Port port) override;
+
+  void setOptions(const ID id, const uint8_t options) override;
+
+  void clearOptions(const ID id, const uint8_t options) override;
 
   Status close(const ID id) override;
 

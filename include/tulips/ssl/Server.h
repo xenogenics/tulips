@@ -12,8 +12,8 @@ class Server
 {
 public:
   Server(system::Logger& log, api::interface::Server::Delegate& delegate,
-         transport::Device& device, const size_t nconn,
-         const ssl::Protocol type, std::string_view cert, std::string_view key);
+         transport::Device& device, const ssl::Protocol type,
+         std::string_view cert, std::string_view key, const size_t nconn);
   ~Server() override;
 
   inline Status run() override { return m_server->run(); }
@@ -21,6 +21,16 @@ public:
   inline Status process(const uint16_t len, const uint8_t* const data) override
   {
     return m_server->process(len, data);
+  }
+
+  inline void setOptions(const ID id, const uint8_t options) override
+  {
+    m_server->setOptions(id, options);
+  }
+
+  inline void clearOptions(const ID id, const uint8_t options) override
+  {
+    m_server->clearOptions(id, options);
   }
 
   Status close(const ID id) override;
@@ -40,7 +50,7 @@ public:
     m_server->unlisten(port);
   }
 
-  void* onConnected(ID const& id, void* const cookie, uint8_t& opts) override;
+  void* onConnected(ID const& id, void* const cookie) override;
 
   Action onAcked(ID const& id, void* const cookie) override;
 

@@ -42,7 +42,9 @@ public:
    * Client interface.
    */
 
-  Status open(ID& id) override;
+  using interface::Client::open;
+
+  Status open(const uint8_t options, ID& id) override;
 
   Status connect(const ID id, stack::ipv4::Address const& ripaddr,
                  const stack::tcpv4::Port rport) override;
@@ -98,6 +100,7 @@ private:
 
     State state;
     stack::tcpv4::Connection::ID conn;
+    uint8_t opts;
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
     size_t count;
     system::Clock::Value pre;

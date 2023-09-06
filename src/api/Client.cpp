@@ -13,6 +13,7 @@ using namespace stack;
 Client::Connection::Connection()
   : state(State::Closed)
   , conn(-1)
+  , opts(0)
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   , count(0)
   , pre(0)
@@ -88,11 +89,12 @@ Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
 }
 
 Status
-Client::open(ID& id)
+Client::open(const uint8_t options, ID& id)
 {
   for (size_t i = 0; i < m_nconn; i += 1) {
     if (m_cns[i].state == Connection::State::Closed) {
       m_cns[i].state = Connection::State::Opened;
+      m_cns[i].opts = options;
       id = i;
       return Status::Ok;
     }
@@ -349,10 +351,9 @@ Client::onConnected(tcpv4::Connection& c)
                 ", ignoring");
     return;
   }
-  uint8_t options = 0;
   d.state = Connection::State::Connected;
-  c.setCookie(m_delegate.onConnected(id, nullptr, options));
-  c.setOptions(options);
+  c.setCookie(m_delegate.onConnected(id, nullptr));
+  c.setOptions(d.opts);
 }
 
 void

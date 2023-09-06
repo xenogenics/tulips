@@ -1,6 +1,7 @@
 #include "Context.h"
 #include <tulips/ssl/Client.h>
 #include <tulips/stack/Utils.h>
+#include <cstdint>
 #include <stdexcept>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -8,12 +9,12 @@
 namespace tulips::ssl {
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-               transport::Device& device, [[maybe_unused]] const size_t nconn,
-               const Protocol type)
+               transport::Device& device, const Protocol type,
+               const size_t nconn)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_client(std::make_unique<tulips::api::Client>(log, *this, device, nconn))
+  , m_client(std::make_unique<api::Client>(log, *this, device, nconn))
   , m_context(nullptr)
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
@@ -44,9 +45,9 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
 }
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               const Protocol type, std::string_view cert, std::string_view key)
-  : Client(log, delegate, device, nconn, type)
+               transport::Device& device, const Protocol type,
+               std::string_view cert, std::string_view key, const size_t nconn)
+  : Client(log, delegate, device, type, nconn)
 {
   int err = 0;
   /*
@@ -83,9 +84,9 @@ Client::~Client()
 }
 
 Status
-Client::open(ID& id)
+Client::open(const uint8_t options, ID& id)
 {
-  Status res = m_client->open(id);
+  Status res = m_client->open(options, id);
   if (res != Status::Ok) {
     return res;
   }
@@ -125,6 +126,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         }
         case 1: {
           m_log.debug("SSLCLI", "SSL_connect successful");
+          c.cookie = m_delegate.onConnected(c.id, c.cookie);
           c.state = Context::State::Ready;
           return Status::Ok;
         }
@@ -283,10 +285,9 @@ Client::averageLatency(const ID id)
 }
 
 void*
-Client::onConnected(ID const& id, void* const cookie, uint8_t& opts)
+Client::onConnected(ID const& id, void* const cookie)
 {
-  void* user = m_delegate.onConnected(id, cookie, opts);
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
   c->state = Context::State::Connect;
   return c;
 }
@@ -347,10 +348,22 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * Grab the context.
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
+  auto pre = c.state;
   /*
    * Write the data in the input BIO.
    */
-  return c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto res = c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto post = c.state;
+  /*
+   * Check for the ready state transition.
+   */
+  if (pre == Context::State::Connect && post == Context::State::Ready) {
+    c.cookie = m_delegate.onConnected(c.id, c.cookie);
+  }
+  /*
+   * Done.
+   */
+  return res;
 }
 
 void

@@ -17,15 +17,18 @@ namespace {
 class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
-  ServerDelegate() : m_listenCookie(0), m_action(Action::Continue), m_opts(0) {}
+  ServerDelegate()
+    : m_listenCookie(0)
+    , m_action(Action::Continue)
+    , m_id(api::Server::DEFAULT_ID)
+  {}
 
-  void* onConnected(UNUSED api::Server::ID const& id, void* const cookie,
-                    uint8_t& opts) override
+  void* onConnected(api::Server::ID const& id, void* const cookie) override
   {
     if (cookie != nullptr) {
       m_listenCookie = *reinterpret_cast<size_t*>(cookie);
     }
-    opts = m_opts;
+    m_id = id;
     return nullptr;
   }
 
@@ -43,12 +46,12 @@ public:
 
   void closeOnReceive() { m_action = Action::Close; }
 
-  void setDelayedACK() { m_opts |= tcpv4::Connection::DELAYED_ACK; }
+  api::Server::ID id() { return m_id; }
 
 private:
   size_t m_listenCookie;
   Action m_action;
-  uint8_t m_opts;
+  api::Server::ID m_id;
 };
 
 } // namespace
@@ -485,7 +488,6 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
    * Server listens.
    */
   m_server_delegate.abortOnReceive();
-  m_server_delegate.setDelayedACK();
   m_server->listen(12345, nullptr);
   /*
    * Client opens a connection.
@@ -502,6 +504,10 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
+  /*
+   * Set the delayed ACK option.
+   */
+  m_server->setOptions(m_server_delegate.id(), tcpv4::Connection::DELAYED_ACK);
   /*
    * Client sends and server aborts.
    */
