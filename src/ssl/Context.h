@@ -79,6 +79,7 @@ struct Context
   Action onNewData(ID const& id, api::interface::Delegate<ID>& delegate,
                    const uint8_t* const data, const uint32_t len)
   {
+    int ret = 0;
     /*
      * Write the data in the input BIO.
      */
@@ -90,15 +91,10 @@ struct Context
       return Action::Abort;
     }
     /*
-     * Decrypt and pass the data to the delegate.
-     */
-    int ret = 0;
-    uint8_t in[len];
-    /*
      * Process the internal buffer as long as there is data available.
      */
     do {
-      ret = SSL_read(ssl, in, (int)len);
+      ret = SSL_read(ssl, rdbuf, 8192);
       /*
        * Handle partial data.
        */
@@ -127,7 +123,7 @@ struct Context
       /*
        * Notify the delegate.
        */
-      if (delegate.onNewData(id, cookie, in, ret) != Action::Continue) {
+      if (delegate.onNewData(id, cookie, rdbuf, ret) != Action::Continue) {
         return Action::Abort;
       }
     } while (ret > 0);
@@ -216,12 +212,12 @@ struct Context
       case State::Ready: {
         int ret = 0;
         uint32_t acc = 0;
-        uint8_t in[len], out[alen];
+        uint8_t out[alen];
         /*
          * Process the internal buffer as long as there is data available.
          */
         do {
-          ret = SSL_read(ssl, in, (int)len);
+          ret = SSL_read(ssl, rdbuf, 8192);
           /*
            * Handle partial data.
            */
@@ -252,7 +248,7 @@ struct Context
            */
           uint32_t rlen = 0;
           Action res =
-            delegate.onNewData(id, cookie, in, ret, alen - acc, out, rlen);
+            delegate.onNewData(id, cookie, rdbuf, ret, alen - acc, out, rlen);
           if (res != Action::Continue) {
             return abortOrClose(res, alen, sdata, slen);
           }
@@ -308,6 +304,7 @@ struct Context
   State state;
   void* cookie;
   bool blocked;
+  uint8_t* rdbuf;
 };
 
 }

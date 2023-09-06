@@ -76,12 +76,14 @@ Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
   , state(State::Closed)
   , cookie(cookie)
   , blocked(false)
+  , rdbuf(new uint8_t[8192])
 {
   SSL_set_bio(ssl, bin, bout);
 }
 
 Context::~Context()
 {
+  delete[] rdbuf;
   /*
    * No need to free the BIOs, SSL_free does that for us.
    */
