@@ -8,13 +8,13 @@
 namespace tulips::ssl {
 
 class Client
-  : public interface::Client
-  , public interface::Client::Delegate
+  : public api::interface::Client
+  , public api::interface::Client::Delegate
 {
 public:
-  Client(system::Logger& log, interface::Client::Delegate& delegate,
+  Client(system::Logger& log, api::interface::Client::Delegate& delegate,
          transport::Device& device, const size_t nconn, const Protocol type);
-  Client(system::Logger& log, interface::Client::Delegate& delegate,
+  Client(system::Logger& log, api::interface::Client::Delegate& delegate,
          transport::Device& device, const size_t nconn, const Protocol type,
          std::string_view cert, std::string_view key);
   ~Client() override;
@@ -73,7 +73,7 @@ public:
 private:
   Status flush(const ID id, void* const cookie);
 
-  interface::Client::Delegate& m_delegate;
+  api::interface::Client::Delegate& m_delegate;
   system::Logger& m_log;
   transport::Device& m_dev;
   std::unique_ptr<tulips::api::Client> m_client;

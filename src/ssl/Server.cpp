@@ -5,7 +5,7 @@
 
 namespace tulips::ssl {
 
-Server::Server(system::Logger& log, interface::Server::Delegate& delegate,
+Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
                transport::Device& device, const size_t nconn,
                const ssl::Protocol type, std::string_view cert,
                std::string_view key)
