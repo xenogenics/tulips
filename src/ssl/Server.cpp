@@ -167,8 +167,7 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
 void*
 Server::onConnected(ID const& id, void* const cookie)
 {
-  void* user = m_delegate.onConnected(id, cookie);
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
   c->state = Context::State::Accept;
   return c;
 }
@@ -229,10 +228,22 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * Grab the context.
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
+  auto pre = c.state;
   /*
    * Write the data in the input BIO.
    */
-  return c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto res = c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto post = c.state;
+  /*
+   * Check for the ready state transition.
+   */
+  if (pre == Context::State::Accept && post == Context::State::Ready) {
+    c.cookie = m_delegate.onConnected(c.id, c.cookie);
+  }
+  /*
+   * Done.
+   */
+  return res;
 }
 
 void

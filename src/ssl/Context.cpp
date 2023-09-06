@@ -68,14 +68,15 @@ errorToString(SSL* ssl, const int err)
  */
 
 Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
-                 void* cookie)
+                 const api::interface::Client::ID id, void* cookie)
   : log(log)
   , buflen(buflen)
+  , id(id)
+  , cookie(cookie)
   , bin(bio::allocate(buflen))
   , bout(bio::allocate(buflen))
   , ssl(SSL_new(ctx))
   , state(State::Closed)
-  , cookie(cookie)
   , blocked(false)
   , rdbf(new uint8_t[buflen])
 {

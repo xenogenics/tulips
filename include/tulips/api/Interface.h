@@ -123,8 +123,8 @@ public:
   /**
    * Open a new connection, with options.
    *
-   * @param id the new connection handle.
    * @param options the TCP options to use.
+   * @param id the new connection handle.
    *
    * @return the status of the operation.
    */

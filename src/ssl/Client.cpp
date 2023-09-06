@@ -126,6 +126,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         }
         case 1: {
           m_log.debug("SSLCLI", "SSL_connect successful");
+          c.cookie = m_delegate.onConnected(c.id, c.cookie);
           c.state = Context::State::Ready;
           return Status::Ok;
         }
@@ -286,8 +287,7 @@ Client::averageLatency(const ID id)
 void*
 Client::onConnected(ID const& id, void* const cookie)
 {
-  void* user = m_delegate.onConnected(id, cookie);
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
   c->state = Context::State::Connect;
   return c;
 }
@@ -348,10 +348,22 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * Grab the context.
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
+  auto pre = c.state;
   /*
    * Write the data in the input BIO.
    */
-  return c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto res = c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto post = c.state;
+  /*
+   * Check for the ready state transition.
+   */
+  if (pre == Context::State::Connect && post == Context::State::Ready) {
+    c.cookie = m_delegate.onConnected(c.id, c.cookie);
+  }
+  /*
+   * Done.
+   */
+  return res;
 }
 
 void
