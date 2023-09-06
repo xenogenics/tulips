@@ -70,20 +70,21 @@ errorToString(SSL* ssl, const int err)
 Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
                  void* cookie)
   : log(log)
+  , buflen(buflen)
   , bin(bio::allocate(buflen))
   , bout(bio::allocate(buflen))
   , ssl(SSL_new(ctx))
   , state(State::Closed)
   , cookie(cookie)
   , blocked(false)
-  , rdbuf(new uint8_t[8192])
+  , rdbf(new uint8_t[buflen])
 {
   SSL_set_bio(ssl, bin, bout);
 }
 
 Context::~Context()
 {
-  delete[] rdbuf;
+  delete[] rdbf;
   /*
    * No need to free the BIOs, SSL_free does that for us.
    */

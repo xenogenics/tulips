@@ -94,7 +94,7 @@ struct Context
      * Process the internal buffer as long as there is data available.
      */
     do {
-      ret = SSL_read(ssl, rdbuf, 8192);
+      ret = SSL_read(ssl, rdbf, buflen);
       /*
        * Handle partial data.
        */
@@ -123,7 +123,7 @@ struct Context
       /*
        * Notify the delegate.
        */
-      if (delegate.onNewData(id, cookie, rdbuf, ret) != Action::Continue) {
+      if (delegate.onNewData(id, cookie, rdbf, ret) != Action::Continue) {
         return Action::Abort;
       }
     } while (ret > 0);
@@ -217,7 +217,7 @@ struct Context
          * Process the internal buffer as long as there is data available.
          */
         do {
-          ret = SSL_read(ssl, rdbuf, 8192);
+          ret = SSL_read(ssl, rdbf, buflen);
           /*
            * Handle partial data.
            */
@@ -247,17 +247,20 @@ struct Context
            * Notify the delegate.
            */
           uint32_t rlen = 0;
-          Action res =
-            delegate.onNewData(id, cookie, rdbuf, ret, alen - acc, out, rlen);
+          uint32_t wlen = alen - acc;
+          auto res = delegate.onNewData(id, cookie, rdbf, ret, wlen, out, rlen);
           if (res != Action::Continue) {
             return abortOrClose(res, alen, sdata, slen);
           }
           /*
-           * Update the accumulator and encrypt the data.
+           * Cap the written amount.
            */
           if (rlen + acc > alen) {
             rlen = alen - acc;
           }
+          /*
+           * Update the accumulator and encrypt the data.
+           */
           acc += rlen;
           SSL_write(ssl, out, (int)rlen);
         } while (ret > 0);
@@ -298,13 +301,14 @@ struct Context
   Action flush(const uint32_t alen, uint8_t* const sdata, uint32_t& slen);
 
   system::Logger& log;
+  size_t buflen;
   BIO* bin;
   BIO* bout;
   SSL* ssl;
   State state;
   void* cookie;
   bool blocked;
-  uint8_t* rdbuf;
+  uint8_t* rdbf;
 };
 
 }
