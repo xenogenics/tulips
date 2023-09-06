@@ -79,6 +79,7 @@ struct Context
   Action onNewData(ID const& id, api::interface::Delegate<ID>& delegate,
                    const uint8_t* const data, const uint32_t len)
   {
+    int ret = 0;
     /*
      * Write the data in the input BIO.
      */
@@ -90,15 +91,10 @@ struct Context
       return Action::Abort;
     }
     /*
-     * Decrypt and pass the data to the delegate.
-     */
-    int ret = 0;
-    uint8_t in[len];
-    /*
      * Process the internal buffer as long as there is data available.
      */
     do {
-      ret = SSL_read(ssl, in, (int)len);
+      ret = SSL_read(ssl, rdbf, buflen);
       /*
        * Handle partial data.
        */
@@ -127,7 +123,7 @@ struct Context
       /*
        * Notify the delegate.
        */
-      if (delegate.onNewData(id, cookie, in, ret) != Action::Continue) {
+      if (delegate.onNewData(id, cookie, rdbf, ret) != Action::Continue) {
         return Action::Abort;
       }
     } while (ret > 0);
@@ -216,12 +212,12 @@ struct Context
       case State::Ready: {
         int ret = 0;
         uint32_t acc = 0;
-        uint8_t in[len], out[alen];
+        uint8_t out[alen];
         /*
          * Process the internal buffer as long as there is data available.
          */
         do {
-          ret = SSL_read(ssl, in, (int)len);
+          ret = SSL_read(ssl, rdbf, buflen);
           /*
            * Handle partial data.
            */
@@ -251,17 +247,20 @@ struct Context
            * Notify the delegate.
            */
           uint32_t rlen = 0;
-          Action res =
-            delegate.onNewData(id, cookie, in, ret, alen - acc, out, rlen);
+          uint32_t wlen = alen - acc;
+          auto res = delegate.onNewData(id, cookie, rdbf, ret, wlen, out, rlen);
           if (res != Action::Continue) {
             return abortOrClose(res, alen, sdata, slen);
           }
           /*
-           * Update the accumulator and encrypt the data.
+           * Cap the written amount.
            */
           if (rlen + acc > alen) {
             rlen = alen - acc;
           }
+          /*
+           * Update the accumulator and encrypt the data.
+           */
           acc += rlen;
           SSL_write(ssl, out, (int)rlen);
         } while (ret > 0);
@@ -302,12 +301,14 @@ struct Context
   Action flush(const uint32_t alen, uint8_t* const sdata, uint32_t& slen);
 
   system::Logger& log;
+  size_t buflen;
   BIO* bin;
   BIO* bout;
   SSL* ssl;
   State state;
   void* cookie;
   bool blocked;
+  uint8_t* rdbf;
 };
 
 }
