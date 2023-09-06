@@ -8,8 +8,7 @@ namespace tulips::api::defaults {
 class ClientDelegate : public Client::Delegate
 {
 public:
-  void* onConnected(Client::ID const& id, void* const cookie,
-                    uint8_t& opts) override;
+  void* onConnected(Client::ID const& id, void* const cookie) override;
 
   Action onAcked(Client::ID const& id, void* const cookie) override;
 
@@ -30,8 +29,7 @@ public:
 class ServerDelegate : public Server::Delegate
 {
 public:
-  void* onConnected(Server::ID const& id, void* const cookie,
-                    uint8_t& opts) override;
+  void* onConnected(Server::ID const& id, void* const cookie) override;
 
   Action onAcked(Server::ID const& id, void* const cookie) override;
 

@@ -56,17 +56,11 @@ enum class State
 class Delegate : public api::defaults::ClientDelegate
 {
 public:
-  Delegate(const bool nodelay) : m_nodelay(nodelay) {}
-
   void* onConnected(UNUSED tulips::api::Client::ID const& id,
-                    UNUSED void* const cookie, uint8_t& opts) override
+                    UNUSED void* const cookie) override
   {
-    opts = m_nodelay ? tcpv4::Connection::NO_DELAY : 0;
     return nullptr;
   }
-
-private:
-  bool m_nodelay;
 };
 
 int
@@ -107,15 +101,15 @@ run(Options const& options, transport::Device& base_device)
   /*
    * Define the client delegate.
    */
-  Client::Delegate delegate(options.noDelay());
+  Client::Delegate delegate;
   /*
    * Build the client.
    */
   api::interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(logger, delegate, *device, 1,
+    client = new tulips::ssl::Client(logger, delegate, *device,
                                      tulips::ssl::Protocol::TLS,
-                                     options.sslCert(), options.sslKey());
+                                     options.sslCert(), options.sslKey(), 1);
   } else {
     client = new tulips::api::Client(logger, delegate, *device, 1);
   }
@@ -131,7 +125,8 @@ run(Options const& options, transport::Device& base_device)
    * Open a connection.
    */
   tulips::api::Client::ID id;
-  client->open(id);
+  auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
+  client->open(opts, id);
   /*
    * Latency timer.
    */
@@ -387,13 +382,14 @@ run(Options const& options, transport::Device& base_device)
    * Initialize the server
    */
   api::interface::Server* server = nullptr;
+  auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
-      logger, delegate, *device, options.connections(),
-      tulips::ssl::Protocol::TLS, options.sslCert(), options.sslKey());
+      logger, delegate, *device, tulips::ssl::Protocol::TLS, options.sslCert(),
+      options.sslKey(), options.connections(), opts);
   } else {
-    server =
-      new tulips::api::Server(logger, delegate, *device, options.connections());
+    server = new tulips::api::Server(logger, delegate, *device,
+                                     options.connections(), opts);
   }
   /*
    * Listen to the local ports.

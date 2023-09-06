@@ -5,7 +5,7 @@ namespace tulips::api::defaults {
 
 void*
 ClientDelegate::onConnected(UNUSED Client::ID const& id,
-                            UNUSED void* const cookie, UNUSED uint8_t& opts)
+                            UNUSED void* const cookie)
 {
   return nullptr;
 }
@@ -49,7 +49,7 @@ ClientDelegate::onClosed(UNUSED Client::ID const& id, UNUSED void* const cookie)
 
 void*
 ServerDelegate::onConnected(UNUSED Server::ID const& id,
-                            UNUSED void* const cookie, UNUSED uint8_t& opts)
+                            UNUSED void* const cookie)
 {
   return nullptr;
 }

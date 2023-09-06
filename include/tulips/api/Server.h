@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/api/Interface.h>
+#include <cstdint>
 #ifdef TULIPS_ENABLE_ARP
 #include <tulips/stack/arp/Processor.h>
 #endif
@@ -22,7 +23,7 @@ class Server
 {
 public:
   Server(system::Logger& log, Delegate& delegate, transport::Device& device,
-         const size_t nconn);
+         const size_t nconn, const uint8_t options = 0);
 
   inline Status run() override { return m_ethfrom.run(); }
 
@@ -34,6 +35,10 @@ public:
   void listen(const stack::tcpv4::Port port, void* cookie) override;
 
   void unlisten(const stack::tcpv4::Port port) override;
+
+  void setOptions(const ID id, const uint8_t options) override;
+
+  void clearOptions(const ID id, const uint8_t options) override;
 
   Status close(const ID id) override;
 
@@ -99,6 +104,7 @@ private:
   RawProcessor m_raw;
 #endif
   stack::tcpv4::Processor m_tcp;
+  uint8_t m_options;
   std::map<uint16_t, void*> m_cookies;
 };
 

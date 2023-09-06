@@ -70,15 +70,18 @@ public:
   }
 
   /*
-   * Server-side operations
+   * Server-side operations.
    */
 
   void listen(const Port port);
   void unlisten(const Port port);
 
   /*
-   * Client-side operations
+   * Client-side operations.
    */
+
+  Status setOptions(Connection::ID const& id, const uint8_t options);
+  Status clearOptions(Connection::ID const& id, const uint8_t options);
 
   Status connect(ethernet::Address const& rhwaddr, ipv4::Address const& ripaddr,
                  const Port rport, Connection::ID& id);

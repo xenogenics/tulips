@@ -92,8 +92,8 @@ try {
    * Initialize the client.
    */
   api::defaults::ClientDelegate client_delegate;
-  ssl::Client client(logger, client_delegate, cdev, 1, ssl::Protocol::TLS,
-                     opts.crt.getValue(), opts.key.getValue());
+  ssl::Client client(logger, client_delegate, cdev, ssl::Protocol::TLS,
+                     opts.crt.getValue(), opts.key.getValue(), 1);
   /*
    * Open a connection.
    */
@@ -103,8 +103,8 @@ try {
    * Initialize the server
    */
   ServerDelegate server_delegate;
-  ssl::Server server(logger, server_delegate, sdev, 1, ssl::Protocol::TLS,
-                     opts.crt.getValue(), opts.key.getValue());
+  ssl::Server server(logger, server_delegate, sdev, ssl::Protocol::TLS,
+                     opts.crt.getValue(), opts.key.getValue(), 1);
   server.listen(1234, nullptr);
   /*
    * Run loop

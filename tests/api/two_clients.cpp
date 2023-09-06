@@ -52,8 +52,8 @@ public:
 
   ServerDelegate() : m_connections(), m_send_back(false) {}
 
-  void* onConnected(api::Server::ID const& id, UNUSED void* const cookie,
-                    UNUSED uint8_t& opts) override
+  void* onConnected(api::Server::ID const& id,
+                    UNUSED void* const cookie) override
   {
     m_connections.push_back(id);
     return nullptr;

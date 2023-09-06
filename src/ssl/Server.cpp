@@ -6,13 +6,13 @@
 namespace tulips::ssl {
 
 Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               const ssl::Protocol type, std::string_view cert,
-               std::string_view key)
+               transport::Device& device, const ssl::Protocol type,
+               std::string_view cert, std::string_view key, const size_t nconn,
+               const uint8_t options)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
-  , m_server(std::make_unique<api::Server>(log, *this, device, nconn))
+  , m_server(std::make_unique<api::Server>(log, *this, device, nconn, options))
   , m_context(nullptr)
 {
   int err = 0;
@@ -165,9 +165,9 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
 }
 
 void*
-Server::onConnected(ID const& id, void* const cookie, uint8_t& opts)
+Server::onConnected(ID const& id, void* const cookie)
 {
-  void* user = m_delegate.onConnected(id, cookie, opts);
+  void* user = m_delegate.onConnected(id, cookie);
   auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), user);
   c->state = Context::State::Accept;
   return c;
