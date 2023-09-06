@@ -23,7 +23,7 @@ class Server
 {
 public:
   Server(system::Logger& log, Delegate& delegate, transport::Device& device,
-         const size_t nconn, const uint8_t options = 0);
+         const size_t nconn);
 
   inline Status run() override { return m_ethfrom.run(); }
 
@@ -104,7 +104,6 @@ private:
   RawProcessor m_raw;
 #endif
   stack::tcpv4::Processor m_tcp;
-  uint8_t m_options;
   std::map<uint16_t, void*> m_cookies;
 };
 

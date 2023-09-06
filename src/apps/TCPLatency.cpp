@@ -299,7 +299,16 @@ namespace Server {
 class Delegate : public api::defaults::ServerDelegate
 {
 public:
-  Delegate() : m_next(0), m_bytes(0) {}
+  Delegate(const uint8_t options)
+    : m_options(options), m_next(0), m_bytes(0), m_server(nullptr)
+  {}
+
+  void* onConnected(const api::Server::ID& id,
+                    [[maybe_unused]] void* const cookie) override
+  {
+    m_server->setOptions(id, m_options);
+    return nullptr;
+  }
 
   Action onNewData(UNUSED tulips::api::Server::ID const& id,
                    UNUSED void* const cookie, const uint8_t* const data,
@@ -330,6 +339,8 @@ public:
     return Action::Continue;
   }
 
+  void setServer(api::interface::Server* server) { m_server = server; }
+
   double throughput(const uint64_t sec)
   {
     static uint64_t prev = 0;
@@ -339,8 +350,10 @@ public:
   }
 
 private:
+  uint8_t m_options;
   size_t m_next;
   uint64_t m_bytes;
+  api::interface::Server* m_server;
 };
 
 int
@@ -369,7 +382,8 @@ run(Options const& options, transport::Device& base_device)
    * Run as receiver.
    */
   size_t iter = 0;
-  Delegate delegate;
+  auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
+  Delegate delegate(opts);
   /*
    * Check if we should wrap the device in a PCAP device.
    */
@@ -382,15 +396,15 @@ run(Options const& options, transport::Device& base_device)
    * Initialize the server
    */
   api::interface::Server* server = nullptr;
-  auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
       logger, delegate, *device, tulips::ssl::Protocol::TLS, options.sslCert(),
-      options.sslKey(), options.connections(), opts);
+      options.sslKey(), options.connections());
   } else {
-    server = new tulips::api::Server(logger, delegate, *device,
-                                     options.connections(), opts);
+    server =
+      new tulips::api::Server(logger, delegate, *device, options.connections());
   }
+  delegate.setServer(server);
   /*
    * Listen to the local ports.
    */

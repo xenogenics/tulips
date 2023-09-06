@@ -6,8 +6,7 @@ namespace tulips::api {
 using namespace stack;
 
 Server::Server(system::Logger& log, Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               const uint8_t options)
+               transport::Device& device, const size_t nconn)
   : m_log(log)
   , m_delegate(delegate)
   , m_ethto(log, device, device.address())
@@ -24,7 +23,6 @@ Server::Server(system::Logger& log, Delegate& delegate,
   , m_raw()
 #endif
   , m_tcp(log, device, m_ethto, m_ip4to, *this, nconn)
-  , m_options(options)
 {
   /*
    * Hint the device about checksum.
@@ -123,7 +121,6 @@ Server::onConnected(tcpv4::Connection& c)
   void* appdata = m_delegate.onConnected(c.id(), srvdata);
   m_log.debug("APISRV", "connection ", c.id(), " connected");
   c.setCookie(appdata);
-  c.setOptions(m_options);
 }
 
 void

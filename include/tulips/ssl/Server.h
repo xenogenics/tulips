@@ -13,8 +13,7 @@ class Server
 public:
   Server(system::Logger& log, api::interface::Server::Delegate& delegate,
          transport::Device& device, const ssl::Protocol type,
-         std::string_view cert, std::string_view key, const size_t nconn,
-         const uint8_t options = 0);
+         std::string_view cert, std::string_view key, const size_t nconn);
   ~Server() override;
 
   inline Status run() override { return m_server->run(); }
