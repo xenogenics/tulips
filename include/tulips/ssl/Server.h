@@ -7,11 +7,11 @@
 namespace tulips::ssl {
 
 class Server
-  : public interface::Server
-  , public interface::Server::Delegate
+  : public api::interface::Server
+  , public api::interface::Server::Delegate
 {
 public:
-  Server(system::Logger& log, interface::Server::Delegate& delegate,
+  Server(system::Logger& log, api::interface::Server::Delegate& delegate,
          transport::Device& device, const size_t nconn,
          const ssl::Protocol type, std::string_view cert, std::string_view key);
   ~Server() override;
@@ -59,7 +59,7 @@ public:
 private:
   Status flush(const ID id, void* const cookie);
 
-  interface::Server::Delegate& m_delegate;
+  api::interface::Server::Delegate& m_delegate;
   system::Logger& m_log;
   transport::Device& m_dev;
   std::unique_ptr<api::Server> m_server;

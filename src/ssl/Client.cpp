@@ -7,7 +7,7 @@
 
 namespace tulips::ssl {
 
-Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
+Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, [[maybe_unused]] const size_t nconn,
                const Protocol type)
   : m_delegate(delegate)
@@ -43,7 +43,7 @@ Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
   }
 }
 
-Client::Client(system::Logger& log, interface::Client::Delegate& delegate,
+Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const size_t nconn,
                const Protocol type, std::string_view cert, std::string_view key)
   : Client(log, delegate, device, nconn, type)

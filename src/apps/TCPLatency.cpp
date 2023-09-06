@@ -111,7 +111,7 @@ run(Options const& options, transport::Device& base_device)
   /*
    * Build the client.
    */
-  interface::Client* client = nullptr;
+  api::interface::Client* client = nullptr;
   if (options.withSSL()) {
     client = new tulips::ssl::Client(logger, delegate, *device, 1,
                                      tulips::ssl::Protocol::TLS,
@@ -386,7 +386,7 @@ run(Options const& options, transport::Device& base_device)
   /*
    * Initialize the server
    */
-  interface::Server* server = nullptr;
+  api::interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
       logger, delegate, *device, options.connections(),

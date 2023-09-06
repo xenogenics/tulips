@@ -8,7 +8,7 @@
 #include <tulips/transport/Device.h>
 #include <cstdint>
 
-namespace tulips::interface {
+namespace tulips::api::interface {
 
 /**
  * Generic delegate class definition.

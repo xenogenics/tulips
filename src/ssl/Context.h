@@ -43,7 +43,7 @@ struct Context
    * Process pending data on ACK.
    */
   template<typename ID>
-  Action onAcked(ID const& id, interface::Delegate<ID>& delegate,
+  Action onAcked(ID const& id, api::interface::Delegate<ID>& delegate,
                  const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   {
     /*
@@ -76,7 +76,7 @@ struct Context
    * Processing incoming data and encrypt the response.
    */
   template<typename ID>
-  Action onNewData(ID const& id, interface::Delegate<ID>& delegate,
+  Action onNewData(ID const& id, api::interface::Delegate<ID>& delegate,
                    const uint8_t* const data, const uint32_t len)
   {
     /*
@@ -141,7 +141,7 @@ struct Context
    * Processing incoming data and encrypt the response.
    */
   template<typename ID>
-  Action onNewData(ID const& id, interface::Delegate<ID>& delegate,
+  Action onNewData(ID const& id, api::interface::Delegate<ID>& delegate,
                    const uint8_t* const data, const uint32_t len,
                    const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   {
