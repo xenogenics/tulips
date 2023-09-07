@@ -67,7 +67,7 @@ Processor::sendClose(Connection& e)
    * this is the responsibility of the caller.
    */
   if (!e.hasAvailableSegments()) {
-    m_log.debug("TCP4", "close() called without available segments");
+    m_log.error("TCP4", "close() called without available segments");
     return Status::NoMoreResources;
   }
   /*
@@ -95,7 +95,7 @@ Processor::sendAck(Connection& e)
   if (unlikely(e.hasPendingSendData())) {
     res = m_device.prepare(outdata);
     if (res != Status::Ok) {
-      m_log.debug("TCP4", "prepare() for sendAck() failed");
+      m_log.error("TCP4", "prepare() for sendAck() failed");
       return res;
     }
   }
@@ -167,7 +167,7 @@ Processor::send(Connection& e)
   /*
    * Print the flow information.
    */
-  m_log.debug("FLOW", "<- ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
+  m_log.trace("FLOW", "<- ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
               " ack:", e.m_rcv_nxt);
   /*
    * Update IP and Ethernet attributes
@@ -218,7 +218,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   /*
    * Print the flow information.
    */
-  m_log.debug("FLOW", (rexmit ? "<+ " : "<- "), getFlags(*OUTTCP),
+  m_log.trace("FLOW", (rexmit ? "<+ " : "<- "), getFlags(*OUTTCP),
               " len:", s.m_len, " seq:", s.m_seq, " ack:", e.m_rcv_nxt,
               " seg:", e.id(s), " lvl:", e.level());
   /*

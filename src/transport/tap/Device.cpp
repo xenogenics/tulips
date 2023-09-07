@@ -93,7 +93,7 @@ Device::~Device()
   ::close(m_fd);
   std::list<uint8_t*>::iterator it;
   for (it = m_buffers.begin(); it != m_buffers.end(); it++) {
-    delete[] *it;
+    delete[] * it;
   }
   m_buffers.clear();
 }
@@ -111,14 +111,14 @@ Device::poll(Processor& proc)
     if (errno == EAGAIN) {
       return Status::NoDataAvailable;
     } else {
-      m_log.debug("TAP", strerror(errno));
+      m_log.error("TAP", strerror(errno));
       return Status::HardwareError;
     }
   }
   /*
    * Call on the processor.
    */
-  m_log.debug("TAP", "processing ", ret << "B");
+  m_log.trace("TAP", "processing packet: ", ret << "B");
   return proc.process(ret, buffer);
 }
 
@@ -146,7 +146,7 @@ Device::wait(Processor& proc, const uint64_t ns)
       return poll(proc);
     }
     default: {
-      m_log.debug("TAP", strerror(errno));
+      m_log.error("TAP", strerror(errno));
       return Status::HardwareError;
     }
   }
@@ -172,13 +172,13 @@ Device::prepare(uint8_t*& buf)
 Status
 Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
 {
-  m_log.debug("TAP", "sending " << len << "B");
+  m_log.trace("TAP", "committing buffer" << len << "B");
   /*
    * Write the payload.
    */
   ssize_t res = write(m_fd, buf, len);
   if (res == -1) {
-    m_log.debug("TAP", strerror(errno));
+    m_log.error("TAP", strerror(errno));
     return Status::HardwareError;
   }
   m_buffers.push_back(buf);

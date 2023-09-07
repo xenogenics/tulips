@@ -52,14 +52,14 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    * Send the length first.
    */
   if (!write(sizeof(len), (uint8_t*)&len)) {
-    m_log.debug("NPIPE", "write error: ", strerror(errno));
+    m_log.error("NPIPE", "write error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
    * Send the payload.
    */
   if (!write(len, buf)) {
-    m_log.debug("NPIPE", "write error: ", strerror(errno));
+    m_log.error("NPIPE", "write error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
@@ -82,11 +82,11 @@ Device::poll(Processor& proc)
     if (errno == EAGAIN) {
       return Status::NoDataAvailable;
     }
-    m_log.debug("NPIPE", "read error: ", strerror(errno));
+    m_log.error("NPIPE", "read error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   if (ret == 0) {
-    m_log.debug("NPIPE", "read error: ", strerror(errno));
+    m_log.error("NPIPE", "read error: ", strerror(errno));
     return Status::HardwareLinkLost;
   }
   /*
@@ -95,7 +95,7 @@ Device::poll(Processor& proc)
   do {
     ret = ::read(read_fd, m_read_buffer, len);
     if (ret == 0 || (ret < 0 && errno != EAGAIN)) {
-      m_log.debug("NPIPE", "read error: ", strerror(errno));
+      m_log.error("NPIPE", "read error: ", strerror(errno));
       return Status::HardwareLinkLost;
     }
   } while (ret < 0);

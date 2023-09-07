@@ -59,7 +59,7 @@ Device::poll(Processor& proc)
   if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
     return Status::HardwareError;
   }
-  m_log.debug("SHM", "processing packet: ", packet->len, "B, ", packet);
+  m_log.trace("SHM", "processing packet: ", packet->len, "B, ", packet);
   Status ret = proc.process(packet->len, packet->data);
   tulips_fifo_pop(read_fifo);
   return ret;
@@ -91,7 +91,7 @@ Device::wait(Processor& proc, const uint64_t ns)
   if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
     return Status::HardwareError;
   }
-  m_log.debug("SHM", "processing packet: ", packet->len, "B, ", packet);
+  m_log.trace("SHM", "processing packet: ", packet->len, "B, ", packet);
   Status ret = proc.process(packet->len, packet->data);
   tulips_fifo_pop(read_fifo);
   return ret;
@@ -115,7 +115,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
-  m_log.debug("SHM", "committing packet: ", len, "B, ", packet);
+  m_log.trace("SHM", "committing packet: ", len, "B, ", packet);
   packet->len = len;
   tulips_fifo_commit(write_fifo);
   pthread_cond_signal(&m_cond);

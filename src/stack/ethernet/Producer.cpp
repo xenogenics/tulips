@@ -36,7 +36,7 @@ Producer::prepare(uint8_t*& buf)
 Status
 Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
 {
-  m_log.debug("ETH", "committing frame: ", len, "B");
+  m_log.trace("ETH", "committing frame: ", len, "B");
   return m_prod.commit(len + HEADER_LEN, buf - HEADER_LEN, mss);
 }
 

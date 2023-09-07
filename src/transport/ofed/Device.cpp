@@ -196,7 +196,7 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
 #ifdef TULIPS_HAS_HW_CHECKSUM
   if (!(deva.device_cap_flags_ex & IBV_DEVICE_RAW_IP_CSUM)) {
 #ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    m_log.debug("OFED", "IP checksum offload not supported by device, ignored");
+    m_log.error("OFED", "IP checksum offload not supported by device, ignored");
 #else
     throw std::runtime_error("Device does not support IP checksum offload");
 #endif
@@ -217,7 +217,7 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
 #endif
   } else {
 #ifdef TULIPS_IGNORE_INCOMPATIBLE_HW
-    m_log.debug("OFED", "TSO not supported by device, ignored");
+    m_log.error("OFED", "TSO not supported by device, ignored");
 #else
     throw std::runtime_error("Device does not support TSO");
 #endif
@@ -332,7 +332,7 @@ Device::postReceive(const uint16_t id)
    */
   struct ibv_recv_wr* bad_wr;
   if (ibv_post_recv(m_qp, &wr, &bad_wr) != 0) {
-    m_log.debug("OFED", "post receive of buffer id=", id, "failed");
+    m_log.error("OFED", "post receive of buffer id=", id, "failed");
     return Status::HardwareError;
   }
   return Status::Ok;
@@ -461,7 +461,7 @@ Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   ibv_flow* f = ibv_create_flow(m_qp, (ibv_flow_attr*)&flow);
   if (f == nullptr) {
-    m_log.debug("OFED", "cannot create TCP/UDP FLOW");
+    m_log.error("OFED", "cannot create TCP/UDP FLOW");
     return Status::HardwareError;
   }
   /*
@@ -498,7 +498,7 @@ Device::poll(Processor& proc)
    */
   cqn = ibv_poll_cq(m_recvcq, m_nbuf, wc);
   if (cqn < 0) {
-    m_log.debug("OFED", "polling recv completion queue failed");
+    m_log.error("OFED", "polling recv completion queue failed");
     return Status::HardwareError;
   }
   if (cqn == 0) {
@@ -514,7 +514,7 @@ Device::poll(Processor& proc)
     int id = wc[i].wr_id;
     size_t len = wc[i].byte_len;
     const uint8_t* addr = m_recvbuf + size_t(id) * RECV_BUFLEN;
-    m_log.debug("OFED", "processing id=", id, " addr=", (void*)addr,
+    m_log.trace("OFED", "processing id=", id, " addr=", (void*)addr,
                 " len=", len);
     /*
      * Validate the IP checksums
@@ -523,7 +523,7 @@ Device::poll(Processor& proc)
     if (wc[i].wc_flags & IBV_FLOW_SPEC_IPV4) {
       if (m_hints & Device::VALIDATE_IP_CSUM) {
         if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
-          m_log.debug("OFED", "invalid IP checksum, dropping packet");
+          m_log.error("OFED", "invalid IP checksum, dropping packet");
           continue;
         }
       }
@@ -531,7 +531,7 @@ Device::poll(Processor& proc)
     if (wc[i].wc_flags & IBV_FLOW_SPEC_TCP) {
       if (m_hints & Device::VALIDATE_L4_CSUM) {
         if (!(wc[i].wc_flags & IBV_WC_IP_CSUM_OK)) {
-          m_log.debug("OFED", "invalid TCP/UDP checksum, dropping packet");
+          m_log.error("OFED", "invalid TCP/UDP checksum, dropping packet");
           continue;
         }
       }
@@ -549,7 +549,7 @@ Device::poll(Processor& proc)
         const int lid = wc[j].wr_id;
         Status res = postReceive(lid);
         if (res != Status::Ok) {
-          m_log.debug("OFED", "re-post receive of buffer id=", lid, "failed");
+          m_log.error("OFED", "re-post receive of buffer id=", lid, "failed");
           return Status::HardwareError;
         }
       }
@@ -564,7 +564,7 @@ Device::poll(Processor& proc)
     const int id = wc[i].wr_id;
     Status res = postReceive(id);
     if (res != Status::Ok) {
-      m_log.debug("OFED", "re-post receive of buffer id=", id, "failed");
+      m_log.error("OFED", "re-post receive of buffer id=", id, "failed");
       return Status::HardwareError;
     }
   }
@@ -595,7 +595,7 @@ Device::wait(Processor& proc, const uint64_t ns)
    * Request a notification.
    */
   if (ibv_req_notify_cq(m_recvcq, 0) != 0) {
-    m_log.debug("OFED", "requesting notification failed");
+    m_log.error("OFED", "requesting notification failed");
     return Status::HardwareError;
   }
   /*
@@ -621,7 +621,7 @@ Device::wait(Processor& proc, const uint64_t ns)
     ibv_cq* cq = nullptr;
     void* context = nullptr;
     if (ibv_get_cq_event(m_comp, &cq, &context) != 0) {
-      m_log.debug("OFED", "getting notification failed");
+      m_log.error("OFED", "getting notification failed");
       return Status::HardwareError;
     }
     m_events += 1;
@@ -642,7 +642,7 @@ Device::prepare(uint8_t*& buf)
    */
   cqn = ibv_poll_cq(m_sendcq, m_nbuf, wc);
   if (cqn < 0) {
-    m_log.debug("OFED", "polling send completion queue failed");
+    m_log.error("OFED", "polling send completion queue failed");
     return Status::HardwareError;
   }
   /*
@@ -679,14 +679,14 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 #ifdef TULIPS_HAS_HW_TSO
   uint32_t header_len;
   if (!stack::utils::headerLength(buf, len, header_len)) {
-    m_log.debug("OFED", "cannot get packet header length");
+    m_log.error("OFED", "cannot get packet header length");
     return Status::IncompleteData;
   }
   /*
    * Reject the request if the MSS provided is too small for the job.
    */
   if (len > (m_hwmtu + stack::ethernet::HEADER_LEN) && mss <= header_len) {
-    m_log.debug("OFED", "mss=", mss, " for hwmtu=", m_hwmtu, " and len=", len);
+    m_log.error("OFED", "mss=", mss, " for hwmtu=", m_hwmtu, " and len=", len);
     return Status::InvalidArgument;
   }
   /*
@@ -747,11 +747,11 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   struct ibv_send_wr* bad_wr;
   if (ibv_post_send(m_qp, &wr, &bad_wr) != 0) {
-    m_log.debug("OFED", "post send of buffer len=", len, " failed, ",
+    m_log.error("OFED", "post send of buffer len=", len, " failed, ",
                 strerror(errno));
     return Status::HardwareError;
   }
-  m_log.debug("OFED", "commit buffer ", (void*)buf, " len ", len);
+  m_log.trace("OFED", "committing buffer ", (void*)buf, " len ", len);
   return Status::Ok;
 }
 
