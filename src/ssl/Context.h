@@ -162,7 +162,7 @@ struct Context
         int e = SSL_connect(ssl);
         switch (e) {
           case 0: {
-            log.debug("SSLCTX", "SSL_connect error, controlled shutdown");
+            log.error("SSLCTX", "SSL_connect error, controlled shutdown");
             return Action::Abort;
           }
           case 1: {

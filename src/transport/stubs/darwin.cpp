@@ -62,7 +62,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
    */
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (sock < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     return false;
   }
   /*
@@ -71,7 +71,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
   struct ifreq ifreq = {};
   memcpy(ifreq.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFMTU, &ifreq) < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     close(sock);
     return false;
   }
@@ -101,7 +101,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
    */
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (sock < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     return false;
   }
   /*
@@ -110,7 +110,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
   struct ifreq ifreq = {};
   memcpy(ifreq.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFADDR, &ifreq) < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     close(sock);
     return false;
   }
@@ -126,7 +126,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
    */
   memcpy(ifreq.ifr_name, ifn.data(), ifn.length());
   if (ioctl(sock, SIOCGIFNETMASK, &ifreq) < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     close(sock);
     return false;
   }

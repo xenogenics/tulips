@@ -67,7 +67,7 @@ Processor::sendClose(Connection& e)
    * this is the responsibility of the caller.
    */
   if (!e.hasAvailableSegments()) {
-    m_log.debug("TCP4", "close() called without available segments");
+    m_log.error("TCP4", "close() called without available segments");
     return Status::NoMoreResources;
   }
   /*
@@ -95,7 +95,7 @@ Processor::sendAck(Connection& e)
   if (unlikely(e.hasPendingSendData())) {
     res = m_device.prepare(outdata);
     if (res != Status::Ok) {
-      m_log.debug("TCP4", "prepare() for sendAck() failed");
+      m_log.error("TCP4", "prepare() for sendAck() failed");
       return res;
     }
   }

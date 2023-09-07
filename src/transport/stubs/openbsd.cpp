@@ -43,17 +43,17 @@ getDefaultRoute(tulips::system::Logger& log,
    */
   while (1) {
     if (sysctl(mib, 7, nullptr, &needed, nullptr, 0) == -1) {
-      log.debug("ARP", "route-sysctl-estimate");
+      log.error("ARP", "route-sysctl-estimate");
     }
     if (needed == 0) {
-      log.debug("TRANS", "sysctl failed");
+      log.error("TRANS", "sysctl failed");
       return false;
     }
     if ((buf = (char*)realloc(buf, needed)) == nullptr) {
-      log.debug("ARP", "malloc");
+      log.error("ARP", "malloc");
     }
     if (sysctl(mib, 7, buf, &needed, nullptr, 0) == -1) {
-      log.debug("TRANS", strerror(errno));
+      log.error("TRANS", strerror(errno));
       if (errno == ENOMEM) {
         continue;
       }
@@ -115,7 +115,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
    */
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (sock < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     return false;
   }
   /*
@@ -124,7 +124,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
   struct ifreq ifreq;
   memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
   if (ioctl(sock, SIOCGIFMTU, &ifreq) < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     close(sock);
     return false;
   }
@@ -147,7 +147,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
    */
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (sock < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     return false;
   }
   /*
@@ -156,7 +156,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
   struct ifreq ifreq;
   memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
   if (ioctl(sock, SIOCGIFADDR, &ifreq) < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     close(sock);
     return false;
   }
@@ -172,7 +172,7 @@ getInterfaceInformation(system::Logger& log, std::string_view ifn,
    */
   memcpy(ifreq.ifr_name, ifn.c_str(), IFNAMSIZ);
   if (ioctl(sock, SIOCGIFNETMASK, &ifreq) < 0) {
-    log.debug("TRANS", strerror(errno));
+    log.error("TRANS", strerror(errno));
     close(sock);
     return false;
   }

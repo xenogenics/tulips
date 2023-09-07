@@ -25,7 +25,7 @@ getGateway(tulips::system::Logger& log, std::string_view dev,
    * Check if the file is valid.
    */
   if (route.bad()) {
-    log.debug("TRANS", "cannot open /proc/net/route");
+    log.error("TRANS", "cannot open /proc/net/route");
     return false;
   }
   /*

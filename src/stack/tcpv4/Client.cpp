@@ -110,7 +110,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
    */
   ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
   if (ret != Status::Ok) {
-    m_log.debug("TCP4", "registering client-side filter failed");
+    m_log.error("TCP4", "registering client-side filter failed");
     return ret;
   }
   /*

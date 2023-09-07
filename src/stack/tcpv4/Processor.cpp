@@ -159,7 +159,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
   if (csum != 0xffff) {
     m_stats.drop += 1;
     m_stats.chkerr += 1;
-    m_log.debug("TCP", "invalid checksum (",
+    m_log.error("TCP", "invalid checksum (",
                 m_ipv4from->sourceAddress().toString(), ", ",
                 m_ipv4from->destinationAddress().toString(), ", ", len, ", 0x",
                 std::hex, csum, std::dec, ")");

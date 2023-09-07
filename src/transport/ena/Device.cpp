@@ -86,7 +86,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   auto ret = rte_eth_dev_rss_reta_query(m_portid, m_reta, m_htsz);
   if (ret < 0) {
-    m_log.debug("ENA", "failed to query the RETA");
+    m_log.error("ENA", "failed to query the RETA");
     return Status::HardwareError;
   }
   /*
@@ -99,7 +99,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    * Check the configuration.
    */
   if (preq != 0 && preq != m_queueid) {
-    m_log.debug("ENA", "RETA queue allocation conflict: ", preq);
+    m_log.error("ENA", "RETA queue allocation conflict: ", preq);
     return Status::HardwareError;
   }
   /*
@@ -119,7 +119,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
    */
   ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
   if (ret != 0) {
-    m_log.debug("ENA", "failed to update the RETA");
+    m_log.error("ENA", "failed to update the RETA");
     return Status::HardwareError;
   }
   /*
@@ -189,7 +189,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_IP_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
-          m_log.debug("ENA", "invalid IP checksum, dropping packet");
+          m_log.error("ENA", "invalid IP checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -202,7 +202,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_L4_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
-          m_log.debug("ENA", "invalid L4 checksum, dropping packet");
+          m_log.error("ENA", "invalid L4 checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -308,7 +308,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    m_log.debug("ENA",
+    m_log.error("ENA",
                 "packet preparation for TX failed: ", rte_strerror(rte_errno));
     return Status::HardwareError;
   }
@@ -317,7 +317,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    m_log.debug("ENA", "sending packet failed");
+    m_log.error("ENA", "sending packet failed");
     return Status::HardwareError;
   }
   m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len);

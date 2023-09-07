@@ -146,7 +146,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
         addr = m_ip4to.defaultRouterAddress();
       }
       if (!arp::lookup(m_log, m_dev.name(), addr, rhwaddr)) {
-        m_log.debug("APICLI", "hardware translation missing for ",
+        m_log.error("APICLI", "hardware translation missing for ",
                     addr.toString());
         ret = Status::HardwareTranslationMissing;
         break;

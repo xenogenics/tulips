@@ -66,7 +66,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if (INIP->vhl != 0x45) {
     ++m_stats.drop;
     ++m_stats.vhlerr;
-    m_log.debug("IP4", "invalid protocol type");
+    m_log.error("IP4", "invalid protocol type");
     return Status::ProtocolError;
   }
   /*
@@ -75,7 +75,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if ((INIP->ipoffset[0] & 0x3f) != 0 || INIP->ipoffset[1] != 0) {
     ++m_stats.drop;
     ++m_stats.frgerr;
-    m_log.debug("IP4", "IP fragment are not supported");
+    m_log.error("IP4", "IP fragment are not supported");
     return Status::ProtocolError;
   }
   /*
@@ -83,7 +83,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
    */
   if (INIP->destipaddr != m_hostAddress) {
     ++m_stats.drop;
-    m_log.debug("IP4", "unknown destination address");
+    m_log.error("IP4", "unknown destination address");
     return Status::ProtocolError;
   }
   /*
@@ -94,8 +94,8 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
   if (sum != 0xffff) {
     ++m_stats.drop;
     ++m_stats.chkerr;
-    m_log.debug("IP4", "data length: ", len);
-    m_log.debug("IP4", "invalid checksum: 0x", std::hex, sum, std::dec);
+    m_log.error("IP4", "data length: ", len);
+    m_log.error("IP4", "invalid checksum: 0x", std::hex, sum, std::dec);
     return Status::CorruptedData;
   }
 #endif

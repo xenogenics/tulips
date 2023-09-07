@@ -33,7 +33,7 @@ getinetaddr(system::Logger& log, std::string_view host, struct in_addr* inap)
     return true;
   }
   if ((hp = gethostbyname(shost.c_str())) == nullptr) {
-    log.debug("ARP", "gethostbyname for " << host << " failed");
+    log.error("ARP", "gethostbyname for " << host << " failed");
     return false;
   }
   /*
@@ -71,14 +71,14 @@ search(system::Logger& log, in_addr_t const& addr, ethernet::Address& lladdr)
       log.debug("ARP", "route-sysctl-estimate");
     }
     if (needed == 0) {
-      log.debug("ARP", "sysctl failed");
+      log.error("ARP", "sysctl failed");
       return false;
     }
     if ((buf = (char*)realloc(buf, needed)) == nullptr) {
-      log.debug("ARP", "malloc");
+      log.error("ARP", "malloc");
     }
     if (sysctl(mib, 7, buf, &needed, nullptr, 0) == -1) {
-      log.debug("ARP", strerror(errno));
+      log.error("ARP", strerror(errno));
       if (errno == ENOMEM) {
         continue;
       }
