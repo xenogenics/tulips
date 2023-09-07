@@ -87,50 +87,104 @@ struct Context
     /*
      * Only accept Ready state.
      */
-    if (state != State::Ready) {
+    if (state != State::Ready && state != State::Shutdown) {
+      log.error("SSL", "Received data in unexpected state");
       return Action::Abort;
     }
     /*
-     * Process the internal buffer as long as there is data available.
+     * Check the connection's state.
      */
-    do {
-      ret = SSL_read(ssl, rdbf, buflen);
+    switch (state) {
       /*
-       * Handle partial data.
+       * Decrypt and pass the data to the delegate.
        */
-      if (ret < 0) {
-        if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
-          break;
-        }
-        log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
-        return Action::Abort;
-      }
-      /*
-       * Handle shutdown.
-       */
-      if (ret == 0) {
-        int err = SSL_get_error(ssl, ret);
-        if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SSL) {
-          if (SSL_shutdown(ssl) != 1) {
+      case State::Ready: {
+        /*
+         * Process the internal buffer as long as there is data available.
+         */
+        do {
+          ret = SSL_read(ssl, rdbf, buflen);
+          /*
+           * Handle partial data.
+           */
+          if (ret < 0) {
+            if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
+              break;
+            }
+            log.error("SSL", "SSL_read error: ", errorToString(ssl, ret));
             return Action::Abort;
           }
-          log.debug("SSLCTX", "SSL_shutdown received");
-          break;
-        }
-        log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
-        return Action::Abort;
+          /*
+           * Check the error if we received no data.
+           */
+          if (ret == 0) {
+            int err = SSL_get_error(ssl, ret);
+            /*
+             * Check the shutdown condition.
+             */
+            if (err == SSL_ERROR_ZERO_RETURN) {
+              auto ret = SSL_shutdown(ssl);
+              /*
+               * Break if the shutdown completed.
+               */
+              if (ret == 1) {
+                log.debug("SSL", "- SSL_shutdown received");
+                break;
+              }
+              /*
+               * Break if the shutdown needs more data.
+               */
+              int err = SSL_get_error(ssl, ret);
+              if (err == SSL_ERROR_WANT_READ) {
+                break;
+              }
+              /*
+               * Abort otherwise.
+               */
+              log.error("SSL", "- SSL_shutdown failed (", ret, ", ", err, ")");
+              return Action::Abort;
+            }
+            /*
+             * Treat it as a read error otherwise.
+             */
+            else {
+              log.error("SSL", "SSL_read error: ", errorToString(ssl, ret));
+              return Action::Abort;
+            }
+          }
+          /*
+           * Notify the delegate.
+           */
+          if (delegate.onNewData(id, cookie, rdbf, ret) != Action::Continue) {
+            return Action::Abort;
+          }
+        } while (ret > 0 && state == State::Ready);
+        /*
+         * Continue processing.
+         */
+        return Action::Continue;
       }
       /*
-       * Notify the delegate.
+       * Handle the last piece of shutdown.
        */
-      if (delegate.onNewData(id, cookie, rdbf, ret) != Action::Continue) {
+      case State::Shutdown: {
+        auto ret = SSL_shutdown(ssl);
+        if (ret == 1) {
+          log.error("SSL", "SSL_shutdown completed");
+          return Action::Close;
+        } else {
+          int err = SSL_get_error(ssl, ret);
+          if (err == SSL_ERROR_WANT_READ) {
+            return Action::Continue;
+          }
+          log.error("SSL", "SSL_shutdown failed (", ret, ", ", err, ")");
+          return Action::Abort;
+        }
+      }
+      default: {
         return Action::Abort;
       }
-    } while (ret > 0);
-    /*
-     * Continue processing.
-     */
-    return Action::Continue;
+    }
   }
 
   /**
@@ -153,6 +207,7 @@ struct Context
        * Closed is not a valid state.
        */
       case State::Closed: {
+        log.error("SSL", "Received data on a closed context");
         return Action::Abort;
       }
       /*
@@ -162,11 +217,11 @@ struct Context
         int e = SSL_connect(ssl);
         switch (e) {
           case 0: {
-            log.error("SSLCTX", "SSL_connect error, controlled shutdown");
+            log.error("SSL", "SSL_connect error, controlled shutdown");
             return Action::Abort;
           }
           case 1: {
-            log.debug("SSLCTX", "SSL_connect successful");
+            log.debug("SSL", "SSL_connect successful");
             state = State::Ready;
             return flush(alen, sdata, slen);
           }
@@ -174,7 +229,7 @@ struct Context
             if (SSL_get_error(ssl, e) == SSL_ERROR_WANT_READ) {
               return flush(alen, sdata, slen);
             }
-            log.error("SSLCTX", "SSL_connect error: ", errorToString(ssl, e));
+            log.error("SSL", "SSL_connect error: ", errorToString(ssl, e));
             return Action::Abort;
           }
         }
@@ -189,11 +244,11 @@ struct Context
         int e = SSL_accept(ssl);
         switch (e) {
           case 0: {
-            log.error("SSLCTX", "SSL_accept error: ", errorToString(ssl, e));
+            log.error("SSL", "SSL_accept error: ", errorToString(ssl, e));
             return Action::Abort;
           }
           case 1: {
-            log.debug("SSLCTX", "SSL_accept successful");
+            log.debug("SSL", "SSL_accept successful");
             state = State::Ready;
             return flush(alen, sdata, slen);
           }
@@ -201,7 +256,7 @@ struct Context
             if (SSL_get_error(ssl, e) == SSL_ERROR_WANT_READ) {
               return flush(alen, sdata, slen);
             }
-            log.error("SSLCTX", "SSL_accept error: ", errorToString(ssl, e));
+            log.error("SSL", "SSL_accept error: ", errorToString(ssl, e));
             return Action::Abort;
           }
         }
@@ -225,23 +280,46 @@ struct Context
             if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
               break;
             }
-            log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
+            log.error("SSL", "SSL_read error: ", errorToString(ssl, ret));
             return Action::Abort;
           }
           /*
-           * Handle shutdown.
+           * Check the error if we received no data.
            */
           if (ret == 0) {
             int err = SSL_get_error(ssl, ret);
-            if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SSL) {
-              if (SSL_shutdown(ssl) != 1) {
-                return Action::Abort;
+            /*
+             * Check the shutdown condition.
+             */
+            if (err == SSL_ERROR_ZERO_RETURN) {
+              auto ret = SSL_shutdown(ssl);
+              /*
+               * Break if the shutdown completed.
+               */
+              if (ret == 1) {
+                log.debug("SSL", "+ SSL_shutdown completed");
+                break;
               }
-              log.debug("SSLCTX", "SSL_shutdown received");
-              break;
+              /*
+               * Break if the shutdown needs more data.
+               */
+              int err = SSL_get_error(ssl, ret);
+              if (err == SSL_ERROR_WANT_READ) {
+                break;
+              }
+              /*
+               * Abort otherwise.
+               */
+              log.error("SSL", "+ SSL_shutdown failed (", ret, ", ", err, ")");
+              return Action::Abort;
             }
-            log.error("SSLCTX", "SSL_read error: ", errorToString(ssl, ret));
-            return Action::Abort;
+            /*
+             * Treat it as a read error otherwise.
+             */
+            else {
+              log.error("SSL", "SSL_read error: ", errorToString(ssl, ret));
+              return Action::Abort;
+            }
           }
           /*
            * Notify the delegate.
@@ -263,7 +341,7 @@ struct Context
            */
           acc += rlen;
           SSL_write(ssl, out, (int)rlen);
-        } while (ret > 0);
+        } while (ret > 0 && state == State::Ready);
         /*
          * Flush the output.
          */
@@ -273,10 +351,18 @@ struct Context
        * Handle the last piece of shutdown.
        */
       case State::Shutdown: {
-        if (SSL_shutdown(ssl) == 1) {
+        auto ret = SSL_shutdown(ssl);
+        if (ret == 1) {
+          log.error("SSL", "SSL_shutdown completed");
           return Action::Close;
+        } else {
+          int err = SSL_get_error(ssl, ret);
+          if (err == SSL_ERROR_WANT_READ) {
+            return flush(alen, sdata, slen);
+          }
+          log.error("SSL", "+ SSL_shutdown failed (", ret, ", ", err, ")");
+          return Action::Abort;
         }
-        return Action::Abort;
       }
     }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)

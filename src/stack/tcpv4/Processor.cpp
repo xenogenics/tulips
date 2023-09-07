@@ -334,6 +334,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
     m_log.debug("TCP4", "connection aborted");
     m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
     e.m_state = Connection::CLOSED;
+    m_log.debug("TCP4", "Received reset on connection ", e.id(), ", aborting");
     m_handler.onAborted(e);
     return Status::Ok;
   }
@@ -555,6 +556,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       /*
        * Inform the application that the connection failed.
        */
+      m_log.debug("TCP4", "Connection ", e.id(), " failed, aborting");
       m_handler.onAborted(e);
       /*
        * The connection is closed after we send the RST.
@@ -682,9 +684,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
              */
             switch (action) {
               case Action::Abort:
+                m_log.debug("TCP4", "onAcked() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onAcked() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -714,9 +718,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
              */
             switch (action) {
               case Action::Abort:
+                m_log.debug("TCP4", "onAcked() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onAcked() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -760,9 +766,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
                                         e.m_sdat + HEADER_LEN + e.m_slen,
                                         rlen)) {
               case Action::Abort:
+                m_log.debug("TCP4", "onNewData() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onNewData() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -783,9 +791,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           else {
             switch (m_handler.onNewData(e, dataptr, datalen)) {
               case Action::Abort:
+                m_log.debug("TCP4", "onNewData() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onNewData() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;

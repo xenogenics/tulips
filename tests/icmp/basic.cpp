@@ -47,10 +47,8 @@ TEST(ICMP_Basic, RequestResponse)
   /*
    * Build the pcap device
    */
-  transport::pcap::Device client_pcap(logger, client,
-                                      "icmp_client_" + tname + ".pcap");
-  transport::pcap::Device server_pcap(logger, server,
-                                      "icmp_server_" + tname + ".pcap");
+  transport::pcap::Device client_pcap(logger, client, "icmp_client_" + tname);
+  transport::pcap::Device server_pcap(logger, server, "icmp_server_" + tname);
   /*
    * Client stack
    */

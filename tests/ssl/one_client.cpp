@@ -129,8 +129,8 @@ protected:
     /*
      * Build the pcap device
      */
-    std::string pcap_client = "api_secure.client." + tname + ".pcap";
-    std::string pcap_server = "api_secure.server." + tname + ".pcap";
+    std::string pcap_client = "api_secure.client." + tname;
+    std::string pcap_server = "api_secure.server." + tname;
     m_client_pcap =
       new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
     m_server_pcap =

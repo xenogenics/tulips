@@ -202,7 +202,6 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
 Status
 Client::abort(const ID id)
 {
-  m_log.debug("APICLI", "closing connection ", id);
   /*
    * Check if connection ID is valid.
    */
@@ -219,6 +218,7 @@ Client::abort(const ID id)
   /*
    * Close the connection.
    */
+  m_log.debug("APICLI", "aborting connection ", id);
   return m_tcp.abort(c.conn);
 }
 
@@ -241,11 +241,8 @@ Client::close(const ID id)
   /*
    * Close the connection.
    */
-  Status res = m_tcp.close(c.conn);
-  if (res == Status::Ok) {
-    m_log.debug("APICLI", "closing connection ", id);
-  }
-  return res;
+  m_log.debug("APICLI", "closing connection ", id);
+  return m_tcp.close(c.conn);
 }
 
 bool

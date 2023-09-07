@@ -243,10 +243,8 @@ protected:
      */
     std::string client_n = "tcp_nagle.client." + tname;
     std::string server_n = "tcp_nagle.server." + tname;
-    m_client_pcap =
-      new transport::pcap::Device(m_logger, *m_client, client_n + ".pcap");
-    m_server_pcap =
-      new transport::pcap::Device(m_logger, *m_server, server_n + ".pcap");
+    m_client_pcap = new transport::pcap::Device(m_logger, *m_client, client_n);
+    m_server_pcap = new transport::pcap::Device(m_logger, *m_server, server_n);
     /*
      * Client stack
      */
