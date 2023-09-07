@@ -35,9 +35,9 @@ getMethod(const Protocol type, const bool server, long& flags)
 }
 
 std::string
-errorToString(SSL* ssl, const int err)
+errorToString(const int err)
 {
-  switch (SSL_get_error(ssl, err)) {
+  switch (err) {
     case SSL_ERROR_NONE:
       return "SSL_ERROR_NONE";
     case SSL_ERROR_ZERO_RETURN:
@@ -100,27 +100,28 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
    * Process an abort request.
    */
   if (r == Action::Abort) {
-    log.debug("SSLCTX", "aborting connection");
+    log.debug("SSL", "aborting connection");
     return Action::Abort;
   }
   /*
    * Process a close request.
    */
   if (r == Action::Close) {
-    log.debug("SSLCTX", "closing connection");
+    log.debug("SSL", "closing connection");
     /*
      * Call SSL_shutdown, repeat if necessary.
      */
-    int e = SSL_shutdown(ssl);
-    if (e == 0) {
-      e = SSL_shutdown(ssl);
+    int ret = SSL_shutdown(ssl);
+    if (ret == 0) {
+      ret = SSL_shutdown(ssl);
     }
     /*
      * Check that the SSL connection expect an answer from the other peer.
      */
-    if (e < 0) {
-      if (SSL_get_error(ssl, e) != SSL_ERROR_WANT_READ) {
-        log.error("SSLCTX", "SSL_shutdown error: ", ssl::errorToString(ssl, e));
+    if (ret < 0) {
+      auto err = SSL_get_error(ssl, ret);
+      if (err != SSL_ERROR_WANT_READ) {
+        log.error("SSL", "SSL_shutdown error: ", ssl::errorToString(err));
         return Action::Abort;
       }
       /*
@@ -129,7 +130,7 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
       state = State::Shutdown;
       return flush(alen, sdata, slen);
     }
-    log.error("SSLCTX", "SSL_shutdown error, aborting connection");
+    log.error("SSL", "SSL_shutdown error, aborting connection");
     return Action::Abort;
   }
   /*

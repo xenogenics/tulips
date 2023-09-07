@@ -164,9 +164,7 @@ public:
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     /*
      * We are closed.
      */
@@ -209,9 +207,7 @@ public:
     ASSERT_EQ(Status::OperationInProgress, m_server->close(id));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
     expireTimeWait();

@@ -263,6 +263,12 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {
   /*
+   * Skip if the length is 0.
+   */
+  if (len == 0) {
+    return Status::InvalidArgument;
+  }
+  /*
    * Check if connection ID is valid.
    */
   if (id >= m_nconn) {

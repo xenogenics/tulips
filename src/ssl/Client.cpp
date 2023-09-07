@@ -118,8 +118,8 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      * Perform the client SSL handshake.
      */
     case Context::State::Connect: {
-      int e = SSL_connect(c.ssl);
-      switch (e) {
+      int ret = SSL_connect(c.ssl);
+      switch (ret) {
         case 0: {
           m_log.error("SSLCLI", "connect error");
           return Status::ProtocolError;
@@ -131,8 +131,9 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
           return Status::Ok;
         }
         default: {
-          if (SSL_get_error(c.ssl, e) != SSL_ERROR_WANT_READ) {
-            auto error = ssl::errorToString(c.ssl, e);
+          auto err = SSL_get_error(c.ssl, ret);
+          if (err != SSL_ERROR_WANT_READ) {
+            auto error = ssl::errorToString(err);
             m_log.error("SSLCLI", "connect error: ", error);
             return Status::ProtocolError;
           }
@@ -215,11 +216,11 @@ Client::close(const ID id)
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
-  int e = SSL_shutdown(c.ssl);
+  int ret = SSL_shutdown(c.ssl);
   /*
    * Go through the shutdown state machine.
    */
-  switch (e) {
+  switch (ret) {
     case 0: {
       m_log.debug("SSLCLI", "SSL shutdown sent");
       flush(id, cookie);
@@ -230,7 +231,8 @@ Client::close(const ID id)
       return m_client->close(id);
     }
     default: {
-      auto error = ssl::errorToString(c.ssl, e);
+      auto err = SSL_get_error(c.ssl, ret);
+      auto error = ssl::errorToString(err);
       m_log.error("SSLCLI", "SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
@@ -247,6 +249,16 @@ Status
 Client::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {
+  /*
+   * Skip if the length is 0.
+   */
+  if (len == 0) {
+    return Status::InvalidArgument;
+  }
+  /*
+   * Reset the write offset.
+   */
+  off = 0;
   /*
    * Grab the context.
    */
@@ -268,9 +280,10 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
     return Status::OperationInProgress;
   }
   /*
-   * Write the data. With BIO mem, the write will always succeed.
+   * Write the data.
+   *
+   * NOTE(xrg): with BIO_mem, the write always succeeds if len > 0.
    */
-  off = 0;
   off += SSL_write(c.ssl, data, (int)len);
   /*
    * Flush the data.
