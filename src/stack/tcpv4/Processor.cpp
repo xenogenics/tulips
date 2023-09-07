@@ -374,9 +374,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    */
   if ((INTCP->flags & Flag::ACK) && e.hasOutstandingSegments()) {
     /*
-     * Scan the segments.
+     * Scan the available segments.
      */
-    for (size_t i = 0; i < Connection::SEGMENT_COUNT; i += 1) {
+    for (size_t i = 0; i < e.usedSegments(); i += 1) {
       /*
        * Get the oldest pending segment.
        */
@@ -398,7 +398,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        */
       if (ackno == seg.m_seq) {
         /*
-         * In the case of a window size change.
+         * Skip scanning if the ACK has payload (in-flight packet).
+         */
+        if (plen > 0) {
+          break;
+        }
+        /*
+         * In case of a window size change.
          */
         if (e.window() != e.window(window)) {
           e.m_window = window;
@@ -412,9 +418,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
             e.updateRttEstimation();
             e.m_timer = e.m_rto;
           }
+          /*
+           * Skip scanning.
+           */
+          break;
         }
         /*
-         * In the case of an OoO packet, let the ARQ do its job.
+         * In case of an OoO packet, let the ARQ do its job.
          */
         m_log.debug("TCP4", "peer rexmit request on seq:", ackno);
         return rexmit(e);
@@ -452,7 +462,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       }
       /*
        * Reset length and buffer of outstanding data and go to the next
-       * segment.  The compiler will generate the wrap-around appropriate for
+       * segment. The compiler will generate the wrap-around appropriate for
        * the bit length of the index.
        */
       seg.clear();

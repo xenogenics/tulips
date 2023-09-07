@@ -104,6 +104,28 @@ private:
 
   inline Segment& segment() { return m_segments[m_segidx]; }
 
+  inline size_t freeSegments() const
+  {
+    size_t count = 0;
+    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
+      if (m_segments[i].m_len == 0) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  inline size_t usedSegments() const
+  {
+    size_t count = 0;
+    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
+      if (m_segments[i].m_len > 0) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
   inline Segment& nextAvailableSegment()
   {
     size_t idx = 0;
@@ -114,17 +136,6 @@ private:
       }
     }
     throw std::runtime_error("have you called hasAvailableSegments()?");
-  }
-
-  inline size_t level() const
-  {
-    size_t level = 0;
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len == 0) {
-        level += 1;
-      }
-    }
-    return level;
   }
 
   inline void updateRttEstimation()
