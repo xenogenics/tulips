@@ -217,6 +217,7 @@ Device::poll(Processor& proc)
     /*
      * Process the packet.
      */
+    m_log.trace("ENA", "processing addr=", (void*)dat, " len=", len);
     proc.process(len, dat);
     /*
      * Free the packet.
@@ -319,6 +320,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
     m_log.debug("ENA", "sending packet failed");
     return Status::HardwareError;
   }
+  m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len);
   /*
    * Free the buffer.
    */
@@ -328,4 +330,5 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   return Status::Ok;
 }
+
 }

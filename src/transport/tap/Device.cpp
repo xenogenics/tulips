@@ -93,7 +93,7 @@ Device::~Device()
   ::close(m_fd);
   std::list<uint8_t*>::iterator it;
   for (it = m_buffers.begin(); it != m_buffers.end(); it++) {
-    delete[] *it;
+    delete[] * it;
   }
   m_buffers.clear();
 }
@@ -118,7 +118,7 @@ Device::poll(Processor& proc)
   /*
    * Call on the processor.
    */
-  m_log.debug("TAP", "processing ", ret << "B");
+  m_log.trace("TAP", "processing ", ret << "B");
   return proc.process(ret, buffer);
 }
 

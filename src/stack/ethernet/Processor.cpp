@@ -55,7 +55,7 @@ Processor::run()
 Status
 Processor::process(const uint16_t len, const uint8_t* const data)
 {
-  m_log.debug("ETH", "processing frame: ", len, "B");
+  m_log.trace("ETH", "processing frame: ", len, "B");
   /*
    * Grab the incoming information
    */

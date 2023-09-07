@@ -55,7 +55,7 @@ Device::poll(Processor& proc)
    * Process the data.
    */
   Packet* packet = m_read.front();
-  m_log.debug("LIST", "processing packet: ", packet->len, "B, ", packet);
+  m_log.trace("LIST", "processing packet: ", packet->len, "B, ", packet);
   Status ret = proc.process(packet->len, packet->data);
   m_read.pop_front();
   Packet::release(packet);
@@ -75,7 +75,7 @@ Device::wait(Processor& proc, const uint64_t ns)
    * Process the data
    */
   Packet* packet = m_read.front();
-  m_log.debug("LIST", "processing packet: ", packet->len, "B, ", packet);
+  m_log.trace("LIST", "processing packet: ", packet->len, "B, ", packet);
   Status ret = proc.process(packet->len, packet->data);
   m_read.pop_front();
   Packet::release(packet);
@@ -97,7 +97,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
-  m_log.debug("LIST", "committing packet: ", len, "B, ", packet);
+  m_log.trace("LIST", "committing packet: ", len, "B, ", packet);
   packet->len = len;
   m_write.push_back(packet);
   pthread_cond_signal(&m_cond);

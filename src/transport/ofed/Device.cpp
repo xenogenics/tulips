@@ -514,7 +514,7 @@ Device::poll(Processor& proc)
     int id = wc[i].wr_id;
     size_t len = wc[i].byte_len;
     const uint8_t* addr = m_recvbuf + size_t(id) * RECV_BUFLEN;
-    m_log.debug("OFED", "processing id=", id, " addr=", (void*)addr,
+    m_log.trace("OFED", "processing id=", id, " addr=", (void*)addr,
                 " len=", len);
     /*
      * Validate the IP checksums
@@ -751,7 +751,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
                 strerror(errno));
     return Status::HardwareError;
   }
-  m_log.debug("OFED", "commit buffer ", (void*)buf, " len ", len);
+  m_log.trace("OFED", "committing buffer ", (void*)buf, " len ", len);
   return Status::Ok;
 }
 

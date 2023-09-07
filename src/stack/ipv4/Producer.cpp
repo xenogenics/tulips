@@ -83,7 +83,7 @@ Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
    * Commit the buffer.
    */
   m_stats.sent += 1;
-  m_log.debug("IP4", "committing packet: ", len, "B");
+  m_log.trace("IP4", "committing packet: ", len, "B");
   return m_eth.commit(outlen, outdata, mss);
 }
 
