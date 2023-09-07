@@ -346,7 +346,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
   /*
    * Print the flow information if requested.
    */
-  m_log.debug("FLOW", "-> ", getFlags(*INTCP), " len:", plen, " seq:", seqno,
+  m_log.trace("FLOW", "-> ", getFlags(*INTCP), " len:", plen, " seq:", seqno,
               " ack:", ackno, " seg:", size_t(e.m_segidx));
   /*
    * Check if the sequence number of the incoming packet is what we're
