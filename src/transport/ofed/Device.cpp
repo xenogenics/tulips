@@ -664,7 +664,7 @@ Device::prepare(uint8_t*& buf)
     return Status::HardwareError;
   }
   buf = *buffer;
-  m_log.debug("OFED", "preparing buffer ", (void*)buf);
+  m_log.trace("OFED", "preparing buffer ", (void*)buf);
   tulips_fifo_pop(m_fifo);
   return Status::Ok;
 }
