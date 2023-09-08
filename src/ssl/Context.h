@@ -340,11 +340,28 @@ struct Context
           }
           /*
            * Write the data.
-           *
-           * NOTE(xrg): with BIO_mem, the write always succeeds if len > 0.
+           */
+          auto wrs = SSL_write(ssl, out, (int)rlen);
+          /*
+           * Handle the errors.
+           */
+          if (wrs <= 0) {
+            auto err = SSL_get_error(ssl, wrs);
+            auto m = errorToString(err);
+            log.error("SSL", "SSL_write error: ", m);
+            return Action::Abort;
+          }
+          /*
+           * Handle partial data.
+           */
+          if (wrs != (int)rlen) {
+            log.error("SSL", "Partial SSL_write: ", wrs, "/", len);
+            return Action::Abort;
+          }
+          /*
+           * Update the accumulator.
            */
           acc += rlen;
-          SSL_write(ssl, out, (int)rlen);
         } while (ret > 0);
         /*
          * Flush the output.

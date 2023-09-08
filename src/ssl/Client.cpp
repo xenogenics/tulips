@@ -276,10 +276,6 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
     return Status::InvalidArgument;
   }
   /*
-   * Reset the write offset.
-   */
-  off = 0;
-  /*
    * Grab the context.
    */
   void* cookie = m_client->cookie(id);
@@ -301,10 +297,28 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   }
   /*
    * Write the data.
-   *
-   * NOTE(xrg): with BIO_mem, the write always succeeds if len > 0.
    */
-  off += SSL_write(c.ssl, data, (int)len);
+  auto ret = SSL_write(c.ssl, data, (int)len);
+  /*
+   * Handle the errors.
+   */
+  if (ret <= 0) {
+    auto err = SSL_get_error(c.ssl, ret);
+    auto m = errorToString(err);
+    m_log.error("SSL", "SSL_write error: ", m);
+    return Status::ProtocolError;
+  }
+  /*
+   * Handle partial data.
+   */
+  if (ret != (int)len) {
+    m_log.error("SSL", "Partial SSL_write: ", ret, "/", len);
+    return Status::IncompleteData;
+  }
+  /*
+   * Update the offset.
+   */
+  off = ret;
   /*
    * Flush the data.
    */

@@ -308,8 +308,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    m_log.error("ENA",
-                "packet preparation for TX failed: ", rte_strerror(rte_errno));
+    auto error = rte_strerror(rte_errno);
+    m_log.error("ENA", "packet preparation for TX failed: ", error);
     return Status::HardwareError;
   }
   /*
@@ -317,7 +317,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    m_log.error("ENA", "sending packet failed");
+    auto error = rte_strerror(rte_errno);
+    m_log.error("ENA", "sending packet failed: ", error);
     return Status::HardwareError;
   }
   m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len);
