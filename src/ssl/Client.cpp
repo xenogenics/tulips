@@ -342,7 +342,12 @@ Client::onConnected(ID const& id, void* const cookie)
     stack::ipv4::Address ip;
     stack::tcpv4::Port lport, rport;
     m_client->get(id, ip, lport, rport);
-    auto path = ip.toString() + ":" + std::to_string(lport) + ".keys";
+    auto path = ip.toString();
+    path.append("_");
+    path.append(std::to_string(lport));
+    path.append("_");
+    path.append(std::to_string(rport));
+    path.append(".keys");
     keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   }
   /*

@@ -161,8 +161,25 @@ private:
     return sendFin(e, s);
   }
 
-  Status send(Connection& e);
+  /**
+   * Send an buffer in the context of a connection.
+   *
+   * @param e the connection.
+   * @param outdata the buffer to send.
+   *
+   * @return the status of the operation.
+   */
+  Status send(Connection& e, uint8_t* const outdata);
 
+  /**
+   * Send a segment in the context of a connection.
+   *
+   * @param e the connection.
+   * @param s the segment to send.
+   * @param flags optional TCP flags.
+   *
+   * @return the status of the operation.
+   */
   inline Status send(Connection& e, Segment& s, const uint8_t flags = 0)
   {
     uint8_t* outdata = s.m_dat;
@@ -175,8 +192,30 @@ private:
     return send(e, s.m_len + HEADER_LEN, s);
   }
 
+  /**
+   * Send a segment in the context of a connection with a specific length.
+   *
+   * NOTE(xrg): the order of the arguments is necessary to alleviate ambiguities
+   * between uint8_t and uint32_t.
+   *
+   * @param e the connection.
+   * @param len the final length of the segment.
+   * @param s the segment to send.
+   *
+   * @return the status of the operation.
+   */
   Status send(Connection& e, const uint32_t len, Segment& s);
 
+  /**
+   * Raw send without neither a connection nor a segment.
+   *
+   * @param dst the destination address.
+   * @param len the final length of the segment.
+   * @param mss the MSS to use.
+   * @param outdata buffer to send.
+   *
+   * @return the status of the operation.
+   */
   Status send(ipv4::Address const& dst, const uint32_t len, const uint16_t mss,
               uint8_t* const outdata);
 

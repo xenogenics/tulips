@@ -251,6 +251,7 @@ Device::prepare(uint8_t*& buf)
    * Grab the data region.
    */
   buf = rte_pktmbuf_mtod(mbuf, uint8_t*);
+  m_log.debug("ENA", "prepare buffer ", (void*)buf);
   /*
    * Update the private data with the mbuf address.
    */

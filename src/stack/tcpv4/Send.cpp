@@ -56,7 +56,7 @@ Processor::sendAbort(Connection& e)
   OUTTCP->flags = Flag::RST;
   OUTTCP->flags |= e.m_newdata ? Flag::ACK : 0;
   OUTTCP->offset = 5;
-  return send(e);
+  return send(e, outdata);
 }
 
 Status
@@ -87,13 +87,12 @@ Status
 Processor::sendAck(Connection& e)
 {
   uint8_t* outdata = e.m_sdat;
-  Status res;
   /*
    * An ACK might be sent even though there is pending data in the send buffer.
    * In that case, we should not erase that data and use a new buffer.
    */
   if (unlikely(e.hasPendingSendData())) {
-    res = m_device.prepare(outdata);
+    Status res = m_device.prepare(outdata);
     if (res != Status::Ok) {
       m_log.error("TCP4", "prepare() for sendAck() failed");
       return res;
@@ -104,7 +103,7 @@ Processor::sendAck(Connection& e)
    */
   OUTTCP->flags = Flag::ACK;
   OUTTCP->offset = 5;
-  return send(e);
+  return send(e, outdata);
 }
 
 Status
@@ -132,9 +131,8 @@ Processor::sendSyn(Connection& e, Segment& s)
 }
 
 Status
-Processor::send(Connection& e)
+Processor::send(Connection& e, uint8_t* const outdata)
 {
-  uint8_t* outdata = e.m_sdat;
   /*
    * We're done with the input processing. We are now ready to send a reply. Our
    * job is to fill in all the fields of the TCP and IP headers before
