@@ -99,7 +99,11 @@ struct Context
     /*
      * Write the data in the input BIO.
      */
-    BIO_write(bin, data, (int)len);
+    ret = BIO_write(bin, data, (int)len);
+    if (ret != (int)len) {
+      log.error("SSL", "Failed to write ", len, "B in BIO");
+      return Action::Abort;
+    }
     /*
      * Only accept Ready state.
      */
@@ -180,10 +184,15 @@ struct Context
                    const uint8_t* const data, const uint32_t len,
                    const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   {
+    int ret = 0;
     /*
      * Write the data in the input BIO.
      */
-    BIO_write(bin, data, (int)len);
+    ret = BIO_write(bin, data, (int)len);
+    if (ret != (int)len) {
+      log.error("SSL", "Failed to write ", len, "B in BIO");
+      return Action::Abort;
+    }
     /*
      * Check the connection's state.
      */
@@ -199,7 +208,7 @@ struct Context
        * Handle the SSL handshake.
        */
       case State::Connect: {
-        int ret = SSL_connect(ssl);
+        ret = SSL_connect(ssl);
         switch (ret) {
           case 0: {
             log.error("SSL", "SSL_connect error, controlled shutdown");
@@ -227,7 +236,7 @@ struct Context
        * Process SSL_accept.
        */
       case State::Accept: {
-        int ret = SSL_accept(ssl);
+        ret = SSL_accept(ssl);
         switch (ret) {
           case 0: {
             auto err = SSL_get_error(ssl, ret);
@@ -254,7 +263,6 @@ struct Context
        */
       case State::Ready:
       case State::Shutdown: {
-        int ret = 0;
         uint32_t acc = 0;
         uint8_t out[alen];
         /*
