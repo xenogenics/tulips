@@ -154,7 +154,7 @@ struct Context
          */
         else {
           auto m = errorToString(err);
-          log.error("SSL", "SSL_read error: ", m, "(", err, ", ", sht, ")");
+          log.error("SSL", "SSL_read error: ", m, " (", err, ")");
           return Action::Abort;
         }
       }
@@ -304,7 +304,7 @@ struct Context
              */
             else {
               auto m = errorToString(err);
-              log.error("SSL", "SSL_read error: ", m, "(", err, ", ", sht, ")");
+              log.error("SSL", "SSL_read error: ", m, " (", err, ")");
               return Action::Abort;
             }
           }
