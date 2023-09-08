@@ -35,7 +35,8 @@ struct Context
   };
 
   Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
-          const api::interface::Client::ID id, void* const cookie);
+          const api::interface::Client::ID id, void* const cookie,
+          const int keyfd);
   ~Context();
 
   /**
@@ -372,10 +373,16 @@ struct Context
    */
   Action flush(const uint32_t alen, uint8_t* const sdata, uint32_t& slen);
 
+  /**
+   * Save the keys into a file.
+   */
+  void saveKeys(std::string_view prefix);
+
   system::Logger& log;
   size_t buflen;
   api::interface::Client::ID id;
   void* cookie;
+  int keyfd;
   BIO* bin;
   BIO* bout;
   SSL* ssl;

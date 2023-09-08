@@ -13,7 +13,8 @@ class Client
 {
 public:
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-         transport::Device& device, const Protocol type, const size_t nconn);
+         transport::Device& device, const Protocol type, const size_t nconn,
+         const bool save_keys);
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
          transport::Device& device, const Protocol type, std::string_view cert,
          std::string_view key, const size_t nconn);
@@ -80,6 +81,7 @@ private:
   transport::Device& m_dev;
   std::unique_ptr<tulips::api::Client> m_client;
   void* m_context;
+  bool m_savekeys;
 };
 
 }

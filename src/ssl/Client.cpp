@@ -1,21 +1,40 @@
 #include "Context.h"
+#include "tulips/stack/IPv4.h"
 #include <tulips/ssl/Client.h>
 #include <tulips/stack/Utils.h>
 #include <cstdint>
 #include <stdexcept>
+#include <fcntl.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/types.h>
+
+namespace {
+
+void
+keylogCallback(const SSL* ssl, const char* line)
+{
+  void* appdata = SSL_get_app_data(ssl);
+  auto* context = reinterpret_cast<tulips::ssl::Context*>(appdata);
+  if (context->keyfd != -1) {
+    ::write(context->keyfd, line, strlen(line));
+    ::write(context->keyfd, "\n", 1);
+  }
+}
+
+}
 
 namespace tulips::ssl {
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const Protocol type,
-               const size_t nconn)
+               const size_t nconn, const bool save_keys)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
   , m_client(std::make_unique<api::Client>(log, *this, device, nconn))
   , m_context(nullptr)
+  , m_savekeys(save_keys)
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
   /*
@@ -34,6 +53,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
     throw std::runtime_error("SSL_CTX_new failed");
   }
   SSL_CTX_set_options(AS_SSL(m_context), flags);
+  SSL_CTX_set_keylog_callback(AS_SSL(m_context), keylogCallback);
   /*
    * Use AES ciphers.
    */
@@ -47,7 +67,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const Protocol type,
                std::string_view cert, std::string_view key, const size_t nconn)
-  : Client(log, delegate, device, type, nconn)
+  : Client(log, delegate, device, type, nconn, true)
 {
   int err = 0;
   /*
@@ -300,7 +320,22 @@ Client::averageLatency(const ID id)
 void*
 Client::onConnected(ID const& id, void* const cookie)
 {
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
+  int keyfd = -1;
+  /*
+   * If we need to save keys, open the key file.
+   */
+  if (m_savekeys) {
+    stack::ipv4::Address ip;
+    stack::tcpv4::Port lport, rport;
+    m_client->get(id, ip, lport, rport);
+    auto path = ip.toString() + ":" + std::to_string(lport) + ".keys";
+    keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  }
+  /*
+   * Create the context.
+   */
+  auto* ssl = AS_SSL(m_context);
+  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, keyfd);
   c->state = Context::State::Connect;
   return c;
 }

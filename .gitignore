@@ -1,5 +1,6 @@
 *.core
 *.fifo
+*.keys
 *.log
 *.pcap
 *.swp

@@ -1,4 +1,5 @@
 #include "Context.h"
+#include <fcntl.h>
 #include <openssl/err.h>
 
 namespace tulips::ssl {
@@ -68,11 +69,13 @@ errorToString(const int err)
  */
 
 Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
-                 const api::interface::Client::ID id, void* cookie)
+                 const api::interface::Client::ID id, void* cookie,
+                 const int keyfd)
   : log(log)
   , buflen(buflen)
   , id(id)
   , cookie(cookie)
+  , keyfd(keyfd)
   , bin(bio::allocate(buflen))
   , bout(bio::allocate(buflen))
   , ssl(SSL_new(ctx))
@@ -81,10 +84,20 @@ Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
   , rdbf(new uint8_t[buflen])
 {
   SSL_set_bio(ssl, bin, bout);
+  SSL_set_app_data(ssl, this);
 }
 
 Context::~Context()
 {
+  /*
+   * Close the key file.
+   */
+  if (keyfd != -1) {
+    ::close(keyfd);
+  }
+  /*
+   * Delete the read buffer.
+   */
   delete[] rdbf;
   /*
    * No need to free the BIOs, SSL_free does that for us.
@@ -156,6 +169,13 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   BIO_read(bout, sdata, (int)rlen);
   slen = rlen;
   return Action::Continue;
+}
+
+void
+Context::saveKeys(std::string_view prefix)
+{
+  auto spath = std::string(prefix) + "_" + std::to_string(id) + ".keys";
+  keyfd = ::open(spath.c_str(), O_CREAT | O_RDWR);
 }
 
 }
