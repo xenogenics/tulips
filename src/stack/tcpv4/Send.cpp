@@ -165,7 +165,7 @@ Processor::send(Connection& e, uint8_t* const outdata)
   /*
    * Print the flow information.
    */
-  m_log.trace("FLOW", "<- ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
+  m_log.trace("FLOW", "<x ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
               " ack:", e.m_rcv_nxt);
   /*
    * Update IP and Ethernet attributes
