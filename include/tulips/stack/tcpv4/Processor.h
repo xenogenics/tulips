@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <vector>
 
+#define INTCP ((const Header*)data)
 #define OUTTCP ((Header*)outdata)
 
 namespace tulips::stack::tcpv4 {
@@ -129,7 +130,6 @@ private:
 #endif
 
   Status process(Connection& e, const uint16_t len, const uint8_t* const data);
-  Status reset(const uint16_t len, const uint8_t* const data);
 
   /**
    * Send the data present in the send buffer using Nagle's algorithm.
@@ -159,6 +159,15 @@ private:
    * @return the status of the operation.
    */
   Status sendAbort(Connection& e);
+
+  /**
+   * Send a raw reset.
+   *
+   * @param data the input packet.
+   *
+   * @return the status of the operation.
+   */
+  Status sendReset(const uint8_t* const data);
 
   /**
    * Close a connection. A segment must be available.

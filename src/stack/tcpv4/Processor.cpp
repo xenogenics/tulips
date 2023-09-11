@@ -11,8 +11,6 @@
 #include <arpa/inet.h>
 #endif
 
-#define INTCP ((const Header*)data)
-
 namespace tulips::stack::tcpv4 {
 
 Processor::Processor(system::Logger& log, transport::Device& device,
@@ -187,7 +185,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    */
   if ((INTCP->flags & Flag::CTL) != Flag::SYN) {
     m_log.debug("TCP4", "no connection waiting for a SYN/ACK");
-    return reset(len, data);
+    return sendReset(data);
   }
   uint16_t tmp16 = INTCP->destport;
   /*
@@ -195,7 +193,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    */
   if (m_listenports.count(tmp16) == 0) {
     m_stats.synrst += 1;
-    return reset(len, data);
+    return sendReset(data);
   }
   /*
    * Handle the new connection. First we check if there are any connections
@@ -969,55 +967,6 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    * Return status
    */
   return Status::Ok;
-}
-
-Status
-Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
-{
-  uint8_t* outdata;
-  /*
-   * We do not send resets in response to resets.
-   */
-  if (INTCP->flags & Flag::RST) {
-    return Status::Ok;
-  }
-  /*
-   * Update IP and Ethernet attributes
-   */
-  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
-  m_ipv4to.setDestinationAddress(m_ipv4from->sourceAddress());
-  m_ethto.setDestinationAddress(m_ethfrom->sourceAddress());
-  /*
-   * Allocate the send buffer
-   */
-  Status ret = m_ipv4to.prepare(outdata);
-  if (ret != Status::Ok) {
-    return ret;
-  }
-  /*
-   * Update the flags.
-   */
-  m_stats.rst += 1;
-  OUTTCP->flags = Flag::RST;
-  OUTTCP->offset = 5;
-  /*
-   * Flip the seqno and ackno fields in the TCP header. We also have to
-   * increase the sequence number we are acknowledging.
-   */
-  uint32_t c = ntohl(INTCP->seqno);
-  OUTTCP->seqno = INTCP->ackno;
-  OUTTCP->ackno = htonl(c + 1);
-  /*
-   * Swap port numbers.
-   */
-  uint16_t tmp16 = INTCP->srcport;
-  OUTTCP->srcport = INTCP->destport;
-  OUTTCP->destport = tmp16;
-  /*
-   * And send out the RST packet!
-   */
-  uint16_t mss = m_device.mtu() - HEADER_OVERHEAD;
-  return send(m_ipv4from->sourceAddress(), HEADER_LEN, mss, outdata);
 }
 
 }
