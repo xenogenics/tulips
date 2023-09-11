@@ -974,6 +974,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
 Status
 Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
 {
+  uint8_t* outdata;
+  /*
+   * We do not send resets in response to resets.
+   */
+  if (INTCP->flags & Flag::RST) {
+    return Status::Ok;
+  }
   /*
    * Update IP and Ethernet attributes
    */
@@ -983,17 +990,13 @@ Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
   /*
    * Allocate the send buffer
    */
-  uint8_t* outdata;
   Status ret = m_ipv4to.prepare(outdata);
   if (ret != Status::Ok) {
     return ret;
   }
   /*
-   * We do not send resets in response to resets.
+   * Update the flags.
    */
-  if (INTCP->flags & Flag::RST) {
-    return Status::Ok;
-  }
   m_stats.rst += 1;
   OUTTCP->flags = Flag::RST;
   OUTTCP->offset = 5;
