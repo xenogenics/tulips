@@ -23,32 +23,32 @@ format-check:
 tidy:
 	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS) tidy
 
-debug:
+debug-all:
 	@mkdir -p $(BUILDDIR);											\
 	 cd $(BUILDDIR);														\
 	 rm -rf *;																	\
 	 cmake -GNinja $(DEBFLAGS) $(EXTFLAGS) ..;	\
 	 cd ..
 
-release:
+debug-lib:
+	@mkdir -p $(BUILDDIR);											                  \
+	 cd $(BUILDDIR);														                  \
+	 rm -rf *;																	                  \
+	 cmake -GNinja $(DEBFLAGS) -DTULIPS_TOOLS=OFF $(EXTFLAGS) ..;	\
+	 cd ..
+
+release-all:
 	@mkdir -p $(BUILDDIR);											\
 	 cd $(BUILDDIR);														\
 	 rm -rf *;																	\
 	 cmake -G Ninja $(RELFLAGS) $(EXTFLAGS) ..;	\
 	 cd ..
 
-release-arp:
-	@mkdir -p $(BUILDDIR);																						\
-	 cd $(BUILDDIR);																									\
-	 rm -rf *;																												\
-	 cmake -GNinja $(RELFLAGS) $(EXTFLAGS) -DTULIPS_ENABLE_ARP=ON ..;	\
-	 cd ..
-
-release-raw:
-	@mkdir -p $(BUILDDIR);																						\
-	 cd $(BUILDDIR);																									\
-	 rm -rf *;																												\
-	 cmake -GNinja $(RELFLAGS) $(EXTFLAGS) -DTULIPS_ENABLE_RAW=ON ..;	\
+release-lib:
+	@mkdir -p $(BUILDDIR);											                    \
+	 cd $(BUILDDIR);														                    \
+	 rm -rf *;																	                    \
+	 cmake -G Ninja $(RELFLAGS) -DTULIPS_TOOLS=OFF $(EXTFLAGS) ..;	\
 	 cd ..
 
 clean:

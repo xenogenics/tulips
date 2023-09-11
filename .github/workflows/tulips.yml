@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cmake
-        run: make debug
+        run: make debug-all
       - name: build
         run: make build
       - name: test
@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cmake
-        run: make release
+        run: make release-all
       - name: build
         run: make build
   check-format:
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cmake
-        run: make debug
+        run: make debug-all
       - name: format
         run: make format-check
   lint:
@@ -54,6 +54,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: cmake
-        run: make debug
+        run: make debug-all
       - name: lint
         run: make tidy

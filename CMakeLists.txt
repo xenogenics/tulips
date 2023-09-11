@@ -29,6 +29,25 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project("TULIPS" C CXX)
 
 #
+# Options declaration
+#
+
+option(TULIPS_TESTS "Enable tests" OFF)
+option(TULIPS_TOOLS "Build apps and tools" ON)
+
+option(TULIPS_ENABLE_ARP "Enable ARP support" OFF)
+option(TULIPS_ENABLE_ICMP "Enable ICMP support" OFF)
+option(TULIPS_ENABLE_RAW "Enable RAW support" OFF)
+
+option(TULIPS_ENABLE_LATENCY_MONITOR "Enable client latency monitoring" OFF)
+option(TULIPS_ENABLE_SANITIZERS "Enable code sanitizers" OFF)
+
+option(TULIPS_DISABLE_CHECKSUM_CHECK "Disable checksum checks" OFF)
+option(TULIPS_HAS_HW_CHECKSUM "Target has hardware checksum" OFF)
+option(TULIPS_HAS_HW_TSO "Target has hardware TSO" OFF)
+option(TULIPS_IGNORE_INCOMPATIBLE_HW "Ignore when HW lacks features (e.g. TCO)" OFF)
+
+#
 # Library dependencies
 #
 
@@ -36,10 +55,12 @@ find_package(PkgConfig 1.8 REQUIRED)
 
 pkg_check_modules(LibPCAP REQUIRED libpcap>=1.10)
 pkg_check_modules(OpenSSL REQUIRED openssl>=3.0)
-pkg_check_modules(TCLAP REQUIRED tclap>=1.2)
-
 pkg_check_modules(LibDPDK libdpdk>=22.11)
 pkg_check_modules(LibIBVerbs libibverbs>=1.14)
+
+if (TULIPS_TOOLS)
+  pkg_check_modules(TCLAP REQUIRED tclap>=1.2)
+endif (TULIPS_TOOLS)
 
 #
 # Tooling dependencies
@@ -53,24 +74,9 @@ if (TULIPS_TESTS)
   find_package(GTest REQUIRED)
 endif (TULIPS_TESTS)
 
-
 #
-# Options
+# Option processing
 #
-
-option(TULIPS_TESTS "Enable tests" OFF)
-
-option(TULIPS_ENABLE_ARP "Enable ARP support" OFF)
-option(TULIPS_ENABLE_ICMP "Enable ICMP support" OFF)
-option(TULIPS_ENABLE_RAW "Enable RAW support" OFF)
-
-option(TULIPS_ENABLE_LATENCY_MONITOR "Enable client latency monitoring" OFF)
-option(TULIPS_ENABLE_SANITIZERS "Enable code sanitizers" OFF)
-
-option(TULIPS_HAS_HW_CHECKSUM "Target has hardware checksum" OFF)
-option(TULIPS_DISABLE_CHECKSUM_CHECK "Disable checksum checks" OFF)
-option(TULIPS_HAS_HW_TSO "Target has hardware TSO" OFF)
-option(TULIPS_IGNORE_INCOMPATIBLE_HW "Ignore when HW lacks features (e.g. TCO)" OFF)
 
 message(STATUS "[ TULIPS COMPILATION OPTIONS ]")
 
@@ -207,9 +213,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # Subdirectories
 #
 
-add_subdirectory(apps)
 add_subdirectory(src)
-add_subdirectory(tools)
+
+if (TULIPS_TOOLS)
+  add_subdirectory(apps)
+  add_subdirectory(tools)
+endif (TULIPS_TOOLS)
 
 #
 # Testing
