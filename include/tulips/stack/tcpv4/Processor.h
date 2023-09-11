@@ -131,14 +131,72 @@ private:
   Status process(Connection& e, const uint16_t len, const uint8_t* const data);
   Status reset(const uint16_t len, const uint8_t* const data);
 
+  /**
+   * Send the data present in the send buffer using Nagle's algorithm.
+   *
+   * @param e the connection to send the data on.
+   * @param bound the maximum segment lenght.
+   *
+   * @return the status of the operation.
+   */
   Status sendNagle(Connection& e, const uint32_t bound);
+
+  /**
+   * Send the data present in the send buffer immediately
+   *
+   * @param e the connection to send the data on.
+   * @param flag any extra flag to apply to the packet.
+   *
+   * @return the status of the operation.
+   */
   Status sendNoDelay(Connection& e, const uint8_t flag = 0);
 
+  /**
+   * Abort a connection. Any data in the send buffer is discarded.
+   *
+   * @param e the connection to abort.
+   *
+   * @return the status of the operation.
+   */
   Status sendAbort(Connection& e);
+
+  /**
+   * Close a connection. A segment must be available.
+   *
+   * @param e the connection to close.
+   *
+   * @return the status of the operation.
+   */
   Status sendClose(Connection& e);
+
+  /**
+   * Open a connection.
+   *
+   * @param e the connection to open.
+   * @param s the segment to use.
+   *
+   * @return the status of the operation.
+   */
   Status sendSyn(Connection& e, Segment& s);
+
+  /**
+   * Send an ACK on a connection. Any data present on the send buffer will be
+   * saved and restored once the operation has completed.
+   *
+   * @param e the connection to send the ACK on.
+   *
+   * @return the status of the operation.
+   */
   Status sendAck(Connection& e);
 
+  /**
+   * Respond to a connection request.
+   *
+   * @param e the connection to open.
+   * @param s the segment to use.
+   *
+   * @return the status of the operation.
+   */
   inline Status sendSynAck(Connection& e, Segment& s)
   {
     uint8_t* outdata = s.m_dat;
@@ -146,6 +204,14 @@ private:
     return sendSyn(e, s);
   }
 
+  /**
+   * Send a connection close request.
+   *
+   * @param e the connection to open.
+   * @param s the segment to use.
+   *
+   * @return the status of the operation.
+   */
   inline Status sendFin(Connection& e, Segment& s)
   {
     uint8_t* outdata = s.m_dat;
@@ -154,6 +220,14 @@ private:
     return send(e, HEADER_LEN, s);
   }
 
+  /**
+   * Response to a connection close request.
+   *
+   * @param e the connection to open.
+   * @param s the segment to use.
+   *
+   * @return the status of the operation.
+   */
   inline Status sendFinAck(Connection& e, Segment& s)
   {
     uint8_t* outdata = s.m_dat;
@@ -162,14 +236,21 @@ private:
   }
 
   /**
-   * Send an buffer in the context of a connection.
+   * Send the content of a connection's send buffer.
    *
    * @param e the connection.
-   * @param outdata the buffer to send.
    *
    * @return the status of the operation.
    */
-  Status send(Connection& e, uint8_t* const outdata);
+  Status send(Connection& e);
+
+  /** Handle retransmits for a given connection.
+   *
+   * @param e the connection.
+   *
+   * @return the status of the operation.
+   */
+  Status rexmit(Connection& e);
 
   /**
    * Send a segment in the context of a connection.
@@ -218,8 +299,6 @@ private:
    */
   Status send(ipv4::Address const& dst, const uint32_t len, const uint16_t mss,
               uint8_t* const outdata);
-
-  Status rexmit(Connection& e);
 
   system::Logger& m_log;
   transport::Device& m_device;

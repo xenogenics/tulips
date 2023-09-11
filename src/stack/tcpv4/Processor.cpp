@@ -739,15 +739,28 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          */
         if (e.m_newdata) {
           /*
-           * Check if the connection supports DELAYED_ACK.
+           * Send an ACK immediately if the connection supports DELAYED_ACK.
+           * This is preferrable when sending data back is not needed as the ACK
+           * latency is not subject to the onNewData() callback latency anymore.
            */
           if (!HAS_DELAYED_ACK(e)) {
+            Status res;
             /*
-             * Send an ACK immediately. This is preferrable when sending data
-             * back is not needed as the ACK latency is not subject to the
-             * onNewData() callback latency anymore.
+             * If there is data in the send buffer, send it as well.
              */
-            Status res = sendAck(e);
+            if (e.hasPendingSendData() && can_send) {
+              res = sendNoDelay(e, Flag::PSH);
+              can_send = e.hasAvailableSegments() && e.window() > 0;
+            }
+            /*
+             * Otherwise, just send the ACK. This will cause the
+             */
+            else {
+              res = sendAck(e);
+            }
+            /*
+             * Check the status.
+             */
             if (res != Status::Ok) {
               return res;
             }
@@ -803,8 +816,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           }
         }
         /*
-         * If there is any buffered send data, send it. Make sure that there is
-         * an available segment before allocating one.
+         * If there is any buffered send data, send it.
          */
         if (e.hasPendingSendData() && can_send) {
           return sendNoDelay(e, Flag::PSH);
