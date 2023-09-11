@@ -286,11 +286,14 @@ Processor::send(Connection::ID const& id, const uint32_t len,
     return slen == 0 ? Status::OperationInProgress : Status::Ok;
   }
   /*
-   * Send the segment.
+   * Send immediately if Nagle's algorithm has been disabled.
    */
   if (HAS_NODELAY(c)) {
     return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
+  /*
+   * Otherwise, queue for sending.
+   */
   return sendNagle(c, bound);
 }
 

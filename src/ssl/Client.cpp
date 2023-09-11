@@ -451,18 +451,24 @@ Client::flush(const ID id, void* const cookie)
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
   /*
-   * Send the pending data.
+   * Check if there is any pending data.
    */
   size_t len = c.pending();
   if (len == 0) {
     return Status::Ok;
   }
+  /*
+   * Send the pending data.
+   */
   uint32_t rem = 0;
   Status res = m_client->send(id, len, ssl::bio::readAt(c.bout), rem);
   if (res != Status::Ok) {
     c.blocked = res == Status::OperationInProgress;
     return res;
   }
+  /*
+   * Skip the processed data and return.
+   */
   ssl::bio::skip(c.bout, rem);
   return Status::Ok;
 }

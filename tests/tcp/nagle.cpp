@@ -72,11 +72,11 @@ public:
   }
 
   Action onNewData(UNUSED tcpv4::Connection& c,
-                   UNUSED const uint8_t* const data, UNUSED const uint32_t len,
+                   UNUSED const uint8_t* const data, const uint32_t len,
                    UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                    UNUSED uint32_t& slen) override
   {
-    m_out << "onNewData:" << std::endl;
+    m_out << "onNewData: " << len << "B" << std::endl;
     return Action::Continue;
   }
 
@@ -151,12 +151,17 @@ public:
     return Action::Continue;
   }
 
-  Action onNewData(UNUSED tcpv4::Connection& c,
-                   UNUSED const uint8_t* const data, const uint32_t len,
-                   UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
-                   UNUSED uint32_t& slen) override
+  Action onNewData(UNUSED tcpv4::Connection& c, const uint8_t* const data,
+                   const uint32_t len, const uint32_t alen,
+                   uint8_t* const sdata, uint32_t& slen) override
   {
     m_out << "onNewData:" << std::endl;
+    if (data[1] == 0xAA) {
+      uint8_t result[35] = { 0xFF, 0xBB };
+      assert(alen >= 35);
+      memcpy(sdata, result, 35);
+      slen = 35;
+    }
     m_rlen = len;
     return Action::Continue;
   }
@@ -426,7 +431,7 @@ TEST_F(TCP_Nagle, ConnectSendConsecutiveNagle)
    * The client sends some data, #1
    */
   uint32_t res = 0;
-  uint8_t pld[PKTLEN] = { 0xA };
+  uint8_t pld[PKTLEN] = { 0xFF };
   ASSERT_EQ(Status::Ok, m_client_tcp->send(c, PKTLEN, pld, res));
   ASSERT_EQ(PKTLEN, res);
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
@@ -444,9 +449,11 @@ TEST_F(TCP_Nagle, ConnectSendConsecutiveNagle)
    */
   for (int i = 0; i < 1 << SEGM_B; i += 1) {
     res = 0;
+    pld[1] = 2 * i;
     ASSERT_EQ(Status::Ok, m_client_tcp->send(c, PKTLEN, (uint8_t*)&pld, res));
     ASSERT_EQ(PKTLEN, res);
     res = 0;
+    pld[1] = 2 * i + 1;
     ASSERT_EQ(Status::Ok, m_client_tcp->send(c, PKTLEN, (uint8_t*)&pld, res));
     ASSERT_EQ(PKTLEN, res);
   }
@@ -470,4 +477,51 @@ TEST_F(TCP_Nagle, ConnectSendConsecutiveNagle)
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
     ASSERT_EQ(2 * PKTLEN, m_server_evt->receivedLength());
   }
+}
+
+TEST_F(TCP_Nagle, ConnectSendNagleRecvThenAck)
+{
+  tcpv4::Connection::ID c;
+  const size_t PKTLEN = 35;
+  /*
+   * Server listens, client connects
+   */
+  ASSERT_EQ(Status::Ok,
+            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_TRUE(m_client_evt->isConnected());
+  ASSERT_TRUE(m_server_evt->isConnected());
+  /*
+   * Set delayed ACK on the server connection.
+   */
+  m_server_tcp->setOptions(
+    m_server_evt->connectionID(),
+    tulips::stack::tcpv4::Connection::Option::DELAYED_ACK);
+  /*
+   * The client sends some data, #1.
+   */
+  uint32_t res = 0;
+  uint8_t pld[PKTLEN] = { 0xFF, 0xAA };
+  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, PKTLEN, pld, res));
+  ASSERT_EQ(PKTLEN, res);
+  /*
+   * The client sends some more data with the first segment in-flight.
+   */
+  res = 0;
+  pld[1] = 0x2;
+  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, PKTLEN, (uint8_t*)&pld, res));
+  ASSERT_EQ(PKTLEN, res);
+  /*
+   * Receive the client payload and send back a response from the server.
+   */
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(PKTLEN, m_server_evt->receivedLength());
+  /*
+   * Receive the server payload.
+   */
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
 }

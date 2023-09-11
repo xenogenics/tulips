@@ -158,7 +158,7 @@ Processor::send(Connection& e, uint8_t* const outdata)
   /*
    * Reallocate the send buffer before sending
    */
-  Status ret = send(e.m_ripaddr, HEADER_LEN, e.m_mss, e.m_sdat);
+  Status ret = send(e.m_ripaddr, HEADER_LEN, e.m_mss, outdata);
   if (ret != Status::Ok) {
     return ret;
   }
