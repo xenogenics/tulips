@@ -1,21 +1,40 @@
 #include "Context.h"
+#include "tulips/stack/IPv4.h"
 #include <tulips/ssl/Client.h>
 #include <tulips/stack/Utils.h>
 #include <cstdint>
 #include <stdexcept>
+#include <fcntl.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/types.h>
+
+namespace {
+
+void
+keylogCallback(const SSL* ssl, const char* line)
+{
+  void* appdata = SSL_get_app_data(ssl);
+  auto* context = reinterpret_cast<tulips::ssl::Context*>(appdata);
+  if (context->keyfd != -1) {
+    ::write(context->keyfd, line, strlen(line));
+    ::write(context->keyfd, "\n", 1);
+  }
+}
+
+}
 
 namespace tulips::ssl {
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const Protocol type,
-               const size_t nconn)
+               const size_t nconn, const bool save_keys)
   : m_delegate(delegate)
   , m_log(log)
   , m_dev(device)
   , m_client(std::make_unique<api::Client>(log, *this, device, nconn))
   , m_context(nullptr)
+  , m_savekeys(save_keys)
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
   /*
@@ -34,6 +53,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
     throw std::runtime_error("SSL_CTX_new failed");
   }
   SSL_CTX_set_options(AS_SSL(m_context), flags);
+  SSL_CTX_set_keylog_callback(AS_SSL(m_context), keylogCallback);
   /*
    * Use AES ciphers.
    */
@@ -47,7 +67,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const Protocol type,
                std::string_view cert, std::string_view key, const size_t nconn)
-  : Client(log, delegate, device, type, nconn)
+  : Client(log, delegate, device, type, nconn, true)
 {
   int err = 0;
   /*
@@ -118,8 +138,8 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      * Perform the client SSL handshake.
      */
     case Context::State::Connect: {
-      int e = SSL_connect(c.ssl);
-      switch (e) {
+      int ret = SSL_connect(c.ssl);
+      switch (ret) {
         case 0: {
           m_log.error("SSLCLI", "connect error");
           return Status::ProtocolError;
@@ -131,8 +151,9 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
           return Status::Ok;
         }
         default: {
-          if (SSL_get_error(c.ssl, e) != SSL_ERROR_WANT_READ) {
-            auto error = ssl::errorToString(c.ssl, e);
+          auto err = SSL_get_error(c.ssl, ret);
+          if (err != SSL_ERROR_WANT_READ) {
+            auto error = ssl::errorToString(err);
             m_log.error("SSLCLI", "connect error: ", error);
             return Status::ProtocolError;
           }
@@ -215,11 +236,11 @@ Client::close(const ID id)
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
-  int e = SSL_shutdown(c.ssl);
+  int ret = SSL_shutdown(c.ssl);
   /*
    * Go through the shutdown state machine.
    */
-  switch (e) {
+  switch (ret) {
     case 0: {
       m_log.debug("SSLCLI", "SSL shutdown sent");
       flush(id, cookie);
@@ -230,7 +251,8 @@ Client::close(const ID id)
       return m_client->close(id);
     }
     default: {
-      auto error = ssl::errorToString(c.ssl, e);
+      auto err = SSL_get_error(c.ssl, ret);
+      auto error = ssl::errorToString(err);
       m_log.error("SSLCLI", "SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
@@ -247,6 +269,12 @@ Status
 Client::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {
+  /*
+   * Skip if the length is 0.
+   */
+  if (len == 0) {
+    return Status::InvalidArgument;
+  }
   /*
    * Grab the context.
    */
@@ -268,10 +296,29 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
     return Status::OperationInProgress;
   }
   /*
-   * Write the data. With BIO mem, the write will always succeed.
+   * Write the data.
    */
-  off = 0;
-  off += SSL_write(c.ssl, data, (int)len);
+  auto ret = SSL_write(c.ssl, data, (int)len);
+  /*
+   * Handle the errors.
+   */
+  if (ret <= 0) {
+    auto err = SSL_get_error(c.ssl, ret);
+    auto m = errorToString(err);
+    m_log.error("SSL", "SSL_write error: ", m);
+    return Status::ProtocolError;
+  }
+  /*
+   * Handle partial data.
+   */
+  if (ret != (int)len) {
+    m_log.error("SSL", "Partial SSL_write: ", ret, "/", len);
+    return Status::IncompleteData;
+  }
+  /*
+   * Update the offset.
+   */
+  off = ret;
   /*
    * Flush the data.
    */
@@ -287,7 +334,27 @@ Client::averageLatency(const ID id)
 void*
 Client::onConnected(ID const& id, void* const cookie)
 {
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
+  int keyfd = -1;
+  /*
+   * If we need to save keys, open the key file.
+   */
+  if (m_savekeys) {
+    stack::ipv4::Address ip;
+    stack::tcpv4::Port lport, rport;
+    m_client->get(id, ip, lport, rport);
+    auto path = ip.toString();
+    path.append("_");
+    path.append(std::to_string(lport));
+    path.append("_");
+    path.append(std::to_string(rport));
+    path.append(".keys");
+    keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  }
+  /*
+   * Create the context.
+   */
+  auto* ssl = AS_SSL(m_context);
+  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, keyfd);
   c->state = Context::State::Connect;
   return c;
 }
@@ -384,18 +451,24 @@ Client::flush(const ID id, void* const cookie)
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
   /*
-   * Send the pending data.
+   * Check if there is any pending data.
    */
   size_t len = c.pending();
   if (len == 0) {
     return Status::Ok;
   }
+  /*
+   * Send the pending data.
+   */
   uint32_t rem = 0;
   Status res = m_client->send(id, len, ssl::bio::readAt(c.bout), rem);
   if (res != Status::Ok) {
     c.blocked = res == Status::OperationInProgress;
     return res;
   }
+  /*
+   * Skip the processed data and return.
+   */
   ssl::bio::skip(c.bout, rem);
   return Status::Ok;
 }

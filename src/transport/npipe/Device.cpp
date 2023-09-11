@@ -39,7 +39,7 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
 Status
 Device::prepare(uint8_t*& buf)
 {
-  m_log.debug("NPIPE", "prepare ", mss(), "B");
+  m_log.debug("NPIPE", "preparing ", mss(), "B");
   buf = m_write_buffer;
   return Status::Ok;
 }

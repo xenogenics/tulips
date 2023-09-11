@@ -11,8 +11,6 @@
 #include <arpa/inet.h>
 #endif
 
-#define INTCP ((const Header*)data)
-
 namespace tulips::stack::tcpv4 {
 
 Processor::Processor(system::Logger& log, transport::Device& device,
@@ -187,7 +185,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    */
   if ((INTCP->flags & Flag::CTL) != Flag::SYN) {
     m_log.debug("TCP4", "no connection waiting for a SYN/ACK");
-    return reset(len, data);
+    return sendReset(data);
   }
   uint16_t tmp16 = INTCP->destport;
   /*
@@ -195,7 +193,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
    */
   if (m_listenports.count(tmp16) == 0) {
     m_stats.synrst += 1;
-    return reset(len, data);
+    return sendReset(data);
   }
   /*
    * Handle the new connection. First we check if there are any connections
@@ -334,6 +332,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
     m_log.debug("TCP4", "connection aborted");
     m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
     e.m_state = Connection::CLOSED;
+    m_log.debug("TCP4", "Received reset on connection ", e.id(), ", aborting");
     m_handler.onAborted(e);
     return Status::Ok;
   }
@@ -555,6 +554,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       /*
        * Inform the application that the connection failed.
        */
+      m_log.debug("TCP4", "Connection ", e.id(), " failed, aborting");
       m_handler.onAborted(e);
       /*
        * The connection is closed after we send the RST.
@@ -682,9 +682,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
              */
             switch (action) {
               case Action::Abort:
+                m_log.debug("TCP4", "onAcked() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onAcked() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -714,9 +716,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
              */
             switch (action) {
               case Action::Abort:
+                m_log.debug("TCP4", "onAcked() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onAcked() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -733,15 +737,28 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          */
         if (e.m_newdata) {
           /*
-           * Check if the connection supports DELAYED_ACK.
+           * Send an ACK immediately if the connection supports DELAYED_ACK.
+           * This is preferrable when sending data back is not needed as the ACK
+           * latency is not subject to the onNewData() callback latency anymore.
            */
           if (!HAS_DELAYED_ACK(e)) {
+            Status res;
             /*
-             * Send an ACK immediately. This is preferrable when sending data
-             * back is not needed as the ACK latency is not subject to the
-             * onNewData() callback latency anymore.
+             * If there is data in the send buffer, send it as well.
              */
-            Status res = sendAck(e);
+            if (e.hasPendingSendData() && can_send) {
+              res = sendNoDelay(e, Flag::PSH);
+              can_send = e.hasAvailableSegments() && e.window() > 0;
+            }
+            /*
+             * Otherwise, just send the ACK. This will cause the
+             */
+            else {
+              res = sendAck(e);
+            }
+            /*
+             * Check the status.
+             */
             if (res != Status::Ok) {
               return res;
             }
@@ -760,9 +777,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
                                         e.m_sdat + HEADER_LEN + e.m_slen,
                                         rlen)) {
               case Action::Abort:
+                m_log.debug("TCP4", "onNewData() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onNewData() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -783,9 +802,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           else {
             switch (m_handler.onNewData(e, dataptr, datalen)) {
               case Action::Abort:
+                m_log.debug("TCP4", "onNewData() abort connection ", e.id());
                 m_handler.onAborted(e);
                 return sendAbort(e);
               case Action::Close:
+                m_log.debug("TCP4", "onNewData() close connection ", e.id());
                 return sendClose(e);
               default:
                 break;
@@ -793,8 +814,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           }
         }
         /*
-         * If there is any buffered send data, send it. Make sure that there is
-         * an available segment before allocating one.
+         * If there is any buffered send data, send it.
          */
         if (e.hasPendingSendData() && can_send) {
           return sendNoDelay(e, Flag::PSH);
@@ -947,52 +967,6 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
    * Return status
    */
   return Status::Ok;
-}
-
-Status
-Processor::reset(UNUSED const uint16_t len, const uint8_t* const data)
-{
-  /*
-   * Update IP and Ethernet attributes
-   */
-  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
-  m_ipv4to.setDestinationAddress(m_ipv4from->sourceAddress());
-  m_ethto.setDestinationAddress(m_ethfrom->sourceAddress());
-  /*
-   * Allocate the send buffer
-   */
-  uint8_t* outdata;
-  Status ret = m_ipv4to.prepare(outdata);
-  if (ret != Status::Ok) {
-    return ret;
-  }
-  /*
-   * We do not send resets in response to resets.
-   */
-  if (INTCP->flags & Flag::RST) {
-    return Status::Ok;
-  }
-  m_stats.rst += 1;
-  OUTTCP->flags = Flag::RST;
-  OUTTCP->offset = 5;
-  /*
-   * Flip the seqno and ackno fields in the TCP header. We also have to
-   * increase the sequence number we are acknowledging.
-   */
-  uint32_t c = ntohl(INTCP->seqno);
-  OUTTCP->seqno = INTCP->ackno;
-  OUTTCP->ackno = htonl(c + 1);
-  /*
-   * Swap port numbers.
-   */
-  uint16_t tmp16 = INTCP->srcport;
-  OUTTCP->srcport = INTCP->destport;
-  OUTTCP->destport = tmp16;
-  /*
-   * And send out the RST packet!
-   */
-  uint16_t mss = m_device.mtu() - HEADER_OVERHEAD;
-  return send(m_ipv4from->sourceAddress(), HEADER_LEN, mss, outdata);
 }
 
 }

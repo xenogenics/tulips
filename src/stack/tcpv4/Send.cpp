@@ -50,13 +50,72 @@ Status
 Processor::sendAbort(Connection& e)
 {
   m_log.debug("TCP4", "connection RST");
+  /*
+   * Unlisten the local port and close the connection.
+   */
   m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
   e.m_state = Connection::CLOSED;
+  /*
+   * Ignore any pending data.
+   */
+  e.m_slen = 0;
+  /*
+   * Update the TCP headers.
+   */
   uint8_t* outdata = e.m_sdat;
   OUTTCP->flags = Flag::RST;
   OUTTCP->flags |= e.m_newdata ? Flag::ACK : 0;
   OUTTCP->offset = 5;
   return send(e);
+}
+
+Status
+Processor::sendReset(const uint8_t* const data)
+{
+  uint8_t* outdata;
+  /*
+   * We do not send resets in response to resets.
+   */
+  if (INTCP->flags & Flag::RST) {
+    return Status::Ok;
+  }
+  /*
+   * Update IP and Ethernet attributes
+   */
+  m_ipv4to.setProtocol(ipv4::Protocol::TCP);
+  m_ipv4to.setDestinationAddress(m_ipv4from->sourceAddress());
+  m_ethto.setDestinationAddress(m_ethfrom->sourceAddress());
+  /*
+   * Allocate the send buffer
+   */
+  Status ret = m_ipv4to.prepare(outdata);
+  if (ret != Status::Ok) {
+    return ret;
+  }
+  /*
+   * Update the flags.
+   */
+  m_stats.rst += 1;
+  OUTTCP->flags = Flag::RST;
+  OUTTCP->offset = 5;
+  /*
+   * Flip the seqno and ackno fields in the TCP header. We also have to
+   * increase the sequence number we are acknowledging.
+   */
+  uint32_t c = ntohl(INTCP->seqno);
+  OUTTCP->seqno = INTCP->ackno;
+  OUTTCP->ackno = htonl(c + 1);
+  /*
+   * Swap port numbers.
+   */
+  uint16_t tmp16 = INTCP->srcport;
+  OUTTCP->srcport = INTCP->destport;
+  OUTTCP->destport = tmp16;
+  /*
+   * And send out the RST packet!
+   */
+  uint16_t mss = m_device.mtu() - HEADER_OVERHEAD;
+  return send(m_ipv4from->sourceAddress(), HEADER_LEN, mss, outdata);
 }
 
 Status
@@ -72,8 +131,7 @@ Processor::sendClose(Connection& e)
   }
   /*
    * Send a FIN/ACK message. TCP does not require to send an ACK with FIN,
-   * but Linux seems pretty bent on wanting one. So we play nice. NOTE Any data
-   * pending in the send buffer is discarded.
+   * but Linux seems pretty bent on wanting one. So we play nice.
    */
   m_log.debug("TCP4", "connection FIN wait #1");
   e.m_state = Connection::FIN_WAIT_1;
@@ -86,25 +144,35 @@ Processor::sendClose(Connection& e)
 Status
 Processor::sendAck(Connection& e)
 {
-  uint8_t* outdata = e.m_sdat;
-  Status res;
+  uint8_t bdat[e.m_mss];
+  uint32_t blen = 0;
   /*
-   * An ACK might be sent even though there is pending data in the send buffer.
-   * In that case, we should not erase that data and use a new buffer.
+   * Save the pending send data. We only end-up here if we must send an ACK
+   * and we cannot send the pending data (ie. no more available segments or
+   * the peer window does not allow it).
    */
   if (unlikely(e.hasPendingSendData())) {
-    res = m_device.prepare(outdata);
-    if (res != Status::Ok) {
-      m_log.error("TCP4", "prepare() for sendAck() failed");
-      return res;
-    }
+    memcpy(bdat, e.m_sdat, e.m_slen);
+    blen = e.m_slen;
   }
   /*
    * Prepare the frame for an ACK.
    */
+  uint8_t* outdata = e.m_sdat;
   OUTTCP->flags = Flag::ACK;
   OUTTCP->offset = 5;
-  return send(e);
+  auto ret = send(e);
+  /*
+   * Restore any saved send data.
+   */
+  if (blen > 0) {
+    memcpy(e.m_sdat, bdat, blen);
+    e.m_slen = blen;
+  }
+  /*
+   * Done.
+   */
+  return ret;
 }
 
 Status
@@ -160,14 +228,14 @@ Processor::send(Connection& e)
   /*
    * Reallocate the send buffer before sending
    */
-  Status ret = send(e.m_ripaddr, HEADER_LEN, e.m_mss, e.m_sdat);
+  Status ret = send(e.m_ripaddr, HEADER_LEN, e.m_mss, outdata);
   if (ret != Status::Ok) {
     return ret;
   }
   /*
    * Print the flow information.
    */
-  m_log.trace("FLOW", "<- ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
+  m_log.trace("FLOW", "<x ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
               " ack:", e.m_rcv_nxt);
   /*
    * Update IP and Ethernet attributes
@@ -179,6 +247,78 @@ Processor::send(Connection& e)
    * Prepare a new buffer
    */
   return m_ipv4to.prepare(e.m_sdat);
+}
+
+Status
+Processor::rexmit(Connection& e)
+{
+  m_stats.rexmit += 1;
+  /*
+   * Handle the retransmit dependending on the connection's state.
+   */
+  switch (e.m_state) {
+    /*
+     * In the SYN_RCVD state, we should retransmit our SYNACK.
+     */
+    case Connection::SYN_RCVD: {
+      m_log.debug("TCP4", "retransmit SYNACK");
+      Segment& seg = e.segment();
+      seg.swap(e.m_sdat);
+      e.resetSendBuffer();
+      return sendSynAck(e, seg);
+    }
+    /*
+     * In the SYN_SENT state, we retransmit out SYN.
+     */
+    case Connection::SYN_SENT: {
+      m_log.debug("TCP4", "retransmit SYN");
+      Segment& seg = e.segment();
+      seg.swap(e.m_sdat);
+      e.resetSendBuffer();
+      uint8_t* outdata = seg.m_dat;
+      OUTTCP->flags = 0;
+      return sendSyn(e, seg);
+    }
+    /*
+     * In the ESTABLISHED state, we resend the oldest segment.
+     */
+    case Connection::ESTABLISHED: {
+      m_log.debug("TCP4", "retransmit PSH");
+      Segment& seg = e.segment();
+      seg.swap(e.m_sdat);
+      e.resetSendBuffer();
+      return send(e, seg, Flag::PSH);
+    }
+    /*
+     * In all these states we should retransmit a FINACK.
+     */
+    case Connection::FIN_WAIT_1:
+    case Connection::CLOSING:
+    case Connection::LAST_ACK: {
+      m_log.debug("TCP4", "retransmit FINACK");
+      Segment& seg = e.segment();
+      seg.swap(e.m_sdat);
+      e.resetSendBuffer();
+      return sendFinAck(e, e.segment());
+    }
+    /*
+     * For the other states, do nothing. In the CLOSE state, if we are still
+     * there after the backoff that means we are still waiting for an ACK of a
+     * PSH from the remote peer.
+     */
+    case Connection::CLOSE:
+    case Connection::FIN_WAIT_2:
+    case Connection::TIME_WAIT:
+    case Connection::STOPPED:
+    case Connection::CLOSED:
+    default: {
+      break;
+    }
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Status
@@ -265,81 +405,6 @@ Processor::send(UNUSED ipv4::Address const& dst, const uint32_t len,
    * Actually send
    */
   return m_ipv4to.commit(len, outdata, mss);
-}
-
-Status
-Processor::rexmit(Connection& e)
-{
-  m_stats.rexmit += 1;
-  /*
-   * Ok, so we need to retransmit. We do this differently depending on which
-   * state we are in. In ESTABLISHED, we call upon the application so that it
-   * may prepare the data for the retransmit. In SYN_RCVD, we resend the
-   * SYNACK that we sent earlier and in LAST_ACK we have to retransmit our
-   * FINACK.
-   */
-  switch (e.m_state) {
-    /*
-     * In the SYN_RCVD state, we should retransmit our SYNACK.
-     */
-    case Connection::SYN_RCVD: {
-      m_log.debug("TCP4", "retransmit SYNACK");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return sendSynAck(e, seg);
-    }
-    /*
-     * In the SYN_SENT state, we retransmit out SYN.
-     */
-    case Connection::SYN_SENT: {
-      m_log.debug("TCP4", "retransmit SYN");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      uint8_t* outdata = seg.m_dat;
-      OUTTCP->flags = 0;
-      return sendSyn(e, seg);
-    }
-    /*
-     * In the ESTABLISHED state, we call upon the application to do the
-     * actual retransmit after which we jump into the code for sending
-     * out the packet (the apprexmit label).
-     */
-    case Connection::ESTABLISHED: {
-      m_log.debug("TCP4", "retransmit PSH");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return send(e, seg, Flag::PSH);
-    }
-    /*
-     * In all these states we should retransmit a FINACK.
-     */
-    case Connection::FIN_WAIT_1:
-    case Connection::CLOSING:
-    case Connection::LAST_ACK: {
-      m_log.debug("TCP4", "retransmit FINACK");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return sendFinAck(e, e.segment());
-    }
-    /*
-     * For the other states, do nothing. In the CLOSE state, if we are still
-     * there after the backoff that means we are still waiting for an ACK
-     * of a PSH from the remote peer.
-     */
-    case Connection::CLOSE:
-    case Connection::FIN_WAIT_2:
-    case Connection::TIME_WAIT:
-    case Connection::STOPPED:
-    case Connection::CLOSED:
-    default: {
-      break;
-    }
-  }
-  return Status::Ok;
 }
 
 }

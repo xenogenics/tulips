@@ -100,11 +100,11 @@ Server::close(const ID id)
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
-  int e = SSL_shutdown(c.ssl);
+  int ret = SSL_shutdown(c.ssl);
   /*
    * Go through the shutdown state machine.
    */
-  switch (e) {
+  switch (ret) {
     case 0: {
       m_log.debug("SSLSRV", "SSL shutdown sent");
       flush(id, cookie);
@@ -115,7 +115,8 @@ Server::close(const ID id)
       return m_server->close(id);
     }
     default: {
-      auto error = ssl::errorToString(c.ssl, e);
+      auto err = SSL_get_error(c.ssl, ret);
+      auto error = ssl::errorToString(err);
       m_log.error("SSLSRV", "SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
@@ -166,7 +167,7 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
 void*
 Server::onConnected(ID const& id, void* const cookie)
 {
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie);
+  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie, -1);
   c->state = Context::State::Accept;
   return c;
 }

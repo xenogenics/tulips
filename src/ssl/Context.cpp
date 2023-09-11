@@ -1,4 +1,5 @@
 #include "Context.h"
+#include <fcntl.h>
 #include <openssl/err.h>
 
 namespace tulips::ssl {
@@ -35,9 +36,9 @@ getMethod(const Protocol type, const bool server, long& flags)
 }
 
 std::string
-errorToString(SSL* ssl, const int err)
+errorToString(const int err)
 {
-  switch (SSL_get_error(ssl, err)) {
+  switch (err) {
     case SSL_ERROR_NONE:
       return "SSL_ERROR_NONE";
     case SSL_ERROR_ZERO_RETURN:
@@ -68,11 +69,13 @@ errorToString(SSL* ssl, const int err)
  */
 
 Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
-                 const api::interface::Client::ID id, void* cookie)
+                 const api::interface::Client::ID id, void* cookie,
+                 const int keyfd)
   : log(log)
   , buflen(buflen)
   , id(id)
   , cookie(cookie)
+  , keyfd(keyfd)
   , bin(bio::allocate(buflen))
   , bout(bio::allocate(buflen))
   , ssl(SSL_new(ctx))
@@ -81,10 +84,20 @@ Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
   , rdbf(new uint8_t[buflen])
 {
   SSL_set_bio(ssl, bin, bout);
+  SSL_set_app_data(ssl, this);
 }
 
 Context::~Context()
 {
+  /*
+   * Close the key file.
+   */
+  if (keyfd != -1) {
+    ::close(keyfd);
+  }
+  /*
+   * Delete the read buffer.
+   */
   delete[] rdbf;
   /*
    * No need to free the BIOs, SSL_free does that for us.
@@ -100,27 +113,28 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
    * Process an abort request.
    */
   if (r == Action::Abort) {
-    log.debug("SSLCTX", "aborting connection");
+    log.debug("SSL", "aborting connection");
     return Action::Abort;
   }
   /*
    * Process a close request.
    */
   if (r == Action::Close) {
-    log.debug("SSLCTX", "closing connection");
+    log.debug("SSL", "closing connection");
     /*
      * Call SSL_shutdown, repeat if necessary.
      */
-    int e = SSL_shutdown(ssl);
-    if (e == 0) {
-      e = SSL_shutdown(ssl);
+    int ret = SSL_shutdown(ssl);
+    if (ret == 0) {
+      ret = SSL_shutdown(ssl);
     }
     /*
      * Check that the SSL connection expect an answer from the other peer.
      */
-    if (e < 0) {
-      if (SSL_get_error(ssl, e) != SSL_ERROR_WANT_READ) {
-        log.error("SSLCTX", "SSL_shutdown error: ", ssl::errorToString(ssl, e));
+    if (ret < 0) {
+      auto err = SSL_get_error(ssl, ret);
+      if (err != SSL_ERROR_WANT_READ) {
+        log.error("SSL", "SSL_shutdown error: ", ssl::errorToString(err));
         return Action::Abort;
       }
       /*
@@ -129,7 +143,7 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
       state = State::Shutdown;
       return flush(alen, sdata, slen);
     }
-    log.error("SSLCTX", "SSL_shutdown error, aborting connection");
+    log.error("SSL", "SSL_shutdown error, aborting connection");
     return Action::Abort;
   }
   /*
@@ -155,6 +169,13 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   BIO_read(bout, sdata, (int)rlen);
   slen = rlen;
   return Action::Continue;
+}
+
+void
+Context::saveKeys(std::string_view prefix)
+{
+  auto spath = std::string(prefix) + "_" + std::to_string(id) + ".keys";
+  keyfd = ::open(spath.c_str(), O_CREAT | O_RDWR);
 }
 
 }

@@ -108,10 +108,8 @@ TEST(ARP_Basic, RequestResponse)
   /*
    * Build the pcap device
    */
-  transport::pcap::Device client_pcap(logger, client,
-                                      "arp_client_" + tname + ".pcap");
-  transport::pcap::Device server_pcap(logger, server,
-                                      "arp_server_" + tname + ".pcap");
+  transport::pcap::Device client_pcap(logger, client, "arp_client_" + tname);
+  transport::pcap::Device server_pcap(logger, server, "arp_server_" + tname);
   /*
    * Client stack
    */

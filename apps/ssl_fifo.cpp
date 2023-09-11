@@ -86,8 +86,8 @@ try {
   /*
    * Create PCAP devices.
    */
-  transport::pcap::Device cdev(logger, cshm, "ssl_client.pcap");
-  transport::pcap::Device sdev(logger, sshm, "ssl_server.pcap");
+  transport::pcap::Device cdev(logger, cshm, "ssl_client");
+  transport::pcap::Device sdev(logger, sshm, "ssl_server");
   /*
    * Initialize the client.
    */

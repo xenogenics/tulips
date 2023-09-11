@@ -120,11 +120,9 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
    */
   if (pcap) {
     if (sender) {
-      pcap_device =
-        new transport::pcap::Device(logger, ofed_device, "client.pcap");
+      pcap_device = new transport::pcap::Device(logger, ofed_device, "client");
     } else {
-      pcap_device =
-        new transport::pcap::Device(logger, ofed_device, "server.pcap");
+      pcap_device = new transport::pcap::Device(logger, ofed_device, "server");
     }
     device = pcap_device;
   }

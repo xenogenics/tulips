@@ -173,6 +173,7 @@ Processor::abort(Connection::ID const& id)
    */
   m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, c.m_ripaddr, c.m_rport);
   c.m_state = Connection::CLOSED;
+  m_log.debug("TCP4", "Abort connection ", id, " requested");
   m_handler.onAborted(c);
   /*
    * Send the RST message.
@@ -285,11 +286,14 @@ Processor::send(Connection::ID const& id, const uint32_t len,
     return slen == 0 ? Status::OperationInProgress : Status::Ok;
   }
   /*
-   * Send the segment.
+   * Send immediately if Nagle's algorithm has been disabled.
    */
   if (HAS_NODELAY(c)) {
     return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
+  /*
+   * Otherwise, queue for sending.
+   */
   return sendNagle(c, bound);
 }
 

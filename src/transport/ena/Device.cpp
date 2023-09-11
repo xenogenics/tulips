@@ -251,6 +251,7 @@ Device::prepare(uint8_t*& buf)
    * Grab the data region.
    */
   buf = rte_pktmbuf_mtod(mbuf, uint8_t*);
+  m_log.trace("ENA", "preparing buffer ", (void*)buf);
   /*
    * Update the private data with the mbuf address.
    */
@@ -308,8 +309,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    m_log.error("ENA",
-                "packet preparation for TX failed: ", rte_strerror(rte_errno));
+    auto error = rte_strerror(rte_errno);
+    m_log.error("ENA", "packet preparation for TX failed: ", error);
     return Status::HardwareError;
   }
   /*
@@ -317,7 +318,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    */
   res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
-    m_log.error("ENA", "sending packet failed");
+    auto error = rte_strerror(rte_errno);
+    m_log.error("ENA", "sending packet failed: ", error);
     return Status::HardwareError;
   }
   m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len);

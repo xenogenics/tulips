@@ -164,9 +164,7 @@ public:
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     /*
      * We are closed.
      */
@@ -209,9 +207,7 @@ public:
     ASSERT_EQ(Status::OperationInProgress, m_server->close(id));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
     expireTimeWait();
@@ -245,8 +241,8 @@ protected:
     /*
      * Build the pcap device
      */
-    std::string pcap_client = "api_2clients.client." + tname + ".pcap";
-    std::string pcap_server = "api_2clients.server." + tname + ".pcap";
+    std::string pcap_client = "api_2clients.client." + tname;
+    std::string pcap_server = "api_2clients.server." + tname;
     m_client_pcap =
       new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
     m_server_pcap =

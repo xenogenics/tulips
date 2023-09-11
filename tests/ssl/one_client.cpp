@@ -129,8 +129,8 @@ protected:
     /*
      * Build the pcap device
      */
-    std::string pcap_client = "api_secure.client." + tname + ".pcap";
-    std::string pcap_server = "api_secure.server." + tname + ".pcap";
+    std::string pcap_client = "api_secure.client." + tname;
+    std::string pcap_server = "api_secure.server." + tname;
     m_client_pcap =
       new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
     m_server_pcap =
@@ -236,9 +236,7 @@ TEST_F(SSL_OneClient, ListenConnectAndClose)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   /*
    * Advance the timers because of TIME WAIT.
    */
@@ -272,9 +270,7 @@ TEST_F(SSL_OneClient, ListenConnectAndCloseFromServer)
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   /*
    * Advance the timers because of TIME WAIT.
    */
@@ -345,9 +341,7 @@ TEST_F(SSL_OneClient, ListenConnectSendAndCloseFromServer)
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   /*
    * Client is closed.
    */

@@ -1,10 +1,10 @@
-#include "tulips/system/Logger.h"
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Processor.h>
 #include <tulips/stack/ipv4/Producer.h>
 #include <tulips/stack/tcpv4/Processor.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/pcap/Device.h>
 #include <tulips/transport/shm/Device.h>
@@ -239,10 +239,8 @@ protected:
      */
     std::string client_n = "tcp_rexmit.client." + tname;
     std::string server_n = "tcp_rexmit.server." + tname;
-    m_client_pcap =
-      new transport::pcap::Device(m_logger, *m_client, client_n + ".pcap");
-    m_server_pcap =
-      new transport::pcap::Device(m_logger, *m_server, server_n + ".pcap");
+    m_client_pcap = new transport::pcap::Device(m_logger, *m_client, client_n);
+    m_server_pcap = new transport::pcap::Device(m_logger, *m_server, server_n);
     /*
      * Client stack
      */
