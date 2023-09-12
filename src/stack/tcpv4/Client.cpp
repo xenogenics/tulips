@@ -174,7 +174,7 @@ Processor::abort(Connection::ID const& id)
   m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, c.m_ripaddr, c.m_rport);
   c.m_state = Connection::CLOSED;
   m_log.debug("TCP4", "Abort connection ", id, " requested");
-  m_handler.onAborted(c);
+  m_handler.onAborted(c, system::Clock::read());
   /*
    * Send the RST message.
    */

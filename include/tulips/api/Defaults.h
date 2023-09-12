@@ -8,43 +8,53 @@ namespace tulips::api::defaults {
 class ClientDelegate : public Client::Delegate
 {
 public:
-  void* onConnected(Client::ID const& id, void* const cookie) override;
+  void* onConnected(Client::ID const& id, void* const cookie,
+                    const Timestamp ts) override;
 
-  Action onAcked(Client::ID const& id, void* const cookie) override;
+  Action onAcked(Client::ID const& id, void* const cookie,
+                 const Timestamp ts) override;
 
-  Action onAcked(Client::ID const& id, void* const cookie, const uint32_t alen,
-                 uint8_t* const sdata, uint32_t& slen) override;
-
-  Action onNewData(Client::ID const& id, void* const cookie,
-                   const uint8_t* const data, const uint32_t len) override;
+  Action onAcked(Client::ID const& id, void* const cookie, const Timestamp ts,
+                 const uint32_t alen, uint8_t* const sdata,
+                 uint32_t& slen) override;
 
   Action onNewData(Client::ID const& id, void* const cookie,
                    const uint8_t* const data, const uint32_t len,
-                   const uint32_t alen, uint8_t* const sdata,
-                   uint32_t& slen) override;
+                   const Timestamp ts) override;
 
-  void onClosed(Client::ID const& id, void* const cookie) override;
+  Action onNewData(Client::ID const& id, void* const cookie,
+                   const uint8_t* const data, const uint32_t len,
+                   const Timestamp ts, const uint32_t alen,
+                   uint8_t* const sdata, uint32_t& slen) override;
+
+  void onClosed(Client::ID const& id, void* const cookie,
+                const Timestamp ts) override;
 };
 
 class ServerDelegate : public Server::Delegate
 {
 public:
-  void* onConnected(Server::ID const& id, void* const cookie) override;
+  void* onConnected(Server::ID const& id, void* const cookie,
+                    const Timestamp ts) override;
 
-  Action onAcked(Server::ID const& id, void* const cookie) override;
+  Action onAcked(Server::ID const& id, void* const cookie,
+                 const Timestamp ts) override;
 
-  Action onAcked(Server::ID const& id, void* const cookie, const uint32_t alen,
-                 uint8_t* const sdata, uint32_t& slen) override;
-
-  Action onNewData(Server::ID const& id, void* const cookie,
-                   const uint8_t* const data, const uint32_t len) override;
+  Action onAcked(Server::ID const& id, void* const cookie, const Timestamp ts,
+                 const uint32_t alen, uint8_t* const sdata,
+                 uint32_t& slen) override;
 
   Action onNewData(Server::ID const& id, void* const cookie,
                    const uint8_t* const data, const uint32_t len,
-                   const uint32_t alen, uint8_t* const sdata,
-                   uint32_t& slen) override;
+                   const Timestamp ts) override;
 
-  void onClosed(Server::ID const& id, void* const cookie) override;
+  Action onNewData(Server::ID const& id, void* const cookie,
+                   const uint8_t* const data, const uint32_t len,
+                   const Timestamp ts, const uint32_t alen,
+                   uint8_t* const sdata, uint32_t& slen) override;
+
+  void onClosed(Server::ID const& id, void* const cookie,
+                const Timestamp ts) override;
 };
 
 }

@@ -28,44 +28,49 @@ public:
 
   ~Client() override { m_out.close(); }
 
-  void onConnected(UNUSED tcpv4::Connection& c) override
+  void onConnected(UNUSED tcpv4::Connection& c,
+                   UNUSED const Timestamp ts) override
   {
     m_out << "onConnected:" << std::endl;
     m_connected = true;
   }
 
-  void onAborted(UNUSED tcpv4::Connection& c) override
+  void onAborted(UNUSED tcpv4::Connection& c,
+                 UNUSED const Timestamp ts) override
   {
     m_out << "onAborted:" << std::endl;
     m_connected = false;
   }
 
-  void onTimedOut(UNUSED tcpv4::Connection& c) override
+  void onTimedOut(UNUSED tcpv4::Connection& c,
+                  UNUSED const Timestamp ts) override
   {
     m_out << "onTimedOut:" << std::endl;
   }
 
-  void onSent(UNUSED tcpv4::Connection& c) override
+  void onSent(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {
     m_out << "onSent:" << std::endl;
   }
 
-  Action onAcked(UNUSED tcpv4::Connection& c) override
+  Action onAcked(UNUSED tcpv4::Connection& c,
+                 UNUSED const Timestamp ts) override
   {
     m_out << "onAcked:" << std::endl;
     return Action::Continue;
   }
 
-  Action onAcked(UNUSED tcpv4::Connection& c, UNUSED const uint32_t alen,
-                 UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
+  Action onAcked(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts,
+                 UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
+                 UNUSED uint32_t& slen) override
   {
     m_out << "onAcked:" << std::endl;
     return Action::Continue;
   }
 
   Action onNewData(UNUSED tcpv4::Connection& c,
-                   UNUSED const uint8_t* const data,
-                   const uint32_t len) override
+                   UNUSED const uint8_t* const data, const uint32_t len,
+                   UNUSED const Timestamp ts) override
   {
     m_out << "onNewData: " << len << "B" << std::endl;
     return Action::Continue;
@@ -73,14 +78,14 @@ public:
 
   Action onNewData(UNUSED tcpv4::Connection& c,
                    UNUSED const uint8_t* const data, UNUSED const uint32_t len,
-                   UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
-                   UNUSED uint32_t& slen) override
+                   UNUSED const Timestamp ts, UNUSED const uint32_t alen,
+                   UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
   {
     m_out << "onNewData:" << std::endl;
     return Action::Continue;
   }
 
-  void onClosed(UNUSED tcpv4::Connection& c) override
+  void onClosed(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {
     m_out << "onClosed:" << std::endl;
     m_connected = false;
@@ -105,46 +110,50 @@ public:
 
   ~Server() override { m_out.close(); }
 
-  void onConnected(tcpv4::Connection& c) override
+  void onConnected(tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {
     m_out << "onConnected:" << std::endl;
     m_connected = true;
     m_cid = c.id();
   }
 
-  void onAborted(UNUSED tcpv4::Connection& c) override
+  void onAborted(UNUSED tcpv4::Connection& c,
+                 UNUSED const Timestamp ts) override
   {
     m_out << "onAborted:" << std::endl;
     m_connected = false;
     m_cid = -1;
   }
 
-  void onTimedOut(UNUSED tcpv4::Connection& c) override
+  void onTimedOut(UNUSED tcpv4::Connection& c,
+                  UNUSED const Timestamp ts) override
   {
     m_out << "onTimedOut:" << std::endl;
   }
 
-  void onSent(UNUSED tcpv4::Connection& c) override
+  void onSent(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {
     m_out << "onSent:" << std::endl;
   }
 
-  Action onAcked(UNUSED tcpv4::Connection& c) override
+  Action onAcked(UNUSED tcpv4::Connection& c,
+                 UNUSED const Timestamp ts) override
   {
     m_out << "onAcked:" << std::endl;
     return Action::Continue;
   }
 
-  Action onAcked(UNUSED tcpv4::Connection& c, UNUSED const uint32_t alen,
-                 UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
+  Action onAcked(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts,
+                 UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
+                 UNUSED uint32_t& slen) override
   {
     m_out << "onAcked:" << std::endl;
     return Action::Continue;
   }
 
   Action onNewData(UNUSED tcpv4::Connection& c,
-                   UNUSED const uint8_t* const data,
-                   const uint32_t len) override
+                   UNUSED const uint8_t* const data, const uint32_t len,
+                   UNUSED const Timestamp ts) override
   {
     m_out << "onNewData:" << std::endl;
     m_rlen = len;
@@ -153,15 +162,15 @@ public:
 
   Action onNewData(UNUSED tcpv4::Connection& c,
                    UNUSED const uint8_t* const data, const uint32_t len,
-                   UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
-                   UNUSED uint32_t& slen) override
+                   UNUSED const Timestamp ts, UNUSED const uint32_t alen,
+                   UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
   {
     m_out << "onNewData:" << std::endl;
     m_rlen = len;
     return Action::Continue;
   }
 
-  void onClosed(UNUSED tcpv4::Connection& c) override
+  void onClosed(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {
     m_out << "onClosed:" << std::endl;
     m_connected = false;

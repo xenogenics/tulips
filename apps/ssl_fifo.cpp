@@ -23,7 +23,8 @@ class ServerDelegate : public api::defaults::ServerDelegate
 {
 public:
   Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
-                   const uint8_t* const data, const uint32_t len) override
+                   const uint8_t* const data, const uint32_t len,
+                   UNUSED const Timestamp ts) override
   {
     std::string res((const char*)data, len);
     std::cout << res << std::endl;
@@ -32,8 +33,8 @@ public:
 
   Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    const uint8_t* const data, const uint32_t len,
-                   UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
-                   UNUSED uint32_t& slen) override
+                   UNUSED const Timestamp ts, UNUSED const uint32_t alen,
+                   UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
   {
     std::string res((const char*)data, len);
     std::cout << res << std::endl;

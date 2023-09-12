@@ -16,6 +16,11 @@ namespace tulips::api::interface {
 template<typename ID>
 struct Delegate
 {
+  /**
+   * Timestamp type alias.
+   */
+  using Timestamp = system::Clock::Value;
+
   /*
    * Virtual default destructor.
    */
@@ -26,11 +31,12 @@ struct Delegate
    *
    * @param id the connection's handle.
    * @param cookie a global user-defined state.
-   * @param opts a reference to the connection's options to be altered.
+   * @param ts the timestamp of the event.
    *
    * @return a user-defined state for the connection.
    */
-  virtual void* onConnected(ID const& id, void* const cookie) = 0;
+  virtual void* onConnected(ID const& id, void* const cookie,
+                            const Timestamp ts) = 0;
 
   /**
    * Callback when a packet has been acked. The delegate is not permitted
@@ -38,10 +44,12 @@ struct Delegate
    *
    * @param id the connection's handle.
    * @param cookie the connection's user-defined state.
+   * @param ts the timestamp of the operation.
    *
    * @return an action to be taken upon completion of the callback.
    */
-  virtual Action onAcked(ID const& id, void* const cookie) = 0;
+  virtual Action onAcked(ID const& id, void* const cookie,
+                         const Timestamp ts) = 0;
 
   /**
    * Callback when a packet has been acked. The delegate is permitted to
@@ -49,14 +57,16 @@ struct Delegate
    *
    * @param id the connection's handle.
    * @param cookie the connection's user-defined state.
+   * @param ts the timestamp of the operation.
    * @param alen the amount of data available in the response frame.
    * @param sdata a pointer to the response area in the frame.
    * @param slen the effective size of the response data written.
    *
    * @return an action to be taken upon completion of the callback.
    */
-  virtual Action onAcked(ID const& id, void* const cookie, const uint32_t alen,
-                         uint8_t* const sdata, uint32_t& slen) = 0;
+  virtual Action onAcked(ID const& id, void* const cookie, const Timestamp ts,
+                         const uint32_t alen, uint8_t* const sdata,
+                         uint32_t& slen) = 0;
 
   /**
    * Callback when new data has been received. The delegate is not permitted
@@ -66,11 +76,13 @@ struct Delegate
    * @param cookie the connection's user-defined state.
    * @param data the received data.
    * @param len the length of the received data.
+   * @param ts the timestamp of the operation.
    *
    * @return an action to be taken upon completion of the callback.
    */
   virtual Action onNewData(ID const& id, void* const cookie,
-                           const uint8_t* const data, const uint32_t len) = 0;
+                           const uint8_t* const data, const uint32_t len,
+                           const Timestamp ts) = 0;
 
   /**
    * Callback when new data has been received. The delegate is permitted to
@@ -80,6 +92,7 @@ struct Delegate
    * @param cookie the connection's user-defined state.
    * @param data the received data.
    * @param len the length of the received data.
+   * @param ts the timestamp of the operation.
    * @param alen the amount of data available in the response frame.
    * @param sdata a pointer to the response area in the frame.
    * @param slen the effective size of the response data written.
@@ -88,16 +101,18 @@ struct Delegate
    */
   virtual Action onNewData(ID const& id, void* const cookie,
                            const uint8_t* const data, const uint32_t len,
-                           const uint32_t alen, uint8_t* const sdata,
-                           uint32_t& slen) = 0;
+                           const Timestamp ts, const uint32_t alen,
+                           uint8_t* const sdata, uint32_t& slen) = 0;
 
   /*
    * Callback when a connection is closed.
    *
    * @param id the connection's handle.
    * @param cookie the connection's user-defined state.
+   * @param ts the timestamp of the operation.
    */
-  virtual void onClosed(ID const& id, void* const cookie) = 0;
+  virtual void onClosed(ID const& id, void* const cookie,
+                        const Timestamp ts) = 0;
 };
 
 /**

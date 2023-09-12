@@ -165,7 +165,7 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
 }
 
 void*
-Server::onConnected(ID const& id, void* const cookie)
+Server::onConnected(ID const& id, void* const cookie, UNUSED const Timestamp ts)
 {
   auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie, -1);
   c->state = Context::State::Accept;
@@ -173,7 +173,7 @@ Server::onConnected(ID const& id, void* const cookie)
 }
 
 Action
-Server::onAcked(ID const& id, void* const cookie)
+Server::onAcked(ID const& id, void* const cookie, const Timestamp ts)
 {
   /*
    * Grab the context.
@@ -188,12 +188,12 @@ Server::onAcked(ID const& id, void* const cookie)
   /*
    * Notify the delegate.
    */
-  return m_delegate.onAcked(id, c.cookie);
+  return m_delegate.onAcked(id, c.cookie, ts);
 }
 
 Action
-Server::onAcked(ID const& id, void* const cookie, const uint32_t alen,
-                uint8_t* const sdata, uint32_t& slen)
+Server::onAcked(ID const& id, void* const cookie, const Timestamp ts,
+                const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Grab the context.
@@ -202,12 +202,12 @@ Server::onAcked(ID const& id, void* const cookie, const uint32_t alen,
   /*
    * If the BIO has data pending, flush it.
    */
-  return c.onAcked(id, m_delegate, alen, sdata, slen);
+  return c.onAcked(id, m_delegate, ts, alen, sdata, slen);
 }
 
 Action
 Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len)
+                  const uint32_t len, const Timestamp ts)
 {
   /*
    * Grab the context.
@@ -216,13 +216,13 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
   /*
    * Process the incoming data.
    */
-  return c.onNewData(id, m_delegate, data, len);
+  return c.onNewData(id, m_delegate, data, len, ts);
 }
 
 Action
 Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len, const uint32_t alen, uint8_t* const sdata,
-                  uint32_t& slen)
+                  const uint32_t len, const Timestamp ts, const uint32_t alen,
+                  uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Grab the context.
@@ -232,13 +232,13 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
   /*
    * Write the data in the input BIO.
    */
-  auto res = c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto res = c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
   auto post = c.state;
   /*
    * Check for the ready state transition.
    */
   if (pre == Context::State::Accept && post == Context::State::Ready) {
-    c.cookie = m_delegate.onConnected(c.id, c.cookie);
+    c.cookie = m_delegate.onConnected(c.id, c.cookie, ts);
   }
   /*
    * Done.
@@ -247,10 +247,10 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
 }
 
 void
-Server::onClosed(ID const& id, void* const cookie)
+Server::onClosed(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* c = reinterpret_cast<Context*>(cookie);
-  m_delegate.onClosed(id, c->cookie);
+  m_delegate.onClosed(id, c->cookie, ts);
   delete c;
 }
 

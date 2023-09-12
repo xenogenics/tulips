@@ -145,8 +145,9 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
           return Status::ProtocolError;
         }
         case 1: {
+          auto now = system::Clock::read();
           m_log.debug("SSLCLI", "SSL_connect successful");
-          c.cookie = m_delegate.onConnected(c.id, c.cookie);
+          c.cookie = m_delegate.onConnected(c.id, c.cookie, now);
           c.state = Context::State::Ready;
           return Status::Ok;
         }
@@ -332,7 +333,7 @@ Client::averageLatency(const ID id)
 }
 
 void*
-Client::onConnected(ID const& id, void* const cookie)
+Client::onConnected(ID const& id, void* const cookie, UNUSED const Timestamp ts)
 {
   int keyfd = -1;
   /*
@@ -360,7 +361,7 @@ Client::onConnected(ID const& id, void* const cookie)
 }
 
 Action
-Client::onAcked(ID const& id, void* const cookie)
+Client::onAcked(ID const& id, void* const cookie, const Timestamp ts)
 {
   /*
    * Grab the context.
@@ -375,12 +376,12 @@ Client::onAcked(ID const& id, void* const cookie)
   /*
    * Notify the delegate.
    */
-  return m_delegate.onAcked(id, c.cookie);
+  return m_delegate.onAcked(id, c.cookie, ts);
 }
 
 Action
-Client::onAcked(ID const& id, void* const cookie, const uint32_t alen,
-                uint8_t* const sdata, uint32_t& slen)
+Client::onAcked(ID const& id, void* const cookie, const Timestamp ts,
+                const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Grab the context.
@@ -389,12 +390,12 @@ Client::onAcked(ID const& id, void* const cookie, const uint32_t alen,
   /*
    * If the BIO has data pending, flush it.
    */
-  return c.onAcked(id, m_delegate, alen, sdata, slen);
+  return c.onAcked(id, m_delegate, ts, alen, sdata, slen);
 }
 
 Action
 Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len)
+                  const uint32_t len, const Timestamp ts)
 {
   /*
    * Grab the context.
@@ -403,13 +404,13 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
   /*
    * Decrypt the incoming data.
    */
-  return c.onNewData(id, m_delegate, data, len);
+  return c.onNewData(id, m_delegate, data, len, ts);
 }
 
 Action
 Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len, const uint32_t alen, uint8_t* const sdata,
-                  uint32_t& slen)
+                  const uint32_t len, const Timestamp ts, const uint32_t alen,
+                  uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Grab the context.
@@ -419,13 +420,13 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
   /*
    * Write the data in the input BIO.
    */
-  auto res = c.onNewData(id, m_delegate, data, len, alen, sdata, slen);
+  auto res = c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
   auto post = c.state;
   /*
    * Check for the ready state transition.
    */
   if (pre == Context::State::Connect && post == Context::State::Ready) {
-    c.cookie = m_delegate.onConnected(c.id, c.cookie);
+    c.cookie = m_delegate.onConnected(c.id, c.cookie, ts);
   }
   /*
    * Done.
@@ -434,11 +435,11 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
 }
 
 void
-Client::onClosed(ID const& id, void* const cookie)
+Client::onClosed(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* c = reinterpret_cast<Context*>(cookie);
   if (c != nullptr) {
-    m_delegate.onClosed(id, c->cookie);
+    m_delegate.onClosed(id, c->cookie, ts);
     delete c;
   }
 }

@@ -58,7 +58,8 @@ class Delegate : public api::defaults::ClientDelegate
 {
 public:
   void* onConnected(UNUSED tulips::api::Client::ID const& id,
-                    UNUSED void* const cookie) override
+                    UNUSED void* const cookie,
+                    UNUSED const Timestamp ts) override
   {
     return nullptr;
   }
@@ -303,8 +304,8 @@ public:
     : m_options(options), m_next(0), m_bytes(0), m_server(nullptr)
   {}
 
-  void* onConnected(const api::Server::ID& id,
-                    [[maybe_unused]] void* const cookie) override
+  void* onConnected(const api::Server::ID& id, UNUSED void* const cookie,
+                    UNUSED const Timestamp ts) override
   {
     m_server->setOptions(id, m_options);
     return nullptr;
@@ -312,7 +313,7 @@ public:
 
   Action onNewData(UNUSED tulips::api::Server::ID const& id,
                    UNUSED void* const cookie, const uint8_t* const data,
-                   const uint32_t len) override
+                   const uint32_t len, UNUSED const Timestamp ts) override
   {
     size_t const& header = *reinterpret_cast<const size_t*>(data);
     if (header != m_next) {
@@ -326,8 +327,9 @@ public:
 
   Action onNewData(UNUSED tulips::api::Server::ID const& id,
                    UNUSED void* const cookie, const uint8_t* const data,
-                   const uint32_t len, UNUSED const uint32_t alen,
-                   UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
+                   const uint32_t len, UNUSED const Timestamp ts,
+                   UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
+                   UNUSED uint32_t& slen) override
   {
     size_t const& header = *reinterpret_cast<const size_t*>(data);
     if (header != m_next) {

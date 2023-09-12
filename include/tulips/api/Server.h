@@ -69,24 +69,27 @@ private:
   };
 #endif
 
-  void onConnected(stack::tcpv4::Connection& c) override;
-  void onAborted(stack::tcpv4::Connection& c) override;
-  void onTimedOut(stack::tcpv4::Connection& c) override;
-  void onClosed(stack::tcpv4::Connection& c) override;
+  void onConnected(stack::tcpv4::Connection& c, const Timestamp ts) override;
+  void onAborted(stack::tcpv4::Connection& c, const Timestamp ts) override;
+  void onTimedOut(stack::tcpv4::Connection& c, const Timestamp ts) override;
+  void onClosed(stack::tcpv4::Connection& c, const Timestamp ts) override;
 
-  Action onAcked(stack::tcpv4::Connection& c) override;
+  Action onAcked(stack::tcpv4::Connection& c, const Timestamp ts) override;
 
-  Action onAcked(stack::tcpv4::Connection& c, const uint32_t alen,
-                 uint8_t* const sdata, uint32_t& slen) override;
-
-  Action onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                   const uint32_t len) override;
+  Action onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
+                 const uint32_t alen, uint8_t* const sdata,
+                 uint32_t& slen) override;
 
   Action onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                   const uint32_t len, const uint32_t alen,
+                   const uint32_t len, const Timestamp ts) override;
+
+  Action onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
+                   const uint32_t len, const Timestamp ts, const uint32_t alen,
                    uint8_t* const sdata, uint32_t& slen) override;
 
-  void onSent(UNUSED stack::tcpv4::Connection& e) override {}
+  void onSent(UNUSED stack::tcpv4::Connection& e,
+              UNUSED const Timestamp ts) override
+  {}
 
   system::Logger& m_log;
   Delegate& m_delegate;

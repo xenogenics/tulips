@@ -115,62 +115,63 @@ Server::cookie(const ID id) const
 }
 
 void
-Server::onConnected(tcpv4::Connection& c)
+Server::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   void* srvdata = m_cookies[c.localPort()];
-  void* appdata = m_delegate.onConnected(c.id(), srvdata);
+  void* appdata = m_delegate.onConnected(c.id(), srvdata, ts);
   m_log.debug("APISRV", "connection ", c.id(), " connected");
   c.setCookie(appdata);
 }
 
 void
-Server::onAborted(tcpv4::Connection& c)
+Server::onAborted(tcpv4::Connection& c, const Timestamp ts)
 {
-  m_delegate.onClosed(c.id(), c.cookie());
+  m_delegate.onClosed(c.id(), c.cookie(), ts);
   c.setCookie(nullptr);
 }
 
 void
-Server::onTimedOut(tcpv4::Connection& c)
+Server::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 {
-  m_delegate.onClosed(c.id(), c.cookie());
+  m_delegate.onClosed(c.id(), c.cookie(), ts);
   c.setCookie(nullptr);
 }
 
 void
-Server::onClosed(tcpv4::Connection& c)
+Server::onClosed(tcpv4::Connection& c, const Timestamp ts)
 {
-  m_delegate.onClosed(c.id(), c.cookie());
+  m_delegate.onClosed(c.id(), c.cookie(), ts);
   m_log.debug("APISRV", "connection ", c.id(), " closed");
   c.setCookie(nullptr);
 }
 
 Action
-Server::onAcked(stack::tcpv4::Connection& c)
+Server::onAcked(stack::tcpv4::Connection& c, const Timestamp ts)
 {
-  return m_delegate.onAcked(c.id(), c.cookie());
+  return m_delegate.onAcked(c.id(), c.cookie(), ts);
 }
 
 Action
-Server::onAcked(stack::tcpv4::Connection& c, const uint32_t alen,
-                uint8_t* const sdata, uint32_t& slen)
+Server::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
+                const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
 {
-  return m_delegate.onAcked(c.id(), c.cookie(), alen, sdata, slen);
-}
-
-Action
-Server::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                  const uint32_t len)
-{
-  return m_delegate.onNewData(c.id(), c.cookie(), data, len);
+  return m_delegate.onAcked(c.id(), c.cookie(), ts, alen, sdata, slen);
 }
 
 Action
 Server::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                  const uint32_t len, const uint32_t alen, uint8_t* const sdata,
-                  uint32_t& slen)
+                  const uint32_t len, const Timestamp ts)
 {
-  return m_delegate.onNewData(c.id(), c.cookie(), data, len, alen, sdata, slen);
+  return m_delegate.onNewData(c.id(), c.cookie(), data, len, ts);
+}
+
+Action
+Server::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
+                  const uint32_t len, const Timestamp ts, const uint32_t alen,
+                  uint8_t* const sdata, uint32_t& slen)
+{
+  return m_delegate.onNewData(c.id(), c.cookie(), data, len, ts, alen, sdata,
+                              slen);
 }
 
 }

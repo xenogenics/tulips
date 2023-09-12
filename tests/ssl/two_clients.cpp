@@ -21,7 +21,8 @@ public:
   tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
-                           UNUSED const uint32_t len) override
+                           UNUSED const uint32_t len,
+                           UNUSED const Timestamp ts) override
   {
     m_data_received = true;
     return tulips::Action::Continue;
@@ -30,7 +31,7 @@ public:
   tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
-                           UNUSED const uint32_t len,
+                           UNUSED const uint32_t len, UNUSED const Timestamp ts,
                            UNUSED const uint32_t alen,
                            UNUSED uint8_t* const sdata,
                            UNUSED uint32_t& slen) override
@@ -52,8 +53,8 @@ public:
 
   ServerDelegate() : m_connections(), m_send_back(false) {}
 
-  void* onConnected(api::Server::ID const& id,
-                    UNUSED void* const cookie) override
+  void* onConnected(api::Server::ID const& id, UNUSED void* const cookie,
+                    UNUSED const Timestamp ts) override
   {
     m_connections.push_back(id);
     return nullptr;
@@ -61,8 +62,8 @@ public:
 
   Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    const uint8_t* const data, const uint32_t len,
-                   const uint32_t alen, uint8_t* const sdata,
-                   uint32_t& slen) override
+                   UNUSED const Timestamp ts, const uint32_t alen,
+                   uint8_t* const sdata, uint32_t& slen) override
   {
     if (m_send_back && alen >= len) {
       memcpy(sdata, data, len);
@@ -71,8 +72,8 @@ public:
     return Action::Continue;
   }
 
-  void onClosed(tulips::api::Server::ID const& id,
-                UNUSED void* const cookie) override
+  void onClosed(tulips::api::Server::ID const& id, UNUSED void* const cookie,
+                UNUSED const Timestamp ts) override
   {
     m_connections.remove(id);
   }
