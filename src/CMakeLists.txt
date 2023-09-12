@@ -1,5 +1,8 @@
+if (TULIPS_TOOLS)
+  add_subdirectory(apps)
+endif (TULIPS_TOOLS)
+
 add_subdirectory(api)
-add_subdirectory(apps)
 add_subdirectory(fifo)
 add_subdirectory(stack)
 add_subdirectory(ssl)
