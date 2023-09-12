@@ -38,7 +38,8 @@ public:
   Processor(system::Logger& log, Address const& ha);
 
   Status run() override;
-  Status process(const uint16_t len, const uint8_t* const data) override;
+  Status process(const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts) override;
 
   Address const& sourceAddress() const { return m_srceAddress; }
 

@@ -18,7 +18,8 @@ public:
   Processor(system::Logger& log, ethernet::Producer& eth, ipv4::Producer& ip4);
 
   Status run() override { return Status::Ok; }
-  Status process(const uint16_t len, const uint8_t* const data) override;
+  Status process(const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts) override;
 
   Request& attach(ethernet::Producer& eth, ipv4::Producer& ip4);
   void detach(Request& req);

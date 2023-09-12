@@ -34,7 +34,8 @@ public:
 
   Status run() override { return Status::Ok; }
 
-  Status process(UNUSED const uint16_t len, const uint8_t* const data) override
+  Status process(UNUSED const uint16_t len, const uint8_t* const data,
+                 UNUSED const Timestamp ts) override
   {
     uint64_t value = *(uint64_t*)data;
     /*

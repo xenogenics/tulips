@@ -47,7 +47,8 @@ Processor::run()
 }
 
 Status
-Processor::process(const uint16_t len, const uint8_t* const data)
+Processor::process(const uint16_t len, const uint8_t* const data,
+                   UNUSED const Timestamp ts)
 {
   /*
    * Check if the incoming packet has the right size.

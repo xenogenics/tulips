@@ -26,9 +26,10 @@ public:
 
   inline Status run() override { return m_client->run(); }
 
-  inline Status process(const uint16_t len, const uint8_t* const data) override
+  inline Status process(const uint16_t len, const uint8_t* const data,
+                        const Timestamp ts) override
   {
-    return m_client->process(len, data);
+    return m_client->process(len, data, ts);
   }
 
   /**

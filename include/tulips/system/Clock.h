@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <ctime>
-#include <bits/types/struct_timespec.h>
 
 namespace tulips::system {
 

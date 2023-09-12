@@ -18,9 +18,10 @@ public:
 
   inline Status run() override { return m_server->run(); }
 
-  inline Status process(const uint16_t len, const uint8_t* const data) override
+  inline Status process(const uint16_t len, const uint8_t* const data,
+                        const Timestamp ts) override
   {
-    return m_server->process(len, data);
+    return m_server->process(len, data, ts);
   }
 
   inline void setOptions(const ID id, const uint8_t options) override

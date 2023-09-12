@@ -70,7 +70,8 @@ public:
 
 private:
   Status run() override { return Status::Ok; }
-  Status process(const uint16_t len, const uint8_t* const data) override;
+  Status process(const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts) override;
 
   static bool check(const uint8_t* const data, const size_t len);
 

@@ -1,3 +1,4 @@
+#include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/npipe/Device.h>
@@ -103,7 +104,7 @@ Device::poll(Processor& proc)
    * Process the data.
    */
   m_log.debug("NPIPE", "process ", len, "B");
-  return proc.process(len, m_read_buffer);
+  return proc.process(len, m_read_buffer, system::Clock::read());
 }
 
 Status

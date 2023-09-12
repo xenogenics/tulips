@@ -9,7 +9,8 @@ class RawProcessor : public transport::Processor
 {
 public:
   Status run() override { return Status::Ok; }
-  Status process(const uint16_t len, const uint8_t* const data) override;
+  Status process(const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts) override;
 
   void add(system::CircularBuffer::Ref const& buffer);
 

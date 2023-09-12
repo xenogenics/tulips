@@ -33,9 +33,10 @@ public:
 
   inline Status run() override { return m_ethfrom.run(); }
 
-  inline Status process(const uint16_t len, const uint8_t* const data) override
+  inline Status process(const uint16_t len, const uint8_t* const data,
+                        const Timestamp ts) override
   {
-    return m_ethfrom.process(len, data);
+    return m_ethfrom.process(len, data, ts);
   }
 
   /**
@@ -118,8 +119,8 @@ private:
   public:
     Status run() override { return Status::Ok; }
 
-    Status process(UNUSED const uint16_t len,
-                   UNUSED const uint8_t* const data) override
+    Status process(UNUSED const uint16_t len, UNUSED const uint8_t* const data,
+                   UNUSED const Timestamp ts) override
     {
       return Status::Ok;
     }

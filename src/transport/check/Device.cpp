@@ -26,12 +26,13 @@ Device::wait(Processor& proc, const uint64_t ns)
 }
 
 Status
-Device::process(const uint16_t len, const uint8_t* const data)
+Device::process(const uint16_t len, const uint8_t* const data,
+                const Timestamp ts)
 {
   if (!check(data, len)) {
     throw std::runtime_error("Empty packet has been received !");
   }
-  return m_proc->process(len, data);
+  return m_proc->process(len, data, ts);
 }
 
 Status

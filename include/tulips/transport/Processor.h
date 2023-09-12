@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/api/Status.h>
+#include <tulips/system/Clock.h>
 #include <cstdint>
 
 namespace tulips::transport {
@@ -8,6 +9,8 @@ namespace tulips::transport {
 class Processor
 {
 public:
+  using Timestamp = system::Clock::Value;
+
   /**
    * Virtual destructor.
    */
@@ -27,10 +30,12 @@ public:
    *
    * @param len the length of the piece of data.
    * @param data the piece of data.
+   * @param ts the timestamp of the data.
    *
    * @return the status of the operation.
    */
-  virtual Status process(const uint16_t len, const uint8_t* const data) = 0;
+  virtual Status process(const uint16_t len, const uint8_t* const data,
+                         const Timestamp ts) = 0;
 };
 
 }
