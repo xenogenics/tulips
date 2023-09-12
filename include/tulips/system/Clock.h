@@ -25,7 +25,7 @@ public:
 
   inline Value offset() const { return m_offset; }
 #else
-  inline static Value read() { return rdtsc(); }
+  inline static Value read() { return clock(); }
 #endif
 
 private:

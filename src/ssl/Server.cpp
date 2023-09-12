@@ -165,9 +165,10 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
 }
 
 void*
-Server::onConnected(ID const& id, void* const cookie, UNUSED const Timestamp ts)
+Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
-  auto* c = new Context(AS_SSL(m_context), m_log, m_dev.mss(), id, cookie, -1);
+  auto* ssl = AS_SSL(m_context);
+  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, ts, -1);
   c->state = Context::State::Accept;
   return c;
 }

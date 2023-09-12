@@ -1,4 +1,3 @@
-#include "tulips/system/Clock.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
@@ -8,6 +7,7 @@
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/system/Affinity.h>
+#include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/pcap/Device.h>
 #include <csignal>

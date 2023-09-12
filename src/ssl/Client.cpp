@@ -1,6 +1,6 @@
 #include "Context.h"
-#include "tulips/stack/IPv4.h"
 #include <tulips/ssl/Client.h>
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <cstdint>
 #include <stdexcept>
@@ -145,9 +145,8 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
           return Status::ProtocolError;
         }
         case 1: {
-          auto now = system::Clock::read();
           m_log.debug("SSLCLI", "SSL_connect successful");
-          c.cookie = m_delegate.onConnected(c.id, c.cookie, now);
+          c.cookie = m_delegate.onConnected(c.id, c.cookie, c.ts);
           c.state = Context::State::Ready;
           return Status::Ok;
         }
@@ -333,7 +332,7 @@ Client::averageLatency(const ID id)
 }
 
 void*
-Client::onConnected(ID const& id, void* const cookie, UNUSED const Timestamp ts)
+Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
   int keyfd = -1;
   /*
@@ -355,7 +354,7 @@ Client::onConnected(ID const& id, void* const cookie, UNUSED const Timestamp ts)
    * Create the context.
    */
   auto* ssl = AS_SSL(m_context);
-  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, keyfd);
+  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, ts, keyfd);
   c->state = Context::State::Connect;
   return c;
 }

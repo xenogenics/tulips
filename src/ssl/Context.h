@@ -4,6 +4,7 @@
 #include <tulips/api/Action.h>
 #include <tulips/api/Interface.h>
 #include <tulips/ssl/Protocol.h>
+#include <tulips/system/Clock.h>
 #include <tulips/system/Logger.h>
 #include <string>
 #include <openssl/ssl.h>
@@ -36,7 +37,7 @@ struct Context
 
   Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
           const api::interface::Client::ID id, void* const cookie,
-          const int keyfd);
+          const system::Clock::Value ts, const int keyfd);
   ~Context();
 
   /**
@@ -403,6 +404,7 @@ struct Context
   size_t buflen;
   api::interface::Client::ID id;
   void* cookie;
+  system::Clock::Value ts;
   int keyfd;
   BIO* bin;
   BIO* bout;

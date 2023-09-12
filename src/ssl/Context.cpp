@@ -70,11 +70,12 @@ errorToString(const int err)
 
 Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
                  const api::interface::Client::ID id, void* cookie,
-                 const int keyfd)
+                 const system::Clock::Value ts, const int keyfd)
   : log(log)
   , buflen(buflen)
   , id(id)
   , cookie(cookie)
+  , ts(ts)
   , keyfd(keyfd)
   , bin(bio::allocate(buflen))
   , bout(bio::allocate(buflen))
