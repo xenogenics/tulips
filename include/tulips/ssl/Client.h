@@ -12,6 +12,14 @@ class Client
   , public api::interface::Client::Delegate
 {
 public:
+  /**
+   * Type alias import.
+   */
+  using api::interface::Client::Timestamp;
+
+  /**
+   * Constructors and destructor.
+   */
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
          transport::Device& device, const Protocol type, const size_t nconn,
          const bool save_keys);

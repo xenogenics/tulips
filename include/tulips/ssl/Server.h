@@ -11,10 +11,22 @@ class Server
   , public api::interface::Server::Delegate
 {
 public:
+  /**
+   * Type alias import.
+   */
+  using api::interface::Server::Timestamp;
+
+  /**
+   * Constructor and destructor.
+   */
   Server(system::Logger& log, api::interface::Server::Delegate& delegate,
          transport::Device& device, const ssl::Protocol type,
          std::string_view cert, std::string_view key, const size_t nconn);
   ~Server() override;
+
+  /**
+   * Device interface.
+   */
 
   inline Status run() override { return m_server->run(); }
 
@@ -23,6 +35,10 @@ public:
   {
     return m_server->process(len, data, ts);
   }
+
+  /**
+   * Server interface.
+   */
 
   inline void setOptions(const ID id, const uint8_t options) override
   {
@@ -50,6 +66,10 @@ public:
   {
     m_server->unlisten(port);
   }
+
+  /**
+   * Server delegate.
+   */
 
   void* onConnected(ID const& id, void* const cookie,
                     const Timestamp ts) override;

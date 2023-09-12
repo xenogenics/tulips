@@ -8,6 +8,8 @@ namespace tulips::api::defaults {
 class ClientDelegate : public Client::Delegate
 {
 public:
+  using Client::Delegate::Timestamp;
+
   void* onConnected(Client::ID const& id, void* const cookie,
                     const Timestamp ts) override;
 
@@ -34,6 +36,8 @@ public:
 class ServerDelegate : public Server::Delegate
 {
 public:
+  using Server::Delegate::Timestamp;
+
   void* onConnected(Server::ID const& id, void* const cookie,
                     const Timestamp ts) override;
 
