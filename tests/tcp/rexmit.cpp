@@ -372,11 +372,11 @@ TEST_F(TCP_Rexmit, ConnectSynRetransmit)
   /*
    * Client retransmits after 3 seconds
    */
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
   /*
    * Server drops the extra SYN and responds.
@@ -401,11 +401,11 @@ TEST_F(TCP_Rexmit, ConnectSynAckRetransmit)
    * Server responds and restransmits after 3 seconds
    */
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
   /*
    * Client drops the extra SYNACK and responds.
@@ -440,11 +440,11 @@ TEST_F(TCP_Rexmit, ConnectSendRetransmit)
   /*
    * Client retransmits after 3 seconds.
    */
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-  system::Clock::get().offsetBy(CLOCK_SECOND);
+  system::Clock::get().offsetBy(system::Clock::SECOND);
   ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
   /*
    * Server drops the extra packet and responds.

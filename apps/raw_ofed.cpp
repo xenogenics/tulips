@@ -84,7 +84,7 @@ public:
   {
     uint64_t res = 0;
     if (m_count > 0) {
-      res = system::Clock::nanosecondsOf(m_lat / m_count);
+      res = m_lat / m_count;
     }
     m_lat = 0;
     m_count = 0;

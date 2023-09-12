@@ -1,3 +1,4 @@
+#include "tulips/system/Clock.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
@@ -131,7 +132,7 @@ run(Options const& options, transport::Device& base_device)
    */
   system::Timer timer;
   if (options.usDelay() != 0) {
-    timer.set((CLOCK_SECOND * options.usDelay()) / 1000000ULL);
+    timer.set((system::Clock::SECOND * options.usDelay()) / 1000000ULL);
   }
   /*
    * Run loop.
@@ -422,7 +423,7 @@ run(Options const& options, transport::Device& base_device)
    */
   system::Timer timer;
   if (options.usDelay() != 0) {
-    timer.set((CLOCK_SECOND * options.usDelay()) / 1000000ULL);
+    timer.set((system::Clock::SECOND * options.usDelay()) / 1000000ULL);
   }
   /*
    * Listen to incoming data.

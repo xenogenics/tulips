@@ -31,7 +31,7 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   , m_stats()
   , m_timer()
 {
-  m_timer.set(CLOCK_SECOND);
+  m_timer.set(system::Clock::SECOND);
   m_conns.resize(nconn);
   /*
    * Set the connection IDs and create the buffers.

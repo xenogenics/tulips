@@ -66,11 +66,10 @@ void
 alarm_handler(UNUSED int signal)
 {
   static size_t last = 0;
-  static double cpns = CLOCK_SECOND / 1e9;
   size_t cur = count, delta = cur - last;
   last = cur;
   double hits = (double)sends / (double)retries * 100.0;
-  double avgns = (double)cumul / cpns / (double)delta;
+  double avgns = (double)cumul / (double)delta;
   cumul = 0;
   alarm(interval);
   printf("%ld half round-trips per seconds, hits = %.2f, avg = %.4lf\n",

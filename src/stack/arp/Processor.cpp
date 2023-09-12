@@ -21,7 +21,7 @@ Processor::Processor(system::Logger& log, ethernet::Producer& eth,
   : m_log(log), m_eth(eth), m_ipv4(ip4), m_table(), m_time(0), m_timer()
 {
   m_table.resize(TABLE_SIZE);
-  m_timer.set(CLOCK_SECOND * 10);
+  m_timer.set(system::Clock::SECOND * 10);
 }
 
 Status

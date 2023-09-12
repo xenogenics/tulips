@@ -217,7 +217,7 @@ public:
   void expireTimeWait()
   {
     for (int i = 0; i < tcpv4::TIME_WAIT_TIMEOUT; i += 1) {
-      system::Clock::get().offsetBy(system::Clock::get().cyclesPerSecond());
+      system::Clock::get().offsetBy(system::Clock::SECOND);
       ASSERT_EQ(Status::Ok, m_server->run());
     }
   }

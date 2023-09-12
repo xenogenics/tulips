@@ -247,7 +247,7 @@ TEST_F(API_OneClient, ListenConnectAndClose)
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
-    system::Clock::get().offsetBy(CLOCK_SECOND);
+    system::Clock::get().offsetBy(system::Clock::SECOND);
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }
@@ -296,7 +296,7 @@ TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
-    system::Clock::get().offsetBy(CLOCK_SECOND);
+    system::Clock::get().offsetBy(system::Clock::SECOND);
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }
@@ -428,7 +428,7 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
-    system::Clock::get().offsetBy(CLOCK_SECOND);
+    system::Clock::get().offsetBy(system::Clock::SECOND);
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }

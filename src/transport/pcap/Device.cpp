@@ -9,7 +9,6 @@ static void
 writePacket(pcap_dumper_t* const dumper, const void* const data,
             const size_t len)
 {
-  static system::Clock::Value cps = system::Clock::get().cyclesPerSecond();
   static system::Clock::Value first = 0;
   struct pcap_pkthdr hdr;
   if (first == 0) {
@@ -19,15 +18,13 @@ writePacket(pcap_dumper_t* const dumper, const void* const data,
   } else {
     system::Clock::Value current = system::Clock::read();
     system::Clock::Value delta = current - first;
-    system::Clock::Value secs = delta / cps;
+    system::Clock::Value secs = delta / system::Clock::SECOND;
 #ifdef __OpenBSD__
-    system::Clock::Value nscs = delta - secs * cps;
-    nscs = nscs * 1000000ULL / cps;
+    system::Clock::Value nscs = delta - secs * system::Clock::SECOND;
     hdr.ts.tv_sec = secs;
-    hdr.ts.tv_usec = nscs;
+    hdr.ts.tv_usec = nscs / 1000ULL;
 #else
-    system::Clock::Value nscs = delta - secs * cps;
-    nscs = nscs * 1000000000ULL / cps;
+    system::Clock::Value nscs = delta - secs * system::Clock::SECOND;
     hdr.ts.tv_sec = (time_t)secs;
     hdr.ts.tv_usec = (time_t)nscs;
 #endif
