@@ -7,31 +7,19 @@ namespace tulips::transport::pcap {
 
 static void
 writePacket(pcap_dumper_t* const dumper, const void* const data,
-            const size_t len)
+            const size_t len, const system::Clock::Value ts)
 {
-  static system::Clock::Value cps = system::Clock::get().cyclesPerSecond();
-  static system::Clock::Value first = 0;
   struct pcap_pkthdr hdr;
-  if (first == 0) {
-    first = system::Clock::read();
-    hdr.ts.tv_sec = 0;
-    hdr.ts.tv_usec = 0;
-  } else {
-    system::Clock::Value current = system::Clock::read();
-    system::Clock::Value delta = current - first;
-    system::Clock::Value secs = delta / cps;
+  system::Clock::Value secs = ts / system::Clock::SECOND;
 #ifdef __OpenBSD__
-    system::Clock::Value nscs = delta - secs * cps;
-    nscs = nscs * 1000000ULL / cps;
-    hdr.ts.tv_sec = secs;
-    hdr.ts.tv_usec = nscs;
+  system::Clock::Value nscs = ts - secs * system::Clock::SECOND;
+  hdr.ts.tv_sec = secs;
+  hdr.ts.tv_usec = nscs / 1000ULL;
 #else
-    system::Clock::Value nscs = delta - secs * cps;
-    nscs = nscs * 1000000000ULL / cps;
-    hdr.ts.tv_sec = (time_t)secs;
-    hdr.ts.tv_usec = (time_t)nscs;
+  system::Clock::Value nscs = ts - secs * system::Clock::SECOND;
+  hdr.ts.tv_sec = (time_t)secs;
+  hdr.ts.tv_usec = (time_t)nscs;
 #endif
-  }
   hdr.caplen = len;
   hdr.len = len;
   pcap_dump((u_char*)dumper, &hdr, (const u_char*)data);
@@ -94,18 +82,19 @@ Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
 {
   Status ret = m_device.commit(len, buf, mss);
   if (ret == Status::Ok) {
-    writePacket(m_pcap_dumper, buf, len);
+    writePacket(m_pcap_dumper, buf, len, system::Clock::read());
   }
   return ret;
 }
 
 Status
-Device::process(const uint16_t len, const uint8_t* const data)
+Device::process(const uint16_t len, const uint8_t* const data,
+                const Timestamp ts)
 {
   if (len > 0) {
-    writePacket(m_pcap_dumper, data, len);
+    writePacket(m_pcap_dumper, data, len, ts);
   }
-  return m_proc->process(len, data);
+  return m_proc->process(len, data, ts);
 }
 
 }

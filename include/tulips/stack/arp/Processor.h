@@ -18,7 +18,8 @@ public:
   Processor(system::Logger& log, ethernet::Producer& eth, ipv4::Producer& ip4);
 
   Status run() override;
-  Status process(const uint16_t len, const uint8_t* const data) override;
+  Status process(const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts) override;
 
   bool has(ipv4::Address const& destipaddr);
   Status discover(ipv4::Address const& destipaddr);

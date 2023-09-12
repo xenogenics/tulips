@@ -540,7 +540,7 @@ Device::poll(Processor& proc)
     /*
      * Process the packet.
      */
-    proc.process(len, addr);
+    proc.process(len, addr, system::Clock::read());
     /*
      * Re-post the buffers every 10 WCs.
      */

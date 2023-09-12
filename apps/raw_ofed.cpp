@@ -34,7 +34,8 @@ public:
 
   Status run() override { return Status::Ok; }
 
-  Status process(UNUSED const uint16_t len, const uint8_t* const data) override
+  Status process(UNUSED const uint16_t len, const uint8_t* const data,
+                 UNUSED const Timestamp ts) override
   {
     uint64_t value = *(uint64_t*)data;
     /*
@@ -84,7 +85,7 @@ public:
   {
     uint64_t res = 0;
     if (m_count > 0) {
-      res = system::Clock::nanosecondsOf(m_lat / m_count);
+      res = m_lat / m_count;
     }
     m_lat = 0;
     m_count = 0;

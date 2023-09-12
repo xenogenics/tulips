@@ -56,7 +56,8 @@ public:
             const size_t nconn);
 
   Status run() override;
-  Status process(const uint16_t len, const uint8_t* const data) override;
+  Status process(const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts) override;
 
   Processor& setEthernetProcessor(ethernet::Processor& eth)
   {
@@ -129,7 +130,8 @@ private:
                            const uint16_t len, const uint8_t* const data);
 #endif
 
-  Status process(Connection& e, const uint16_t len, const uint8_t* const data);
+  Status process(Connection& e, const uint16_t len, const uint8_t* const data,
+                 const Timestamp ts);
 
   /**
    * Send the data present in the send buffer using Nagle's algorithm.

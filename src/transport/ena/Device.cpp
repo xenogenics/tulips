@@ -1,6 +1,7 @@
-#include "tulips/system/CircularBuffer.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
+#include <tulips/system/CircularBuffer.h>
+#include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/ena/Device.h>
 #include <chrono>
@@ -161,9 +162,11 @@ Device::poll(Processor& proc)
    */
   if (!m_buffer->empty()) {
     uint16_t len = 0;
+    system::Clock::Value ts = 0;
     m_buffer->read_all((uint8_t*)&len, sizeof(len));
+    m_buffer->read_all((uint8_t*)&ts, sizeof(ts));
     m_buffer->read_all(m_packet, len);
-    proc.process(len, m_packet);
+    proc.process(len, m_packet, ts);
   }
   /*
    * Process the incoming receive buffers.
@@ -218,7 +221,7 @@ Device::poll(Processor& proc)
      * Process the packet.
      */
     m_log.trace("ENA", "processing addr=", (void*)dat, " len=", len);
-    proc.process(len, dat);
+    proc.process(len, dat, system::Clock::read());
     /*
      * Free the packet.
      */

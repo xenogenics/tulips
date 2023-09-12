@@ -344,7 +344,7 @@ Client::cookie(const ID id) const
 }
 
 void
-Client::onConnected(tcpv4::Connection& c)
+Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   ID id = m_idx[c.id()];
   m_log.debug("APICLI", "connection ", c.id(), ":", id, " connected");
@@ -355,12 +355,12 @@ Client::onConnected(tcpv4::Connection& c)
     return;
   }
   d.state = Connection::State::Connected;
-  c.setCookie(m_delegate.onConnected(id, nullptr));
+  c.setCookie(m_delegate.onConnected(id, nullptr, ts));
   c.setOptions(d.opts);
 }
 
 void
-Client::onAborted(tcpv4::Connection& c)
+Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
 {
   m_log.debug("APICLI", "connection aborted, closing");
   ID id = m_idx[c.id()];
@@ -371,12 +371,12 @@ Client::onAborted(tcpv4::Connection& c)
     return;
   }
   d.state = Connection::State::Closed;
-  m_delegate.onClosed(id, c.cookie());
+  m_delegate.onClosed(id, c.cookie(), ts);
   c.setCookie(nullptr);
 }
 
 void
-Client::onTimedOut(tcpv4::Connection& c)
+Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 {
   m_log.debug("APICLI", "connection timed out, closing");
   ID id = m_idx[c.id()];
@@ -387,12 +387,12 @@ Client::onTimedOut(tcpv4::Connection& c)
     return;
   }
   d.state = Connection::State::Closed;
-  m_delegate.onClosed(id, c.cookie());
+  m_delegate.onClosed(id, c.cookie(), ts);
   c.setCookie(nullptr);
 }
 
 void
-Client::onClosed(tcpv4::Connection& c)
+Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
 {
   m_log.debug("APICLI", "connection closed");
   ID id = m_idx[c.id()];
@@ -403,12 +403,12 @@ Client::onClosed(tcpv4::Connection& c)
     return;
   }
   d.state = Connection::State::Closed;
-  m_delegate.onClosed(id, c.cookie());
+  m_delegate.onClosed(id, c.cookie(), ts);
   c.setCookie(nullptr);
 }
 
 void
-Client::onSent(UNUSED tcpv4::Connection& c)
+Client::onSent(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts)
 {
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   ID id = m_idx[c.id()];
@@ -424,7 +424,7 @@ Client::onSent(UNUSED tcpv4::Connection& c)
 }
 
 Action
-Client::onAcked(tcpv4::Connection& c)
+Client::onAcked(tcpv4::Connection& c, const Timestamp ts)
 {
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
@@ -438,12 +438,12 @@ Client::onAcked(tcpv4::Connection& c)
   d.lat += system::Clock::read() - d.history.front();
   d.history.pop_front();
 #endif
-  return m_delegate.onAcked(id, c.cookie());
+  return m_delegate.onAcked(id, c.cookie(), ts);
 }
 
 Action
-Client::onAcked(stack::tcpv4::Connection& c, const uint32_t alen,
-                uint8_t* const sdata, uint32_t& slen)
+Client::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
+                const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
 {
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
@@ -457,12 +457,12 @@ Client::onAcked(stack::tcpv4::Connection& c, const uint32_t alen,
   d.lat += system::Clock::read() - d.history.front();
   d.history.pop_front();
 #endif
-  return m_delegate.onAcked(id, c.cookie(), alen, sdata, slen);
+  return m_delegate.onAcked(id, c.cookie(), ts, alen, sdata, slen);
 }
 
 Action
 Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                  const uint32_t len)
+                  const uint32_t len, const Timestamp ts)
 {
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
@@ -471,13 +471,13 @@ Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
                 ", ignoring");
     return Action::Abort;
   }
-  return m_delegate.onNewData(id, c.cookie(), data, len);
+  return m_delegate.onNewData(id, c.cookie(), data, len, ts);
 }
 
 Action
 Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                  const uint32_t len, const uint32_t alen, uint8_t* const sdata,
-                  uint32_t& slen)
+                  const uint32_t len, const Timestamp ts, const uint32_t alen,
+                  uint8_t* const sdata, uint32_t& slen)
 {
   ID id = m_idx[c.id()];
   Connection& d = m_cns[id];
@@ -486,7 +486,7 @@ Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
                 ", ignoring");
     return Action::Abort;
   }
-  return m_delegate.onNewData(id, c.cookie(), data, len, alen, sdata, slen);
+  return m_delegate.onNewData(id, c.cookie(), data, len, ts, alen, sdata, slen);
 }
 
 }

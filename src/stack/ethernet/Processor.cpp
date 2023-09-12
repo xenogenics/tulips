@@ -53,7 +53,8 @@ Processor::run()
 }
 
 Status
-Processor::process(const uint16_t len, const uint8_t* const data)
+Processor::process(const uint16_t len, const uint8_t* const data,
+                   const Timestamp ts)
 {
   m_log.trace("ETH", "processing frame: ", len, "B");
   /*
@@ -76,7 +77,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
         break;
       }
 #endif
-      ret = m_arp->process(len - HEADER_LEN, data + HEADER_LEN);
+      ret = m_arp->process(len - HEADER_LEN, data + HEADER_LEN, ts);
       break;
     }
 #endif
@@ -87,7 +88,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
         break;
       }
 #endif
-      ret = m_ipv4->process(len - HEADER_LEN, data + HEADER_LEN);
+      ret = m_ipv4->process(len - HEADER_LEN, data + HEADER_LEN, ts);
       break;
     }
     default: {
@@ -99,7 +100,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
           break;
         }
 #endif
-        ret = m_raw->process(m_type, data + HEADER_LEN);
+        ret = m_raw->process(m_type, data + HEADER_LEN, ts);
         break;
       }
 #endif

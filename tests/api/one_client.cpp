@@ -23,7 +23,8 @@ public:
     , m_id(api::Server::DEFAULT_ID)
   {}
 
-  void* onConnected(api::Server::ID const& id, void* const cookie) override
+  void* onConnected(api::Server::ID const& id, void* const cookie,
+                    UNUSED const Timestamp ts) override
   {
     if (cookie != nullptr) {
       m_listenCookie = *reinterpret_cast<size_t*>(cookie);
@@ -34,8 +35,8 @@ public:
 
   Action onNewData(UNUSED api::Server::ID const& id, UNUSED void* const cookie,
                    UNUSED const uint8_t* const data, UNUSED const uint32_t len,
-                   UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
-                   UNUSED uint32_t& slen) override
+                   UNUSED const Timestamp ts, UNUSED const uint32_t alen,
+                   UNUSED uint8_t* const sdata, UNUSED uint32_t& slen) override
   {
     return m_action;
   }
@@ -247,7 +248,7 @@ TEST_F(API_OneClient, ListenConnectAndClose)
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
-    system::Clock::get().offsetBy(CLOCK_SECOND);
+    system::Clock::get().offsetBy(system::Clock::SECOND);
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }
@@ -296,7 +297,7 @@ TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
-    system::Clock::get().offsetBy(CLOCK_SECOND);
+    system::Clock::get().offsetBy(system::Clock::SECOND);
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }
@@ -428,7 +429,7 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
-    system::Clock::get().offsetBy(CLOCK_SECOND);
+    system::Clock::get().offsetBy(system::Clock::SECOND);
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }

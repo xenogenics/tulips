@@ -31,7 +31,7 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   , m_stats()
   , m_timer()
 {
-  m_timer.set(CLOCK_SECOND);
+  m_timer.set(system::Clock::SECOND);
   m_conns.resize(nconn);
   /*
    * Set the connection IDs and create the buffers.
@@ -121,7 +121,7 @@ Processor::run()
                                 e.m_state == Connection::SYN_RCVD) &&
                                e.m_nrtx == MAXSYNRTX)) {
       m_log.debug("TCP4", "aborting the connection");
-      m_handler.onTimedOut(e);
+      m_handler.onTimedOut(e, system::Clock::read());
       return sendAbort(e);
     }
     /*
@@ -144,9 +144,13 @@ Processor::run()
 }
 
 Status
-Processor::process(const uint16_t len, const uint8_t* const data)
+Processor::process(const uint16_t len, const uint8_t* const data,
+                   const Timestamp ts)
 {
   Connections::iterator e;
+  /*
+   * Update the stats.
+   */
   m_stats.recv += 1;
   /*
    * Compute and check the TCP checksum.
@@ -174,7 +178,7 @@ Processor::process(const uint16_t len, const uint8_t* const data)
     if (e.m_state != Connection::CLOSED && INTCP->destport == e.m_lport &&
         INTCP->srcport == e.m_rport &&
         m_ipv4from->sourceAddress() == e.m_ripaddr) {
-      return process(e, len, data);
+      return process(e, len, data, ts);
     }
   }
   /*
@@ -311,8 +315,12 @@ Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
 #endif
 
 Status
-Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
+Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
+                   const Timestamp ts)
 {
+  /*
+   * Gather the input packet information.
+   */
   uint16_t plen;
   uint16_t window = ntohs(INTCP->wnd);
   const uint32_t seqno = ntohl(INTCP->seqno);
@@ -333,7 +341,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
     m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
     e.m_state = Connection::CLOSED;
     m_log.debug("TCP4", "Received reset on connection ", e.id(), ", aborting");
-    m_handler.onAborted(e);
+    m_handler.onAborted(e, ts);
     return Status::Ok;
   }
   /*
@@ -496,7 +504,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          * Send the connection event.
          */
         e.m_state = Connection::ESTABLISHED;
-        m_handler.onConnected(e);
+        m_handler.onConnected(e, ts);
         /*
          * Send the newdata event. Pass the packet data directly. At this stage,
          * no data has been buffered.
@@ -505,7 +513,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           e.m_rcv_nxt += plen;
           e.m_newdata = true;
           e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
-          m_handler.onNewData(e, data + tcpHdrLen, plen);
+          m_handler.onNewData(e, data + tcpHdrLen, plen, ts);
           return sendAck(e);
         }
       }
@@ -539,7 +547,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
         /*
          * Send the connected event.
          */
-        m_handler.onConnected(e);
+        m_handler.onConnected(e, ts);
         /*
          * Send the newdata event. Pass the packet data directly. At this stage,
          * no data has been buffered.
@@ -547,7 +555,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
         if (plen > 0) {
           e.m_newdata = true;
           e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
-          m_handler.onNewData(e, data + tcpHdrLen, plen);
+          m_handler.onNewData(e, data + tcpHdrLen, plen, ts);
         }
         return sendAck(e);
       }
@@ -555,7 +563,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
        * Inform the application that the connection failed.
        */
       m_log.debug("TCP4", "Connection ", e.id(), " failed, aborting");
-      m_handler.onAborted(e);
+      m_handler.onAborted(e, ts);
       /*
        * The connection is closed after we send the RST.
        */
@@ -591,7 +599,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
          * Process the embedded data.
          */
         if (plen > 0) {
-          m_handler.onNewData(e, data + tcpHdrLen, plen);
+          m_handler.onNewData(e, data + tcpHdrLen, plen, ts);
         }
         /*
          * Acknowledge the FIN. If we are here there is no more outstanding
@@ -606,7 +614,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
       }
       /*
        * Check the URG flag. If this is set, the segment carries urgent data
-       * that we must pass to the application. NOTE: skip it for now.
+       * that we must pass to the application. NOTE: skip it for ts.
        */
       uint16_t urglen = 0;
       if ((INTCP->flags & Flag::URG) != 0) {
@@ -676,14 +684,14 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
              * Notify the handler.
              */
             auto* const buffer = e.m_sdat + HEADER_LEN + e.m_slen;
-            auto action = m_handler.onAcked(e, alen, buffer, rlen);
+            auto action = m_handler.onAcked(e, ts, alen, buffer, rlen);
             /*
              * Process the action.
              */
             switch (action) {
               case Action::Abort:
                 m_log.debug("TCP4", "onAcked() abort connection ", e.id());
-                m_handler.onAborted(e);
+                m_handler.onAborted(e, ts);
                 return sendAbort(e);
               case Action::Close:
                 m_log.debug("TCP4", "onAcked() close connection ", e.id());
@@ -710,14 +718,14 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
             /*
              * Notify the handler.
              */
-            auto action = m_handler.onAcked(e);
+            auto action = m_handler.onAcked(e, ts);
             /*
              * Process the action.
              */
             switch (action) {
               case Action::Abort:
                 m_log.debug("TCP4", "onAcked() abort connection ", e.id());
-                m_handler.onAborted(e);
+                m_handler.onAborted(e, ts);
                 return sendAbort(e);
               case Action::Close:
                 m_log.debug("TCP4", "onAcked() close connection ", e.id());
@@ -773,12 +781,12 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
             /*
              * The application can send back some data.
              */
-            switch (m_handler.onNewData(e, dataptr, datalen, alen,
+            switch (m_handler.onNewData(e, dataptr, datalen, ts, alen,
                                         e.m_sdat + HEADER_LEN + e.m_slen,
                                         rlen)) {
               case Action::Abort:
                 m_log.debug("TCP4", "onNewData() abort connection ", e.id());
-                m_handler.onAborted(e);
+                m_handler.onAborted(e, ts);
                 return sendAbort(e);
               case Action::Close:
                 m_log.debug("TCP4", "onNewData() close connection ", e.id());
@@ -800,10 +808,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
            * outstanding data in the send buffer.
            */
           else {
-            switch (m_handler.onNewData(e, dataptr, datalen)) {
+            switch (m_handler.onNewData(e, dataptr, datalen, ts)) {
               case Action::Abort:
                 m_log.debug("TCP4", "onNewData() abort connection ", e.id());
-                m_handler.onAborted(e);
+                m_handler.onAborted(e, ts);
                 return sendAbort(e);
               case Action::Close:
                 m_log.debug("TCP4", "onNewData() close connection ", e.id());
@@ -842,7 +850,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
         m_log.debug("TCP4", "connection closed");
         m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
         e.m_state = Connection::CLOSED;
-        m_handler.onClosed(e);
+        m_handler.onClosed(e, ts);
       }
       break;
     }
@@ -868,7 +876,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
           e.m_state = Connection::CLOSING;
         }
         e.m_rcv_nxt += 1;
-        m_handler.onClosed(e);
+        m_handler.onClosed(e, ts);
         return sendAck(e);
       }
       /*
@@ -899,7 +907,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data)
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
         e.m_timer = 0;
-        m_handler.onClosed(e);
+        m_handler.onClosed(e, ts);
         return sendAck(e);
       }
       /*

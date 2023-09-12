@@ -53,7 +53,8 @@ Processor::run()
 }
 
 Status
-Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
+Processor::process(UNUSED const uint16_t len, const uint8_t* const data,
+                   const Timestamp ts)
 {
   Status ret;
   /*
@@ -117,7 +118,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
         break;
       }
 #endif
-      ret = m_tcp->process(iplen, data + HEADER_LEN);
+      ret = m_tcp->process(iplen, data + HEADER_LEN, ts);
       break;
     }
 #ifdef TULIPS_ENABLE_ICMP
@@ -128,7 +129,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
         break;
       }
 #endif
-      ret = m_icmp->process(iplen, data + HEADER_LEN);
+      ret = m_icmp->process(iplen, data + HEADER_LEN, ts);
       break;
     }
 #endif
@@ -140,7 +141,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data)
         break;
       }
 #endif
-      ret = m_raw->process(iplen, data + HEADER_LEN);
+      ret = m_raw->process(iplen, data + HEADER_LEN, ts);
       break;
     }
 #endif

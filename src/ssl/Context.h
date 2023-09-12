@@ -4,6 +4,7 @@
 #include <tulips/api/Action.h>
 #include <tulips/api/Interface.h>
 #include <tulips/ssl/Protocol.h>
+#include <tulips/system/Clock.h>
 #include <tulips/system/Logger.h>
 #include <string>
 #include <openssl/ssl.h>
@@ -36,7 +37,7 @@ struct Context
 
   Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
           const api::interface::Client::ID id, void* const cookie,
-          const int keyfd);
+          const system::Clock::Value ts, const int keyfd);
   ~Context();
 
   /**
@@ -44,7 +45,8 @@ struct Context
    */
   template<typename ID>
   Action onAcked(ID const& id, api::interface::Delegate<ID>& delegate,
-                 const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
+                 const system::Clock::Value ts, const uint32_t alen,
+                 uint8_t* const sdata, uint32_t& slen)
   {
     /*
      * Reset the blocked state.
@@ -61,7 +63,7 @@ struct Context
      */
     uint8_t out[alen];
     uint32_t rlen = 0;
-    Action act = delegate.onAcked(id, cookie, alen, out, rlen);
+    Action act = delegate.onAcked(id, cookie, ts, alen, out, rlen);
     if (act != Action::Continue) {
       return abortOrClose(act, alen, sdata, slen);
     }
@@ -94,7 +96,8 @@ struct Context
    */
   template<typename ID>
   Action onNewData(ID const& id, api::interface::Delegate<ID>& delegate,
-                   const uint8_t* const data, const uint32_t len)
+                   const uint8_t* const data, const uint32_t len,
+                   const system::Clock::Value ts)
   {
     int ret = 0;
     /*
@@ -166,7 +169,7 @@ struct Context
       /*
        * Notify the delegate.
        */
-      auto act = delegate.onNewData(id, cookie, rdbf, ret);
+      auto act = delegate.onNewData(id, cookie, rdbf, ret, ts);
       if (act != Action::Continue) {
         return act;
       }
@@ -183,7 +186,8 @@ struct Context
   template<typename ID>
   Action onNewData(ID const& id, api::interface::Delegate<ID>& delegate,
                    const uint8_t* const data, const uint32_t len,
-                   const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
+                   const system::Clock::Value ts, const uint32_t alen,
+                   uint8_t* const sdata, uint32_t& slen)
   {
     int ret = 0;
     /*
@@ -322,7 +326,8 @@ struct Context
            */
           uint32_t rlen = 0;
           uint32_t wlen = alen - acc;
-          auto act = delegate.onNewData(id, cookie, rdbf, ret, wlen, out, rlen);
+          auto act =
+            delegate.onNewData(id, cookie, rdbf, ret, ts, wlen, out, rlen);
           if (act != Action::Continue) {
             return abortOrClose(act, alen, sdata, slen);
           }
@@ -399,6 +404,7 @@ struct Context
   size_t buflen;
   api::interface::Client::ID id;
   void* cookie;
+  system::Clock::Value ts;
   int keyfd;
   BIO* bin;
   BIO* bout;

@@ -39,7 +39,8 @@ Processor::detach(Request& req)
 }
 
 Status
-Processor::process(const uint16_t len, const uint8_t* const data)
+Processor::process(const uint16_t len, const uint8_t* const data,
+                   UNUSED const Timestamp ts)
 {
   /*
    * Process the ICMP packet.

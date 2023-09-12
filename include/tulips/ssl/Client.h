@@ -26,9 +26,10 @@ public:
 
   inline Status run() override { return m_client->run(); }
 
-  inline Status process(const uint16_t len, const uint8_t* const data) override
+  inline Status process(const uint16_t len, const uint8_t* const data,
+                        const Timestamp ts) override
   {
-    return m_client->process(len, data);
+    return m_client->process(len, data, ts);
   }
 
   /**
@@ -57,21 +58,23 @@ public:
    * Client delegate.
    */
 
-  void* onConnected(ID const& id, void* const cookie) override;
+  void* onConnected(ID const& id, void* const cookie,
+                    const Timestamp ts) override;
 
-  Action onAcked(ID const& id, void* const cookie) override;
+  Action onAcked(ID const& id, void* const cookie, const Timestamp ts) override;
 
-  Action onAcked(ID const& id, void* const cookie, const uint32_t alen,
-                 uint8_t* const sdata, uint32_t& slen) override;
+  Action onAcked(ID const& id, void* const cookie, const Timestamp ts,
+                 const uint32_t alen, uint8_t* const sdata,
+                 uint32_t& slen) override;
 
   Action onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                   const uint32_t len) override;
+                   const uint32_t len, const Timestamp ts) override;
 
   Action onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                   const uint32_t len, const uint32_t alen,
+                   const uint32_t len, const Timestamp ts, const uint32_t alen,
                    uint8_t* const sdata, uint32_t& slen) override;
 
-  void onClosed(ID const& id, void* const cookie) override;
+  void onClosed(ID const& id, void* const cookie, const Timestamp ts) override;
 
 private:
   Status flush(const ID id, void* const cookie);

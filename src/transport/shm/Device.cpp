@@ -1,5 +1,6 @@
-#include "tulips/fifo/errors.h"
+#include <tulips/fifo/errors.h>
 #include <tulips/stack/Utils.h>
+#include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/shm/Device.h>
 #include <cstdlib>
@@ -60,7 +61,7 @@ Device::poll(Processor& proc)
     return Status::HardwareError;
   }
   m_log.trace("SHM", "processing packet: ", packet->len, "B, ", packet);
-  Status ret = proc.process(packet->len, packet->data);
+  Status ret = proc.process(packet->len, packet->data, system::Clock::read());
   tulips_fifo_pop(read_fifo);
   return ret;
 }
@@ -68,33 +69,16 @@ Device::poll(Processor& proc)
 Status
 Device::wait(Processor& proc, const uint64_t ns)
 {
-  bool empty = false;
-  /*
-   * Check the FIFO for data
-   */
-  for (size_t i = 0; i < RETRY_COUNT; i += 1) {
-    empty = tulips_fifo_empty(read_fifo) == TULIPS_FIFO_YES;
-    if (!empty) {
-      break;
-    }
-  }
   /*
    * If there is no data, wait if requested otherwise return
    */
-  if (empty && waitForInput(ns)) {
+  if (waitForInput(ns)) {
     return Status::NoDataAvailable;
   }
   /*
    * Process the data
    */
-  Packet* packet = nullptr;
-  if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
-    return Status::HardwareError;
-  }
-  m_log.trace("SHM", "processing packet: ", packet->len, "B, ", packet);
-  Status ret = proc.process(packet->len, packet->data);
-  tulips_fifo_pop(read_fifo);
-  return ret;
+  return poll(proc);
 }
 
 Status

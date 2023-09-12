@@ -1,3 +1,4 @@
+#include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/list/Device.h>
@@ -56,7 +57,7 @@ Device::poll(Processor& proc)
    */
   Packet* packet = m_read.front();
   m_log.trace("LIST", "processing packet: ", packet->len, "B, ", packet);
-  Status ret = proc.process(packet->len, packet->data);
+  Status ret = proc.process(packet->len, packet->data, system::Clock::read());
   m_read.pop_front();
   Packet::release(packet);
   return ret;
@@ -74,12 +75,7 @@ Device::wait(Processor& proc, const uint64_t ns)
   /*
    * Process the data
    */
-  Packet* packet = m_read.front();
-  m_log.trace("LIST", "processing packet: ", packet->len, "B, ", packet);
-  Status ret = proc.process(packet->len, packet->data);
-  m_read.pop_front();
-  Packet::release(packet);
-  return ret;
+  return poll(proc);
 }
 
 Status

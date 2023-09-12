@@ -21,7 +21,7 @@ public:
 
   tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie, const uint8_t* const data,
-                           UNUSED const uint32_t len,
+                           UNUSED const uint32_t len, UNUSED const Timestamp ts,
                            UNUSED const uint32_t alen,
                            UNUSED uint8_t* const sdata,
                            UNUSED uint32_t& slen) override
@@ -104,7 +104,7 @@ public:
   void expireTimeWait()
   {
     for (int i = 0; i <= tcpv4::TIME_WAIT_TIMEOUT; i += 1) {
-      system::Clock::get().offsetBy(CLOCK_SECOND);
+      system::Clock::get().offsetBy(system::Clock::SECOND);
       ASSERT_EQ(Status::Ok, m_client->run());
       ASSERT_EQ(Status::Ok, m_server->run());
     }

@@ -28,7 +28,8 @@ public:
     return Status::Ok;
   }
 
-  Status process(const uint16_t len, const uint8_t* const data) override
+  Status process(const uint16_t len, const uint8_t* const data,
+                 UNUSED Timestamp ts) override
   {
     size_t value;
     memcpy(&value, data, sizeof(size_t));
@@ -61,7 +62,8 @@ public:
 
   Status run() override { return Status::Ok; }
 
-  Status process(UNUSED const uint16_t len, const uint8_t* const data) override
+  Status process(UNUSED const uint16_t len, const uint8_t* const data,
+                 UNUSED Timestamp ts) override
   {
     memcpy(&m_value, data, sizeof(size_t));
     uint8_t* outdata;
