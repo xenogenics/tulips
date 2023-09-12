@@ -3,6 +3,7 @@
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Compiler.h>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <unistd.h>
 
@@ -40,7 +41,7 @@ using SeqLimits = std::numeric_limits<uint32_t>;
 struct Header
 {
   Port srcport;
-  Port destport;
+  Port dstport;
   uint32_t seqno;
   uint32_t ackno;
   struct
@@ -61,5 +62,18 @@ struct Header
 static constexpr size_t USED HEADER_LEN = sizeof(Header);
 static constexpr uint8_t USED RTO = 3;
 static constexpr uint16_t USED HEADER_OVERHEAD = ipv4::HEADER_LEN + HEADER_LEN;
+
+}
+
+namespace std {
+
+template<>
+struct std::hash<tulips::stack::tcpv4::Header>
+{
+  uint64_t operator()(const tulips::stack::tcpv4::Header& header) const
+  {
+    return uint64_t(header.dstport) << 32 | uint64_t(header.srcport);
+  }
+};
 
 }

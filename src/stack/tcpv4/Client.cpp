@@ -55,13 +55,13 @@ Processor::connect(ethernet::Address const& rhwaddr,
   Port lport = 0;
   Connections::iterator e;
   /*
-   * Update IP and Ethernet attributes
+   * Update IP and Ethernet attributes.
    */
   m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(ripaddr);
   m_ethto.setDestinationAddress(rhwaddr);
   /*
-   * Allocate a send buffer
+   * Allocate a send buffer.
    */
   uint8_t* outdata;
   Status ret = m_ipv4to.prepare(outdata);
@@ -69,18 +69,18 @@ Processor::connect(ethernet::Address const& rhwaddr,
     return ret;
   }
   /*
-   * Find an unused local port
+   * Find an unused local port.
    */
   do {
     e = m_conns.end();
     /*
-     * Compute a proper local port value
+     * Compute a local port value.
      */
     do {
       lport = system::Clock::read() & 0xFFFF;
     } while (lport < 4096);
     /*
-     * Check if this port is already in use
+     * Check if this port is already in use.
      */
     for (auto it = m_conns.begin(); it != m_conns.end(); it++) {
       if (it->m_state != Connection::CLOSED && it->m_lport == htons(lport)) {
@@ -89,7 +89,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
     }
   } while (e != m_conns.end());
   /*
-   * Allocate a new connection
+   * Find a free new connection.
    */
   for (auto it = m_conns.begin(); it != m_conns.end(); it++) {
     if (it->m_state == Connection::CLOSED) {
@@ -102,6 +102,9 @@ Processor::connect(ethernet::Address const& rhwaddr,
       }
     }
   }
+  /*
+   * Bail out if there is no free connection available.
+   */
   if (e == m_conns.end()) {
     return Status::NoMoreResources;
   }
@@ -136,25 +139,32 @@ Processor::connect(ethernet::Address const& rhwaddr,
   e->m_initialmss = m_device.mtu() - HEADER_OVERHEAD;
   e->m_mss = e->m_initialmss;
   e->m_sa = 0;
-  e->m_sv = 16; // Initial value of the RTT variance
+  e->m_sv = 16;
   e->m_rto = RTO;
   e->m_timer = RTO;
   e->m_cookie = nullptr;
   /*
-   * Prepare the connection segment.
+   * Prepare the SYN. The length of SYN is 1.
    */
   Segment& seg = e->nextAvailableSegment();
-  seg.set(1, e->m_snd_nxt, outdata); // TCP length of the SYN is one
-  /*
-   * Send SYN
-   */
+  seg.set(1, e->m_snd_nxt, outdata);
   OUTTCP->flags = 0;
+  /*
+   * Send SYN.
+   */
   if (sendSyn(*e, seg) != Status::Ok) {
     m_device.unlisten(ipv4::Protocol::TCP, lport, ripaddr, rport);
     e->m_state = Connection::CLOSED;
     return ret;
   }
-  id = e - m_conns.begin();
+  /*
+   * Update the connection index.
+   */
+  m_index.insert({ std::hash<Connection>()(*e), e->id() });
+  /*
+   * Done.
+   */
+  id = e->id();
   return Status::Ok;
 }
 
@@ -172,6 +182,7 @@ Processor::abort(Connection::ID const& id)
    * Abort the connection
    */
   m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, c.m_ripaddr, c.m_rport);
+  m_index.erase(std::hash<Connection>()(c));
   c.m_state = Connection::CLOSED;
   m_log.debug("TCP4", "Abort connection ", id, " requested");
   m_handler.onAborted(c, system::Clock::read());

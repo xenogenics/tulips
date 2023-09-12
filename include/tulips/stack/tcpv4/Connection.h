@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
@@ -7,9 +8,16 @@
 #include <tulips/stack/tcpv4/Segment.h>
 #include <tulips/system/SpinLock.h>
 #include <cstdint>
+#include <functional>
 #include <stdexcept>
 
 namespace tulips::stack::tcpv4 {
+
+/*
+ * Protocol constants.
+ */
+static constexpr int USED MAXRTX = 5;
+static constexpr int USED MAXSYNRTX = 5;
 
 /*
  * We rely on the compiler to wrap around the value of the next segment. We
@@ -93,9 +101,22 @@ private:
 
   inline bool hasPendingSendData() const { return m_slen != 0; }
 
-  uint32_t window() const { return (uint32_t)m_window << m_wndscl; }
+  inline bool hasTimedOut() const
+  {
+    return m_nrtx == MAXRTX || ((m_state == Connection::SYN_SENT ||
+                                 m_state == Connection::SYN_RCVD) &&
+                                m_nrtx == MAXSYNRTX);
+  }
 
-  uint32_t window(const uint16_t wnd) const
+  inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
+  {
+    return m_state != Connection::CLOSED && header.dstport == m_lport &&
+           header.srcport == m_rport && ripaddr == m_ripaddr;
+  }
+
+  inline uint32_t window() const { return (uint32_t)m_window << m_wndscl; }
+
+  inline uint32_t window(const uint16_t wnd) const
   {
     return (uint32_t)wnd << m_wndscl;
   }
@@ -218,5 +239,18 @@ private:
 
 static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 64,
               "Size of tcpv4::Connection is invalid");
+
+}
+
+namespace std {
+
+template<>
+struct std::hash<tulips::stack::tcpv4::Connection>
+{
+  uint64_t operator()(const tulips::stack::tcpv4::Connection& c) const
+  {
+    return uint64_t(c.localPort()) << 32 | uint64_t(c.remotePort());
+  }
+};
 
 }
