@@ -60,7 +60,7 @@ Device::poll(Processor& proc)
   if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
     return Status::HardwareError;
   }
-  m_log.trace("SHM", "processing packet: ", packet->len, "B, ", packet);
+  m_log.trace("SHM", "processing packet: ", size_t(packet->len), "B, ", packet);
   Status ret = proc.process(packet->len, packet->data, system::Clock::read());
   tulips_fifo_pop(read_fifo);
   return ret;

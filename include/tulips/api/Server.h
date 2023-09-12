@@ -22,8 +22,20 @@ class Server
   , public stack::tcpv4::EventHandler
 {
 public:
+  /**
+   * Type alias import.
+   */
+  using interface::Server::Timestamp;
+
+  /**
+   * Constructor and destructor.
+   */
   Server(system::Logger& log, Delegate& delegate, transport::Device& device,
          const size_t nconn);
+
+  /**
+   * Device interface.
+   */
 
   inline Status run() override { return m_ethfrom.run(); }
 
@@ -32,6 +44,10 @@ public:
   {
     return m_ethfrom.process(len, data, ts);
   }
+
+  /**
+   * Server interface.
+   */
 
   void listen(const stack::tcpv4::Port port, void* cookie) override;
 
@@ -69,6 +85,10 @@ private:
     }
   };
 #endif
+
+  /**
+   * TCP event interface.
+   */
 
   void onConnected(stack::tcpv4::Connection& c, const Timestamp ts) override;
   void onAborted(stack::tcpv4::Connection& c, const Timestamp ts) override;

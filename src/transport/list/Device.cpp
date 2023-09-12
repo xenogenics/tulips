@@ -56,7 +56,8 @@ Device::poll(Processor& proc)
    * Process the data.
    */
   Packet* packet = m_read.front();
-  m_log.trace("LIST", "processing packet: ", packet->len, "B, ", packet);
+  m_log.trace("LIST", "processing packet: ", size_t(packet->len), "B, ",
+              packet);
   Status ret = proc.process(packet->len, packet->data, system::Clock::read());
   m_read.pop_front();
   Packet::release(packet);

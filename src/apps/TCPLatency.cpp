@@ -57,6 +57,8 @@ enum class State
 class Delegate : public api::defaults::ClientDelegate
 {
 public:
+  using api::defaults::ClientDelegate::Timestamp;
+
   void* onConnected(UNUSED tulips::api::Client::ID const& id,
                     UNUSED void* const cookie,
                     UNUSED const Timestamp ts) override

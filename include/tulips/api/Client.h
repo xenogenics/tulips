@@ -23,6 +23,14 @@ class Client
   , public stack::tcpv4::EventHandler
 {
 public:
+  /**
+   * Type alias import.
+   */
+  using interface::Client::Timestamp;
+
+  /**
+   * Constructor and destructor.
+   */
   Client(system::Logger& log, Delegate& dlg, transport::Device& device,
          const size_t nconn);
   ~Client() override = default;
