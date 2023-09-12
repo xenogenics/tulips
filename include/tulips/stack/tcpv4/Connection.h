@@ -245,7 +245,7 @@ static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 64,
 namespace std {
 
 template<>
-struct std::hash<tulips::stack::tcpv4::Connection>
+struct hash<tulips::stack::tcpv4::Connection>
 {
   uint64_t operator()(const tulips::stack::tcpv4::Connection& c) const
   {

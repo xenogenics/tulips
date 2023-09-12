@@ -68,7 +68,7 @@ static constexpr uint16_t USED HEADER_OVERHEAD = ipv4::HEADER_LEN + HEADER_LEN;
 namespace std {
 
 template<>
-struct std::hash<tulips::stack::tcpv4::Header>
+struct hash<tulips::stack::tcpv4::Header>
 {
   uint64_t operator()(const tulips::stack::tcpv4::Header& header) const
   {
