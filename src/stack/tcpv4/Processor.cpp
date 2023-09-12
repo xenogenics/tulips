@@ -28,13 +28,14 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   , m_mss(m_ipv4to.mss() - HEADER_LEN)
   , m_listenports()
   , m_conns()
+  , m_index()
   , m_stats()
   , m_timer()
 {
   m_timer.set(system::Clock::SECOND);
   m_conns.resize(nconn);
   /*
-   * Set the connection IDs and create the buffers.
+   * Set the connection IDs.
    */
   for (uint16_t id = 0; id < nconn; id += 1) {
     m_conns[id].m_id = id;
@@ -97,6 +98,7 @@ Processor::run()
       if (e.m_timer == TIME_WAIT_TIMEOUT) {
         m_log.debug("TCP4", "connection closed");
         m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+        m_index.erase(std::hash<Connection>()(e));
         e.m_state = Connection::CLOSED;
         continue;
       }
@@ -117,9 +119,7 @@ Processor::run()
     /*
      * Retransmission timeout, reset the connection.
      */
-    if (e.m_nrtx == MAXRTX || ((e.m_state == Connection::SYN_SENT ||
-                                e.m_state == Connection::SYN_RCVD) &&
-                               e.m_nrtx == MAXSYNRTX)) {
+    if (e.hasTimedOut()) {
       m_log.debug("TCP4", "aborting the connection");
       m_handler.onTimedOut(e, system::Clock::read());
       return sendAbort(e);
@@ -132,7 +132,7 @@ Processor::run()
     /*
      * Ok, so we need to retransmit.
      */
-    m_log.debug("TCP4", "automatic repeat request (", (size_t)e.m_nrtx, "/",
+    m_log.debug("TCP4", "automatic repeat request (", size_t(e.m_nrtx), "/",
                 MAXRTX, ")");
     m_log.debug("TCP4", "segments available? ", std::boolalpha,
                 e.hasAvailableSegments());
@@ -169,33 +169,28 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   }
 #endif
   /*
-   * Demultiplex this segment. First check any active connections.
+   * Check existing connections.
    */
-  for (auto& e : m_conns) {
-    /*
-     * If it matches, process it.
-     */
-    if (e.m_state != Connection::CLOSED && INTCP->destport == e.m_lport &&
-        INTCP->srcport == e.m_rport &&
-        m_ipv4from->sourceAddress() == e.m_ripaddr) {
-      return process(e, len, data, ts);
+  auto i = m_index.find(std::hash<Header>()(*INTCP));
+  if (i != m_index.end()) {
+    auto& c = m_conns[i->second];
+    if (c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
+      return process(c, len, data, ts);
     }
   }
   /*
-   * If we didn't find and active connection that expected the packet, either
-   * this packet is an old duplicate, or this is a SYN packet destined for a
-   * connection in LISTEN. If the SYN flag isn't set, it is an old packet and we
-   * send a RST.
+   * If we didn't find and active connection, either this packet is an old
+   * duplicate or this is a SYN packet. If the SYN flag isn't set, we send
+   * a RST.
    */
   if ((INTCP->flags & Flag::CTL) != Flag::SYN) {
-    m_log.debug("TCP4", "no connection waiting for a SYN/ACK");
+    m_stats.rst += 1;
     return sendReset(data);
   }
-  uint16_t tmp16 = INTCP->destport;
   /*
    * No matching connection found, so we send a RST packet.
    */
-  if (m_listenports.count(tmp16) == 0) {
+  if (m_listenports.count(INTCP->dstport) == 0) {
     m_stats.synrst += 1;
     return sendReset(data);
   }
@@ -204,8 +199,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * available. Unused connections are kept in the same table as used
    * connections, but unused ones have the tcpstate set to CLOSED. Also,
    * connections in TIME_WAIT are kept track of and we'll use the oldest one if
-   * no CLOSED connections are found. Thanks to Eddie C. Dost for a very nice
-   * algorithm for the TIME_WAIT search.
+   * no CLOSED connections are found.
    */
   for (e = m_conns.begin(); e != m_conns.end(); e++) {
     if (e->m_state == Connection::CLOSED) {
@@ -225,8 +219,8 @@ Processor::process(const uint16_t len, const uint8_t* const data,
     }
   }
   /*
-   * All connections are used already, we drop packet and hope that the remote
-   * end will retransmit the packet at a time when we have more spare
+   * If all connections are used already, we drop packet and hope that the
+   * remote end will retransmit the packet at a time when we have more spare
    * connections.
    */
   if (e == m_conns.end()) {
@@ -252,7 +246,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    */
   e->m_rethaddr = m_ethfrom->sourceAddress();
   e->m_ripaddr = m_ipv4from->sourceAddress();
-  e->m_lport = INTCP->destport;
+  e->m_lport = INTCP->dstport;
   e->m_rport = INTCP->srcport;
   e->m_rcv_nxt = ntohl(INTCP->seqno) + 1;
   e->m_snd_nxt = m_iss;
@@ -285,6 +279,10 @@ Processor::process(const uint16_t len, const uint8_t* const data,
     uint16_t nbytes = (INTCP->offset - 5) << 2;
     Options::parse(m_log, *e, nbytes, data);
   }
+  /*
+   * Update the connection index.
+   */
+  m_index.insert({ std::hash<Connection>()(*e), e->id() });
   /*
    * Send the SYN/ACK
    */
@@ -332,21 +330,22 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
   e.m_newdata = false;
   e.m_pshdata = false;
   /*
-   * We do a very naive form of TCP reset processing; we just accept any RST and
-   * kill our connection. We should in fact check if the sequence number of this
-   * reset is within our advertised window before we accept the reset.
+   * We do a very naive form of TCP reset processing; we just accept any RST
+   * and kill our connection. We should in fact check if the sequence number
+   * of this reset is within our advertised window before we accept the reset.
    */
   if (INTCP->flags & Flag::RST) {
     m_log.debug("TCP4", "connection aborted");
     m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+    m_index.erase(std::hash<Connection>()(e));
     e.m_state = Connection::CLOSED;
     m_log.debug("TCP4", "Received reset on connection ", e.id(), ", aborting");
     m_handler.onAborted(e, ts);
     return Status::Ok;
   }
   /*
-   * Calculated the length of the data, if the application has sent any data to
-   * us. plen will contain the length of the actual TCP data.
+   * Calculated the length of the data, if the application has sent any data
+   * to us. plen will contain the length of the actual TCP data.
    */
   uint16_t tcpHdrLen = HEADER_LEN_WITH_OPTS(INTCP);
   plen = len - tcpHdrLen;
@@ -375,8 +374,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     }
   }
   /*
-   * Check if the incoming segment acknowledges any outstanding data. If so, we
-   * update the sequence number, reset the length of the outstanding data,
+   * Check if the incoming segment acknowledges any outstanding data. If so,
+   * we update the sequence number, reset the length of the outstanding data,
    * calculate RTT estimations, and reset the retransmission timer.
    */
   if ((INTCP->flags & Flag::ACK) && e.hasOutstandingSegments()) {
@@ -418,8 +417,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           m_log.debug("TCP4", "peer window updated to wnd: ", e.window(),
                       " on seq:", ackno);
           /*
-           * Do RTT estimation, unless we have done retransmissions. There is no
-           * reason to have a REXMIT at this point.
+           * Do RTT estimation, unless we have done retransmissions. There is
+           * no reason to have a REXMIT at this point.
            */
           if (e.m_nrtx == 0) {
             e.updateRttEstimation();
@@ -437,8 +436,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         return rexmit(e);
       }
       /*
-       * Check if it's partial ACK (common with TSO). The first check covers the
-       * normal linear case. The second checks covers wrap-around situations.
+       * Check if it's partial ACK (common with TSO). The first check covers
+       * the normal linear case. The second checks covers wrap-around
+       * situations.
        */
       else if (acklm < explm) {
         m_stats.ackerr += 1;
@@ -491,8 +491,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
   switch (e.m_state) {
     /*
      * In SYN_RCVD we have sent out a SYNACK in response to a SYN, and we are
-     * waiting for an ACK that acknowledges the data we sent out the last time.
-     * If so, we enter the ESTABLISHED state.
+     * waiting for an ACK that acknowledges the data we sent out the last
+     * time. If so, we enter the ESTABLISHED state.
      */
     case Connection::SYN_RCVD: {
       /*
@@ -506,8 +506,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_state = Connection::ESTABLISHED;
         m_handler.onConnected(e, ts);
         /*
-         * Send the newdata event. Pass the packet data directly. At this stage,
-         * no data has been buffered.
+         * Send the newdata event. Pass the packet data directly. At this
+         * stage, no data has been buffered.
          */
         if (plen > 0) {
           e.m_rcv_nxt += plen;
@@ -521,8 +521,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     }
     /*
      * In SYN_SENT, we wait for a SYNACK that is sent in response to our SYN.
-     * The rcv_nxt is set to sequence number in the SYNACK plus one, and we send
-     * an ACK. We move into the ESTABLISHED state.
+     * The rcv_nxt is set to sequence number in the SYNACK plus one, and we
+     * send an ACK. We move into the ESTABLISHED state.
      */
     case Connection::SYN_SENT: {
       /*
@@ -549,8 +549,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         m_handler.onConnected(e, ts);
         /*
-         * Send the newdata event. Pass the packet data directly. At this stage,
-         * no data has been buffered.
+         * Send the newdata event. Pass the packet data directly. At this
+         * stage, no data has been buffered.
          */
         if (plen > 0) {
           e.m_newdata = true;
@@ -622,10 +622,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         plen -= urglen;
       }
       /*
-       * If plen > 0 we have TCP data in the packet, and we flag this by setting
-       * the NEWDATA flag and update the sequence number we acknowledge. If
-       * the application has stopped the dataflow using stop(), we must not
-       * accept any data packets from the remote host.
+       * If plen > 0 we have TCP data in the packet, and we flag this by
+       * setting the NEWDATA flag and update the sequence number we
+       * acknowledge. If the application has stopped the dataflow using
+       * stop(), we must not accept any data packets from the remote host.
        */
       if (plen > 0 && e.m_state != Connection::STOPPED) {
         e.m_newdata = true;
@@ -639,27 +639,27 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Check if the available buffer space advertised by the other end is
        * smaller than the initial MSS for this connection. If so, we set the
-       * current MSS to the window size to ensure that the application does not
-       * send more data than the other end can handle.
+       * current MSS to the window size to ensure that the application does
+       * not send more data than the other end can handle.
        */
       if (e.window() <= e.m_initialmss && e.window() > 0) {
         e.m_mss = e.window();
       }
       /*
-       * If the remote host advertises a zero window or a window larger than the
-       * initial negotiated window, we set the MSS to the initial MSS so that
-       * the application will send an entire MSS of data. This data will not be
-       * acknowledged by the receiver, and the application will retransmit it.
-       * This is called the "persistent timer" and uses the retransmission
-       * mechanim.
+       * If the remote host advertises a zero window or a window larger than
+       * the initial negotiated window, we set the MSS to the initial MSS so
+       * that the application will send an entire MSS of data. This data will
+       * not be acknowledged by the receiver, and the application will
+       * retransmit it. This is called the "persistent timer" and uses the
+       * retransmission mechanim.
        */
       else {
         e.m_mss = e.m_initialmss;
       }
       /*
-       * If this packet constitutes an ACK for outstanding data (flagged by the
-       * ACKDATA flag, we should call the application since it might want to
-       * send more data. If the incoming packet had data from the peer (as
+       * If this packet constitutes an ACK for outstanding data (flagged by
+       * the ACKDATA flag, we should call the application since it might want
+       * to send more data. If the incoming packet had data from the peer (as
        * flagged by the NEWDATA flag), the application must also be
        * notified.
        */
@@ -673,8 +673,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         if (e.m_ackdata) {
           /*
-           * Check if we can send data as a result of the ACK. This is useful to
-           * handle partial send without resorting to software TSO.
+           * Check if we can send data as a result of the ACK. This is useful
+           * to handle partial send without resorting to software TSO.
            */
           if (likely(can_send)) {
             uint32_t rlen = 0;
@@ -746,8 +746,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         if (e.m_newdata) {
           /*
            * Send an ACK immediately if the connection supports DELAYED_ACK.
-           * This is preferrable when sending data back is not needed as the ACK
-           * latency is not subject to the onNewData() callback latency anymore.
+           * This is preferrable when sending data back is not needed as the
+           * ACK latency is not subject to the onNewData() callback latency
+           * anymore.
            */
           if (!HAS_DELAYED_ACK(e)) {
             Status res;
@@ -803,9 +804,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             e.m_slen += rlen;
           }
           /*
-           * Notify the application and ACK if necessary. Applies when there is
-           * already data in flight or if the remote window is smaller that the
-           * outstanding data in the send buffer.
+           * Notify the application and ACK if necessary. Applies when there
+           * is already data in flight or if the remote window is smaller that
+           * the outstanding data in the send buffer.
            */
           else {
             switch (m_handler.onNewData(e, dataptr, datalen, ts)) {
@@ -849,6 +850,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       if (e.m_ackdata) {
         m_log.debug("TCP4", "connection closed");
         m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+        m_index.erase(std::hash<Connection>()(e));
         e.m_state = Connection::CLOSED;
         m_handler.onClosed(e, ts);
       }
@@ -856,8 +858,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     }
     /*
      * The application has closed the connection, but the remote host hasn't
-     * closed its end yet. Thus we do nothing but wait for a FIN from the other
-     * side.
+     * closed its end yet. Thus we do nothing but wait for a FIN from the
+     * other side.
      */
     case Connection::FIN_WAIT_1: {
       if (plen > 0) {

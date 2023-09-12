@@ -54,6 +54,7 @@ Processor::sendAbort(Connection& e)
    * Unlisten the local port and close the connection.
    */
   m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+  m_index.erase(std::hash<Connection>()(e));
   e.m_state = Connection::CLOSED;
   /*
    * Ignore any pending data.
@@ -109,8 +110,8 @@ Processor::sendReset(const uint8_t* const data)
    * Swap port numbers.
    */
   uint16_t tmp16 = INTCP->srcport;
-  OUTTCP->srcport = INTCP->destport;
-  OUTTCP->destport = tmp16;
+  OUTTCP->srcport = INTCP->dstport;
+  OUTTCP->dstport = tmp16;
   /*
    * And send out the RST packet!
    */
@@ -211,7 +212,7 @@ Processor::send(Connection& e)
   OUTTCP->ackno = htonl(e.m_rcv_nxt);
   OUTTCP->seqno = htonl(e.m_snd_nxt);
   OUTTCP->srcport = e.m_lport;
-  OUTTCP->destport = e.m_rport;
+  OUTTCP->dstport = e.m_rport;
   /*
    * If the connection has issued stop(), we advertise a zero window so
    * that the remote host will stop sending data.
@@ -334,7 +335,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   OUTTCP->ackno = htonl(e.m_rcv_nxt);
   OUTTCP->seqno = htonl(s.m_seq);
   OUTTCP->srcport = e.m_lport;
-  OUTTCP->destport = e.m_rport;
+  OUTTCP->dstport = e.m_rport;
   /*
    * If the connection has issued stop(), we advertise a zero window so
    * that the remote host will stop sending data.

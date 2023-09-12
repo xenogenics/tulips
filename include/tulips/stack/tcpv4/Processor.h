@@ -13,8 +13,9 @@
 #include <tulips/transport/Device.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
-#include <set>
 #include <stdexcept>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #define INTCP ((const Header*)data)
@@ -25,8 +26,6 @@ namespace tulips::stack::tcpv4 {
 /*
  * Protocol constants.
  */
-static constexpr int USED MAXRTX = 5;
-static constexpr int USED MAXSYNRTX = 5;
 static constexpr int USED TIME_WAIT_TIMEOUT = 120;
 
 /*
@@ -122,8 +121,9 @@ public:
   }
 
 private:
-  using Ports = std::set<Port>;
+  using Ports = std::unordered_set<Port>;
   using Connections = std::vector<Connection>;
+  using Index = std::unordered_map<uint64_t, Connection::ID>;
 
 #if !(defined(TULIPS_HAS_HW_CHECKSUM) && defined(TULIPS_DISABLE_CHECKSUM_CHECK))
   static uint16_t checksum(ipv4::Address const& src, ipv4::Address const& dst,
@@ -323,6 +323,7 @@ private:
   uint32_t m_mss;
   Ports m_listenports;
   Connections m_conns;
+  Index m_index;
   Statistics m_stats;
   system::Timer m_timer;
 };

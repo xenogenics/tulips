@@ -121,7 +121,7 @@ struct Delegate
 class Client : public transport::Processor
 {
 public:
-  using ID = uint16_t;
+  using ID = stack::tcpv4::Connection::ID;
   using Delegate = interface::Delegate<ID>;
 
   static constexpr ID DEFAULT_ID = -1;
