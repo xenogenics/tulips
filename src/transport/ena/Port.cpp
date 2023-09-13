@@ -24,11 +24,10 @@ log2(const uint64_t x)
 
 namespace tulips::transport::ena {
 
-AbstractionLayer Port::s_eal;
-
 Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
            const size_t depth)
   : m_log(log)
+  , m_eal(log)
   , m_depth(depth)
   , m_portid(0xFFFF)
   , m_address()

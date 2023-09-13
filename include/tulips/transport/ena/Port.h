@@ -28,8 +28,6 @@ public:
                    stack::ipv4::Address const& nm);
 
 private:
-  static AbstractionLayer s_eal;
-
   void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);
 
   void setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
@@ -44,6 +42,7 @@ private:
   }
 
   system::Logger& m_log;
+  AbstractionLayer m_eal;
   size_t m_depth;
   uint16_t m_portid;
   stack::ethernet::Address m_address;
