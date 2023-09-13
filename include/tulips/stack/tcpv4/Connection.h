@@ -110,8 +110,8 @@ private:
 
   inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
   {
-    return m_state != Connection::CLOSED && header.dstport == m_lport &&
-           header.srcport == m_rport && ripaddr == m_ripaddr;
+    return header.dstport == m_lport && header.srcport == m_rport &&
+           ripaddr == m_ripaddr;
   }
 
   inline uint32_t window() const { return (uint32_t)m_window << m_wndscl; }
