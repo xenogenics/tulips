@@ -18,7 +18,7 @@ public:
   uint32_t mss() const override { return m_prod.mss() - HEADER_LEN; }
 
   Status prepare(uint8_t*& buf) override;
-  Status commit(const uint32_t len, uint8_t* const buf,
+  Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
   Status release(uint8_t* const buf) override;
 

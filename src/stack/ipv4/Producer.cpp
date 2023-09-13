@@ -65,10 +65,10 @@ Producer::prepare(uint8_t*& buf)
 }
 
 Status
-Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
+Producer::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   uint8_t* outdata = buf - HEADER_LEN;
-  uint32_t outlen = len + HEADER_LEN;
+  uint16_t outlen = len + HEADER_LEN;
   /*
    * Fill in the remaining header fields.
    */

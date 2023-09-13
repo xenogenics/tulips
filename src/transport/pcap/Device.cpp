@@ -78,7 +78,7 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
+Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   Status ret = m_device.commit(len, buf, mss);
   if (ret == Status::Ok) {

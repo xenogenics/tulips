@@ -50,7 +50,7 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
+Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   if (!check(m_buffer, len)) {
     throw std::runtime_error("Empty packet has been received !");
