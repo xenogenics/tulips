@@ -42,6 +42,7 @@ public:
   Status prepare(uint8_t*& buf) override;
   Status commit(const uint32_t len, uint8_t* const buf,
                 const uint16_t mss) override;
+  Status release(uint8_t* const buf) override;
 
   uint32_t mtu() const override { return m_mtu - stack::ethernet::HEADER_LEN; }
 

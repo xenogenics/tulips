@@ -107,6 +107,15 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 }
 
 Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  /*
+   * NOTE(xrg): the SHM device does not support out-of-order buffer release.
+   */
+  return Status::Ok;
+}
+
+Status
 Device::drop()
 {
   if (tulips_fifo_empty(read_fifo) == TULIPS_FIFO_YES) {

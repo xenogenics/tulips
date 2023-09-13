@@ -336,4 +336,12 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   return Status::Ok;
 }
 
+Status
+Device::release(uint8_t* const buf)
+{
+  auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
+  rte_pktmbuf_free(mbuf);
+  return Status::Ok;
+}
+
 }

@@ -103,6 +103,15 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 }
 
 Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  /*
+   * NOTE(xrg): the LIST device does not support out-of-order buffer release.
+   */
+  return Status::Ok;
+}
+
+Status
 Device::drop()
 {
   if (m_read.empty()) {

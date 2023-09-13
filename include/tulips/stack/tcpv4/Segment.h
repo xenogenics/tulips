@@ -9,7 +9,7 @@ namespace tulips::stack::tcpv4 {
 class Segment
 {
 public:
-  Segment();
+  Segment() = default;
 
 private:
   inline void set(const uint32_t len, const uint32_t seq, uint8_t* const dat)

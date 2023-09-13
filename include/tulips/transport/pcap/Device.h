@@ -72,6 +72,7 @@ public:
   Status prepare(uint8_t*& buf) override;
   Status commit(const uint32_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
+  Status release(uint8_t* const buf) override;
 
 private:
   Status run() override { return Status::Ok; }

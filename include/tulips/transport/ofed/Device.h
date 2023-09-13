@@ -57,6 +57,7 @@ public:
   Status prepare(uint8_t*& buf) override;
   Status commit(const uint32_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
+  Status release(uint8_t* const buf) override;
 
 private:
   using Filters = std::map<uint16_t, ibv_flow*>;
@@ -85,7 +86,8 @@ private:
   uint8_t* m_recvbuf;
   ibv_mr* m_sendmr;
   ibv_mr* m_recvmr;
-  tulips_fifo_t m_fifo;
+  tulips_fifo_t m_free;
+  tulips_fifo_t m_sent;
   ibv_flow* m_bcast;
   ibv_flow* m_flow;
   Filters m_filters;

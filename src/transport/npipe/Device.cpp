@@ -71,6 +71,15 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 }
 
 Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  /*
+   * NOTE(xrg): the NPIPE device does not support out-of-order buffer release.
+   */
+  return Status::Ok;
+}
+
+Status
 Device::poll(Processor& proc)
 {
   ssize_t ret = 0;
