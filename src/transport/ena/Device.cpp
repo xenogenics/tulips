@@ -191,11 +191,6 @@ Device::poll(Processor& proc)
     if (ret != Status::Ok) {
       return ret;
     }
-    /*
-     * Return the buffer to the pool.
-     */
-    auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(std::get<1>(*info) - 8);
-    rte_pktmbuf_free(mbuf);
   }
   /*
    * Process the internal buffer.
