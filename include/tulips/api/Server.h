@@ -45,6 +45,11 @@ public:
     return m_ethfrom.process(len, data, ts);
   }
 
+  inline Status sent(uint8_t* const data) override
+  {
+    return m_ethfrom.sent(data);
+  }
+
   /**
    * Server interface.
    */
@@ -83,6 +88,8 @@ private:
     {
       return Status::Ok;
     }
+
+    Status sent(UNUSED uint8_t* const data) override { return Status::Ok; }
   };
 #endif
 

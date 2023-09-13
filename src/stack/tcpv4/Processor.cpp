@@ -290,6 +290,12 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   return sendSynAck(*e, seg);
 }
 
+Status
+Processor::sent(uint8_t* const data)
+{
+  return m_ipv4to.release(data);
+}
+
 #if !(defined(TULIPS_HAS_HW_CHECKSUM) && defined(TULIPS_DISABLE_CHECKSUM_CHECK))
 uint16_t
 Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
@@ -979,5 +985,4 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    */
   return Status::Ok;
 }
-
 }

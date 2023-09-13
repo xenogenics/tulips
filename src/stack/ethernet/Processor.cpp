@@ -58,14 +58,14 @@ Processor::process(const uint16_t len, const uint8_t* const data,
 {
   m_log.trace("ETH", "processing frame: ", len, "B");
   /*
-   * Grab the incoming information
+   * Grab the incoming information.
    */
   const auto* hdr = reinterpret_cast<const Header*>(data);
   m_srceAddress = hdr->src;
   m_destAddress = hdr->dest;
   m_type = ntohs(hdr->type);
   /*
-   * Process the remaing buffer
+   * Process the remaing buffer.
    */
   Status ret;
   switch (m_type) {
@@ -112,6 +112,41 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * Process outputs
    */
   return ret;
+}
+
+Status
+Processor::sent(uint8_t* const buf)
+{
+  const auto* hdr = reinterpret_cast<const Header*>(buf);
+  /*
+   * Grab the type.
+   */
+  m_type = ntohs(hdr->type);
+  /*
+   * Forward depending on the type.
+   */
+  switch (m_type) {
+#ifdef TULIPS_ENABLE_ARP
+    case ETHTYPE_ARP: {
+      return m_arp->sent(buf + HEADER_LEN);
+    }
+#endif
+    case ETHTYPE_IP: {
+      return m_ipv4->sent(buf + HEADER_LEN);
+    }
+    default: {
+#ifdef TULIPS_ENABLE_RAW
+      if (m_type <= 1500) {
+        return m_raw->sent(buf + HEADER_LEN);
+      }
+#endif
+      break;
+    }
+  }
+  /*
+   * Done.
+   */
+  return Status::UnsupportedProtocol;
 }
 
 }

@@ -103,4 +103,10 @@ Device::process(const uint16_t len, const uint8_t* const data,
   return m_proc->process(len, data, ts);
 }
 
+Status
+Device::sent(uint8_t* const data)
+{
+  return m_proc->sent(data);
+}
+
 }

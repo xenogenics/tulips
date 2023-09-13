@@ -256,7 +256,7 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
     }
   }
   /*
-   * Create the send FIFO.
+   * Create the send buffer FIFOs.
    */
   tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_free);
   tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_sent);
@@ -501,6 +501,37 @@ Device::poll(Processor& proc)
 {
   int cqn = 0;
   struct ibv_wc wc[m_nbuf];
+  /*
+   * Process the sent buffers.
+   */
+  while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
+    uint8_t** buffer;
+    /*
+     * Get the front of the FIFO..
+     */
+    if (tulips_fifo_front(m_sent, (void**)&buffer) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+    /*
+     * Pop the FIFO.
+     */
+    if (tulips_fifo_pop(m_sent) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+    /*
+     * Notify the processor.
+     */
+    auto ret = proc.sent(*buffer);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+    /*
+     * Push to the free FIFO.
+     */
+    if (tulips_fifo_push(m_free, &buffer) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+  }
   /*
    * Process the incoming recv buffers.
    */
@@ -764,38 +795,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 Status
 Device::release(uint8_t* const buf)
 {
-  size_t count = tulips_fifo_length(m_sent);
-  /*
-   * Scan the sent buffer FIFO.
-   */
-  for (size_t i = 0; i < count; i += 1) {
-    uint8_t* buffer = nullptr;
-    /*
-     * Get the front of the FIFO..
-     */
-    if (tulips_fifo_front(m_sent, (void**)&buffer) != TULIPS_FIFO_OK) {
-      return Status::HardwareError;
-    }
-    /*
-     * Pop the FIFO.
-     */
-    tulips_fifo_pop(m_free);
-    /*
-     * Bail out if the buffers are equal.
-     */
-    if (buffer == buf) {
-      tulips_fifo_push(m_free, buffer);
-      return Status::Ok;
-    }
-    /*
-     * Push back the buffer otherwise.
-     */
-    tulips_fifo_push(m_sent, buffer);
-  }
-  /*
-   * Done.
-   */
-  return Status::InvalidArgument;
+  tulips_fifo_push(m_free, &buf);
+  return Status::Ok;
 }
 
 }

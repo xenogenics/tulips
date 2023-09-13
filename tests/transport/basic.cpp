@@ -41,6 +41,8 @@ public:
     return Status::IncompleteData;
   }
 
+  Status sent(uint8_t* const data) override { return m_prod->release(data); }
+
   size_t value() const { return m_value; }
 
   ClientProcessor& setProducer(transport::Producer& prod)
@@ -71,6 +73,8 @@ public:
     memcpy(outdata, &m_value, sizeof(size_t));
     return m_prod->commit(sizeof(m_value), outdata);
   }
+
+  Status sent(uint8_t* const data) override { return m_prod->release(data); }
 
   size_t value() const { return m_value; }
 

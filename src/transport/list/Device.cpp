@@ -2,6 +2,7 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/list/Device.h>
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 
@@ -20,6 +21,7 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
   , m_mtu(mtu)
   , m_read(rf)
   , m_write(wf)
+  , m_sent()
   , m_mutex()
   , m_cond()
 {
@@ -29,6 +31,13 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
 
 Device::~Device()
 {
+  /*
+   * Deallocate any sent packets.
+   */
+  for (auto p : m_sent) {
+    Packet::release(p);
+  }
+  m_sent.clear();
   /*
    * Deallocate any uncommitted packets.
    */
@@ -93,10 +102,11 @@ Status
 Device::commit(const uint32_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
-  auto* packet = (Packet*)(buf - sizeof(uint32_t));
+  auto* packet = (Packet*)(buf - sizeof(Packet));
   m_log.trace("LIST", "committing packet: ", len, "B, ", packet);
   packet->len = len;
-  m_write.push_back(packet);
+  m_write.push_back(packet->clone());
+  m_sent.push_back(packet);
   pthread_cond_signal(&m_cond);
   m_packets.remove(packet);
   return Status::Ok;
@@ -105,9 +115,9 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 Status
 Device::release(UNUSED uint8_t* const buf)
 {
-  /*
-   * NOTE(xrg): the LIST device does not support out-of-order buffer release.
-   */
+  auto* packet = (Packet*)(buf - sizeof(Packet));
+  m_sent.remove(packet);
+  Packet::release(packet);
   return Status::Ok;
 }
 

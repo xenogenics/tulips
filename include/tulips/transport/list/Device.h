@@ -6,6 +6,7 @@
 #include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <list>
 #include <new>
@@ -22,11 +23,23 @@ public:
     static Packet* allocate(const uint32_t mtu)
     {
       void* data = malloc(sizeof(Packet) + mtu);
-      return new (data) Packet;
+      return new (data) Packet(mtu);
     }
 
-    static void release(Packet* p) { free(p); }
+    static void release(Packet* packet) { free(packet); }
 
+    Packet() = delete;
+    Packet(const uint32_t mtu) : mtu(mtu), len(0), data() {}
+
+    Packet* clone() const
+    {
+      auto* c = allocate(mtu);
+      memcpy(c->data, data, len);
+      c->len = len;
+      return c;
+    }
+
+    uint32_t mtu;
     uint32_t len;
     uint8_t data[];
   } PACKED;
@@ -95,6 +108,7 @@ protected:
   uint32_t m_mtu;
   List& m_read;
   List& m_write;
+  List m_sent;
   pthread_mutex_t m_mutex;
   pthread_cond_t m_cond;
 };

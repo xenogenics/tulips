@@ -1,3 +1,4 @@
+#include "tulips/fifo/fifo.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/CircularBuffer.h>
@@ -43,12 +44,20 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 6])
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
+  , m_sent(TULIPS_FIFO_DEFAULT_VALUE)
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
   , m_nm(nm)
   , m_mtu(mtu)
 {
+  /*
+   * Create the sent FIFOs.
+   */
+  tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_sent);
+  /*
+   * Print some device information.
+   */
   if (m_queueid > 0) {
     log.debug("ENA", "port id: ", port_id);
     log.debug("ENA", "queue id: ", queue_id);
@@ -60,6 +69,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
 
 Device::~Device()
 {
+  tulips_fifo_destroy(&m_sent);
   delete[] m_reta;
   m_reta = nullptr;
   delete[] m_packet;
@@ -157,6 +167,36 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
 Status
 Device::poll(Processor& proc)
 {
+  /*
+   * Process the sent buffers.
+   */
+  while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
+    uint8_t* buffer;
+    /*
+     * Get the front of the FIFO..
+     */
+    if (tulips_fifo_front(m_sent, (void**)&buffer) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+    /*
+     * Pop the FIFO.
+     */
+    if (tulips_fifo_pop(m_sent) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+    /*
+     * Notify the processor.
+     */
+    auto ret = proc.sent(buffer);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+    /*
+     * Return the buffer to the pool.
+     */
+    auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buffer - 8);
+    rte_pktmbuf_free(mbuf);
+  }
   /*
    * Process the internal buffer.
    */
@@ -329,7 +369,9 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   /*
    * Free the buffer.
    */
-  rte_pktmbuf_free(mbuf);
+  if (tulips_fifo_push(m_sent, &buf) != TULIPS_FIFO_OK) {
+    return Status::HardwareError;
+  }
   /*
    * Done.
    */

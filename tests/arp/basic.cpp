@@ -29,6 +29,8 @@ public:
     return Status::Ok;
   }
 
+  Status sent(UNUSED uint8_t* const data) override { return Status::Ok; }
+
   uint64_t data() const { return m_data; }
 
 private:
@@ -53,6 +55,8 @@ public:
     *(uint64_t*)outdata = 0xdeadc0deULL;
     return m_ipv4to->commit(8, outdata);
   }
+
+  Status sent(uint8_t* const data) override { return m_ipv4to->release(data); }
 
   ServerProcessor& setIPv4Producer(ipv4::Producer& ip4)
   {

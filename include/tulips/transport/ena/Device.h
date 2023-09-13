@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/fifo/fifo.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/CircularBuffer.h>
@@ -72,6 +73,7 @@ private:
   struct rte_eth_rss_reta_entry64* m_reta;
   system::CircularBuffer::Ref m_buffer;
   uint8_t* m_packet;
+  tulips_fifo_t m_sent;
 
   friend class Port;
 

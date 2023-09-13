@@ -36,4 +36,10 @@ Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return m_device.commit(len, buf, mss);
 }
 
+Status
+Device::release(uint8_t* const buf)
+{
+  return m_device.release(buf);
+}
+
 }
