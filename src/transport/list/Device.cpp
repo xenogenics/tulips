@@ -115,6 +115,7 @@ Device::commit(const uint16_t len, uint8_t* const buf,
 Status
 Device::release(UNUSED uint8_t* const buf)
 {
+  m_log.trace("LIST", "releasing buffer ", (void*)buf);
   auto* packet = (Packet*)(buf - sizeof(Packet));
   m_sent.remove(packet);
   Packet::release(packet);

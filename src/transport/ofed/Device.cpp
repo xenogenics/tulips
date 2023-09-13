@@ -797,6 +797,7 @@ Device::commit(const uint16_t len, uint8_t* const buf,
 Status
 Device::release(uint8_t* const buf)
 {
+  m_log.trace("OFED", "releasing buffer ", (void*)buf);
   tulips_fifo_push(m_free, &buf);
   return Status::Ok;
 }

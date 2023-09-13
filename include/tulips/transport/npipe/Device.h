@@ -64,7 +64,7 @@ protected:
   {
     ssize_t ret = 0;
     for (uint32_t s = 0; s < len; s += (uint32_t)ret) {
-      ret = ::write(write_fd, buf + s, len - s);
+      ret = ::write(m_wrfd, buf + s, len - s);
       if (ret < 0) {
         return false;
       }
@@ -80,8 +80,9 @@ protected:
   stack::ipv4::Address m_nm;
   uint8_t m_read_buffer[BUFLEN];
   uint8_t m_write_buffer[BUFLEN];
-  int read_fd;
-  int write_fd;
+  int m_rdfd;
+  int m_wrfd;
+  uint16_t m_sent;
 };
 
 class ClientDevice : public Device

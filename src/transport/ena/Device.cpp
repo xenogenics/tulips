@@ -380,6 +380,7 @@ Device::commit(const uint16_t len, uint8_t* const buf,
 Status
 Device::release(uint8_t* const buf)
 {
+  m_log.trace("ENA", "releasing buffer ", (void*)buf);
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
   rte_pktmbuf_free(mbuf);
   return Status::Ok;

@@ -294,6 +294,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
 Status
 Processor::sent(const uint16_t len, uint8_t* const data)
 {
+  m_log.trace("TCP4", "buffer ", (void*)data, " len ", len, " sent");
   /*
    * Packets with no data have no segments, so we can release them.
    */
