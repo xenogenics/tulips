@@ -144,7 +144,8 @@ Processor::connect(ethernet::Address const& rhwaddr,
   e->m_timer = RTO;
   e->m_cookie = nullptr;
   /*
-   * Prepare the SYN. The length of SYN is 1.
+   * Prepare the SYN. SYN segments don't contain any data but have a size of 1
+   * to increase the sequence number by 1.
    */
   Segment& seg = e->nextAvailableSegment();
   seg.set(1, e->m_snd_nxt, outdata);

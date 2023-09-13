@@ -56,6 +56,18 @@ Status
 Device::poll(Processor& proc)
 {
   /*
+   * Process the sent packets.
+   */
+  while (!m_sent.empty()) {
+    auto p = m_sent.front();
+    m_sent.pop_front();
+    m_log.trace("LIST", "packet sent: ", p);
+    auto ret = proc.sent(p->len, p->data);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
+  /*
    * If there is no data, return.
    */
   if (m_read.empty()) {
@@ -91,7 +103,7 @@ Device::wait(Processor& proc, const uint64_t ns)
 Status
 Device::prepare(uint8_t*& buf)
 {
-  auto* packet = Packet::allocate(m_mtu);
+  auto packet = Packet::allocate(m_mtu);
   m_log.debug("LIST", "preparing packet: ", mss(), "B, ", packet);
   buf = packet->data;
   m_packets.push_back(packet);
@@ -102,22 +114,21 @@ Status
 Device::commit(const uint16_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
-  auto* packet = (Packet*)(buf - sizeof(Packet));
+  auto packet = (Packet*)(buf - sizeof(Packet));
   m_log.trace("LIST", "committing packet: ", len, "B, ", packet);
   packet->len = len;
+  m_packets.remove(packet);
   m_write.push_back(packet->clone());
   m_sent.push_back(packet);
   pthread_cond_signal(&m_cond);
-  m_packets.remove(packet);
   return Status::Ok;
 }
 
 Status
-Device::release(UNUSED uint8_t* const buf)
+Device::release(uint8_t* const buf)
 {
-  m_log.trace("LIST", "releasing buffer ", (void*)buf);
-  auto* packet = (Packet*)(buf - sizeof(Packet));
-  m_sent.remove(packet);
+  auto packet = (Packet*)(buf - sizeof(Packet));
+  m_log.trace("LIST", "releasing packet: ", packet);
   Packet::release(packet);
   return Status::Ok;
 }
@@ -128,7 +139,7 @@ Device::drop()
   if (m_read.empty()) {
     return Status::NoDataAvailable;
   }
-  Packet* packet = m_read.front();
+  auto packet = m_read.front();
   m_read.pop_front();
   Packet::release(packet);
   return Status::Ok;

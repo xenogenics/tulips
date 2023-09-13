@@ -270,10 +270,11 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   e->m_rto = RTO;
   e->m_timer = RTO;
   /*
-   * Prepare the connection segment.
+   * Prepare the connection segment. SYN segments don't contain any data but
+   * have a size of 1 to increase the sequence number by 1.
    */
   Segment& seg = e->nextAvailableSegment();
-  seg.set(1, e->m_snd_nxt, sdat); // TCP length of the SYN is one
+  seg.set(1, e->m_snd_nxt, sdat);
   /*
    * Parse the TCP MSS option, if present.
    */
@@ -286,7 +287,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    */
   m_index.insert({ std::hash<Connection>()(*e), e->id() });
   /*
-   * Send the SYN/ACK
+   * Send the SYN/ACK.
    */
   return sendSynAck(*e, seg);
 }
@@ -296,9 +297,9 @@ Processor::sent(const uint16_t len, uint8_t* const data)
 {
   m_log.trace("TCP4", "buffer ", (void*)data, " len ", len, " sent");
   /*
-   * Packets with no data have no segments, so we can release them.
+   * Release packets with no data have no segments (ACK & RST).
    */
-  if (len == HEADER_LEN) {
+  if (len == HEADER_LEN && (INTCP->flags & Flag::FIN) == 0) {
     return m_ipv4to.release(data);
   }
   /*
@@ -625,7 +626,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         }
         /*
          * Acknowledge the FIN. If we are here there is no more outstanding
-         * segment, so one must be available.
+         * segment, so one must be available. FIN segments don't contain any
+         * data but have a size of 1 to increase the sequence number by 1.
          */
         m_log.debug("TCP4", "connection last ACK");
         e.m_state = Connection::LAST_ACK;
@@ -974,7 +976,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       }
       /*
        * Send a FIN/ACK message. TCP does not require to send an ACK with FIN,
-       * but Linux seems pretty bent on wanting one. So we play nice.
+       * but Linux seems pretty bent on wanting one. So we play nice. FIN
+       * segments don't contain any data but have a size of 1 to increase the
+       * sequence number by 1.
        */
       return sendFinAck(e, seg);
     }
