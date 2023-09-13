@@ -73,7 +73,7 @@ private:
   Status run() override { return Status::Ok; }
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
-  Status sent(uint8_t* const buf) override;
+  Status sent(const uint16_t len, uint8_t* const buf) override;
 
   static bool check(const uint8_t* const data, const size_t len);
 

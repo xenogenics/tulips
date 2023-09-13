@@ -57,7 +57,7 @@ public:
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
-  Status sent(uint8_t* const data) override;
+  Status sent(const uint16_t len, uint8_t* const data) override;
 
   Processor& setEthernetProcessor(ethernet::Processor& eth)
   {

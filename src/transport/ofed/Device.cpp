@@ -259,7 +259,7 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
    * Create the send buffer FIFOs.
    */
   tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_free);
-  tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_sent);
+  tulips_fifo_create(m_nbuf, sizeof(SentBuffer), &m_sent);
   /*
    * Fill the send FIFO.
    */
@@ -505,11 +505,11 @@ Device::poll(Processor& proc)
    * Process the sent buffers.
    */
   while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
-    uint8_t** buffer;
+    SentBuffer* info;
     /*
      * Get the front of the FIFO..
      */
-    if (tulips_fifo_front(m_sent, (void**)&buffer) != TULIPS_FIFO_OK) {
+    if (tulips_fifo_front(m_sent, (void**)&info) != TULIPS_FIFO_OK) {
       return Status::HardwareError;
     }
     /*
@@ -521,14 +521,14 @@ Device::poll(Processor& proc)
     /*
      * Notify the processor.
      */
-    auto ret = proc.sent(*buffer);
+    auto ret = proc.sent(std::get<0>(*info), std::get<1>(*info));
     if (ret != Status::Ok) {
       return ret;
     }
     /*
      * Push to the free FIFO.
      */
-    if (tulips_fifo_push(m_free, &buffer) != TULIPS_FIFO_OK) {
+    if (tulips_fifo_push(m_free, &std::get<1>(*info)) != TULIPS_FIFO_OK) {
       return Status::HardwareError;
     }
   }
@@ -688,8 +688,10 @@ Device::prepare(uint8_t*& buf)
    * Queue the sent buffers.
    */
   for (int i = 0; i < cqn; i += 1) {
+    uint16_t len = wc[i].byte_len;
     auto* addr = (uint8_t*)wc[i].wr_id; // NOLINT
-    tulips_fifo_push(m_sent, &addr);
+    auto info = SentBuffer(len, addr);
+    tulips_fifo_push(m_sent, &info);
   }
   /*
    * Look for an available buffer.

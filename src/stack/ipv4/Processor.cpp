@@ -157,24 +157,25 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data,
 }
 
 Status
-Processor::sent(uint8_t* const data)
+Processor::sent(UNUSED const uint16_t len, uint8_t* const data)
 {
+  auto iplen = ntohs(INIP->len) - HEADER_LEN;
   auto proto = INIP->proto;
   /*
    * Call the processors
    */
   switch (Protocol(proto)) {
     case Protocol::TCP: {
-      return m_tcp->sent(data + HEADER_LEN);
+      return m_tcp->sent(iplen, data + HEADER_LEN);
     }
 #ifdef TULIPS_ENABLE_ICMP
     case Protocol::ICMP: {
-      return m_icmp->sent(data + HEADER_LEN);
+      return m_icmp->sent(iplen, data + HEADER_LEN);
     }
 #endif
 #ifdef TULIPS_ENABLE_RAW
     case Protocol::TEST: {
-      return m_raw->sent(data + HEADER_LEN);
+      return m_raw->sent(iplen, data + HEADER_LEN);
     }
 #endif
     default: {

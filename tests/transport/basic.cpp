@@ -41,7 +41,10 @@ public:
     return Status::IncompleteData;
   }
 
-  Status sent(uint8_t* const data) override { return m_prod->release(data); }
+  Status sent(UNUSED const uint16_t len, uint8_t* const data) override
+  {
+    return m_prod->release(data);
+  }
 
   size_t value() const { return m_value; }
 
@@ -74,7 +77,10 @@ public:
     return m_prod->commit(sizeof(m_value), outdata);
   }
 
-  Status sent(uint8_t* const data) override { return m_prod->release(data); }
+  Status sent(UNUSED const uint16_t len, uint8_t* const data) override
+  {
+    return m_prod->release(data);
+  }
 
   size_t value() const { return m_value; }
 
@@ -128,7 +134,8 @@ TEST(Transport_Basic, SharedMemory)
   /*
    * Create the console logger.
    */
-  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  auto log0 = system::ConsoleLogger(system::Logger::Level::Trace);
+  auto log1 = system::ConsoleLogger(system::Logger::Level::Trace);
   /*
    * Build the FIFOs
    */
@@ -143,9 +150,9 @@ TEST(Transport_Basic, SharedMemory)
   stack::ipv4::Address server_ip4(10, 1, 0, 2);
   stack::ipv4::Address bcast(10, 1, 0, 254);
   stack::ipv4::Address nmask(255, 255, 255, 0);
-  transport::shm::Device client(logger, client_adr, client_ip4, bcast, nmask,
+  transport::shm::Device client(log0, client_adr, client_ip4, bcast, nmask,
                                 server_fifo, client_fifo);
-  transport::shm::Device server(logger, server_adr, server_ip4, bcast, nmask,
+  transport::shm::Device server(log1, server_adr, server_ip4, bcast, nmask,
                                 client_fifo, server_fifo);
   /*
    * Start the threads

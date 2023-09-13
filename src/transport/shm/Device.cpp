@@ -29,7 +29,7 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
 {
   pthread_mutex_init(&m_mutex, nullptr);
   pthread_cond_init(&m_cond, nullptr);
-  tulips_fifo_create(m_write->depth, sizeof(uint8_t*), &m_sent);
+  tulips_fifo_create(m_write->depth, m_write->data_len, &m_sent);
 }
 
 Device::~Device()
@@ -47,11 +47,11 @@ Device::poll(Processor& proc)
    * Process the sent buffers.
    */
   while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
-    uint8_t** data = nullptr;
+    Packet* packet = nullptr;
     /*
      * Get the front of the FIFO..
      */
-    if (tulips_fifo_front(m_sent, (void**)&data) != TULIPS_FIFO_OK) {
+    if (tulips_fifo_front(m_sent, (void**)&packet) != TULIPS_FIFO_OK) {
       return Status::HardwareError;
     }
     /*
@@ -63,7 +63,7 @@ Device::poll(Processor& proc)
     /*
      * Notify the processor.
      */
-    auto ret = proc.sent(*data);
+    auto ret = proc.sent(packet->len, packet->data);
     if (ret != Status::Ok) {
       return ret;
     }
@@ -122,8 +122,8 @@ Device::prepare(uint8_t*& buf)
   }
   Packet* packet = nullptr;
   tulips_fifo_prepare(m_write, (void**)&packet);
-  m_log.debug("SHM", "preparing packet: ", mss(), "B, ", packet);
   buf = packet->data;
+  m_log.debug("SHM", "preparing packet: ", mss(), "B, ", (void*)buf);
   return Status::Ok;
 }
 
@@ -131,11 +131,11 @@ Status
 Device::commit(const uint32_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
+  m_log.trace("SHM", "committing packet: ", len, "B, ", (void*)buf);
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
-  m_log.trace("SHM", "committing packet: ", len, "B, ", packet);
   packet->len = len;
   tulips_fifo_commit(m_write);
-  tulips_fifo_push(m_sent, &buf);
+  tulips_fifo_push(m_sent, packet);
   pthread_cond_signal(&m_cond);
   return Status::Ok;
 }
@@ -143,6 +143,7 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 Status
 Device::release(UNUSED uint8_t* const buf)
 {
+  m_log.trace("SHM", "releasing buffer: ", (void*)buf);
   /*
    * NOTE(xrg): this device does not support processing packets out of order.
    * The m_sent FIFO is only here to make the API functional, and assumes

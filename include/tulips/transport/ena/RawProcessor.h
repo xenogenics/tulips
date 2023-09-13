@@ -12,7 +12,7 @@ public:
   Status run() override { return Status::Ok; }
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
-  Status sent(UNUSED uint8_t* const data) override;
+  Status sent(UNUSED const uint16_t len, UNUSED uint8_t* const data) override;
 
   void add(system::CircularBuffer::Ref const& buffer);
 

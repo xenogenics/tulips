@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "tulips/stack/TCPv4.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
@@ -291,9 +292,18 @@ Processor::process(const uint16_t len, const uint8_t* const data,
 }
 
 Status
-Processor::sent(uint8_t* const data)
+Processor::sent(const uint16_t len, uint8_t* const data)
 {
-  return m_ipv4to.release(data);
+  /*
+   * Packets with no data have no segments, so we can release them.
+   */
+  if (len == HEADER_LEN) {
+    return m_ipv4to.release(data);
+  }
+  /*
+   * Otherwise, we only release once the segment has cleared.
+   */
+  return Status::Ok;
 }
 
 #if !(defined(TULIPS_HAS_HW_CHECKSUM) && defined(TULIPS_DISABLE_CHECKSUM_CHECK))
@@ -475,9 +485,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_timer = e.m_rto;
       }
       /*
-       * Reset length and buffer of outstanding data and go to the next
-       * segment. The compiler will generate the wrap-around appropriate for
-       * the bit length of the index.
+       * Release the buffer associated with the segment.
+       */
+      m_ipv4to.release(seg.m_dat);
+      /*
+       * Clear the current seqgment and go to the next segment. The compiler
+       * will generate the wrap-around appropriate for the bit length of the
+       * index.
        */
       seg.clear();
       e.m_segidx += 1;

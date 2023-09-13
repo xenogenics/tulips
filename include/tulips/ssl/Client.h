@@ -40,9 +40,9 @@ public:
     return m_client->process(len, data, ts);
   }
 
-  inline Status sent(uint8_t* const data) override
+  inline Status sent(const uint16_t len, uint8_t* const data) override
   {
-    return m_client->sent(data);
+    return m_client->sent(len, data);
   }
 
   /**

@@ -54,7 +54,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   /*
    * Create the sent FIFOs.
    */
-  tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_sent);
+  tulips_fifo_create(m_nbuf, sizeof(SentBuffer), &m_sent);
   /*
    * Print some device information.
    */
@@ -171,11 +171,11 @@ Device::poll(Processor& proc)
    * Process the sent buffers.
    */
   while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
-    uint8_t* buffer;
+    SentBuffer* info;
     /*
      * Get the front of the FIFO..
      */
-    if (tulips_fifo_front(m_sent, (void**)&buffer) != TULIPS_FIFO_OK) {
+    if (tulips_fifo_front(m_sent, (void**)&info) != TULIPS_FIFO_OK) {
       return Status::HardwareError;
     }
     /*
@@ -187,14 +187,14 @@ Device::poll(Processor& proc)
     /*
      * Notify the processor.
      */
-    auto ret = proc.sent(buffer);
+    auto ret = proc.sent(std::get<0>(*info), std::get<1>(*info));
     if (ret != Status::Ok) {
       return ret;
     }
     /*
      * Return the buffer to the pool.
      */
-    auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buffer - 8);
+    auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(std::get<1>(*info) - 8);
     rte_pktmbuf_free(mbuf);
   }
   /*
@@ -369,9 +369,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
   /*
    * Free the buffer.
    */
-  if (tulips_fifo_push(m_sent, &buf) != TULIPS_FIFO_OK) {
-    return Status::HardwareError;
-  }
+  auto info = SentBuffer(len, buf);
+  tulips_fifo_push(m_sent, &buf);
   /*
    * Done.
    */

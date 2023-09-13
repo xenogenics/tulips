@@ -36,9 +36,9 @@ Device::process(const uint16_t len, const uint8_t* const data,
 }
 
 Status
-Device::sent(uint8_t* const buf)
+Device::sent(const uint16_t len, uint8_t* const buf)
 {
-  return m_proc->sent(buf);
+  return m_proc->sent(len, buf);
 }
 
 Status

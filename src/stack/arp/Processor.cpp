@@ -137,7 +137,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
 }
 
 Status
-Processor::sent(uint8_t* const buf)
+Processor::sent(UNUSED const uint16_t len, uint8_t* const buf)
 {
   return m_ipv4.release(buf);
 }

@@ -115,7 +115,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
 }
 
 Status
-Processor::sent(uint8_t* const buf)
+Processor::sent(const uint16_t len, uint8_t* const buf)
 {
   const auto* hdr = reinterpret_cast<const Header*>(buf);
   /*
@@ -128,16 +128,16 @@ Processor::sent(uint8_t* const buf)
   switch (m_type) {
 #ifdef TULIPS_ENABLE_ARP
     case ETHTYPE_ARP: {
-      return m_arp->sent(buf + HEADER_LEN);
+      return m_arp->sent(len - HEADER_LEN, buf + HEADER_LEN);
     }
 #endif
     case ETHTYPE_IP: {
-      return m_ipv4->sent(buf + HEADER_LEN);
+      return m_ipv4->sent(len - HEADER_LEN, buf + HEADER_LEN);
     }
     default: {
 #ifdef TULIPS_ENABLE_RAW
       if (m_type <= 1500) {
-        return m_raw->sent(buf + HEADER_LEN);
+        return m_raw->sent(len - HEADER_LEN, buf + HEADER_LEN);
       }
 #endif
       break;

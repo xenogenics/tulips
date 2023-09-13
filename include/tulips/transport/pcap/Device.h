@@ -78,7 +78,7 @@ private:
   Status run() override { return Status::Ok; }
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
-  Status sent(uint8_t* const data) override;
+  Status sent(const uint16_t len, uint8_t* const data) override;
 
   transport::Device& m_device;
   pcap_t* m_pcap;

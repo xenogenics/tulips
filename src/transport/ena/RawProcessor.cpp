@@ -29,7 +29,7 @@ RawProcessor::process(const uint16_t len, const uint8_t* const data,
 }
 
 Status
-RawProcessor::sent(UNUSED uint8_t* const data)
+RawProcessor::sent(UNUSED const uint16_t len, UNUSED uint8_t* const data)
 {
   return Status::Ok;
 }

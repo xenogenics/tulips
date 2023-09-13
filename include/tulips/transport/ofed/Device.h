@@ -61,6 +61,7 @@ public:
 
 private:
   using Filters = std::map<uint16_t, ibv_flow*>;
+  using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 
   void construct(std::string_view ifn, const uint16_t nbuf);
   Status postReceive(const uint16_t id);

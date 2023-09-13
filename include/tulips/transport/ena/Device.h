@@ -54,6 +54,8 @@ public:
   uint16_t receiveBuffersAvailable() const override { return m_nbuf; }
 
 private:
+  using SentBuffer = std::tuple<uint16_t, uint8_t*>;
+
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
          const size_t nbuf, const size_t htsz, const size_t hlen,
          const uint8_t* const hkey, stack::ethernet::Address const& m_address,

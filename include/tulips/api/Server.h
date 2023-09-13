@@ -45,9 +45,9 @@ public:
     return m_ethfrom.process(len, data, ts);
   }
 
-  inline Status sent(uint8_t* const data) override
+  inline Status sent(const uint16_t len, uint8_t* const data) override
   {
-    return m_ethfrom.sent(data);
+    return m_ethfrom.sent(len, data);
   }
 
   /**
@@ -89,7 +89,10 @@ private:
       return Status::Ok;
     }
 
-    Status sent(UNUSED uint8_t* const data) override { return Status::Ok; }
+    Status sent(UNUSED const uint16_t len, UNUSED uint8_t* const data) override
+    {
+      return Status::Ok;
+    }
   };
 #endif
 

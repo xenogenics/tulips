@@ -36,9 +36,9 @@ public:
     return m_server->process(len, data, ts);
   }
 
-  inline Status sent(uint8_t* const data) override
+  inline Status sent(const uint16_t len, uint8_t* const data) override
   {
-    return m_server->sent(data);
+    return m_server->sent(len, data);
   }
 
   /**

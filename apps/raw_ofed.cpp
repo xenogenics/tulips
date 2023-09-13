@@ -52,7 +52,10 @@ public:
     return send(sizeof(value), (uint8_t*)&value, true);
   }
 
-  Status sent(uint8_t* const data) override { return m_ethto->release(data); }
+  Status sent(UNUSED const uint16_t len, uint8_t* const data) override
+  {
+    return m_ethto->release(data);
+  }
 
   Status send(const uint16_t len, const uint8_t* const data,
               const bool swap = false)

@@ -40,11 +40,12 @@ public:
   /**
    * Notify the processor that a buffer has been sent.
    *
-   * @param buf the buffer that has been sent.
+   * @param len the length of the piece of data.
+   * @param data the piece of data.
    *
    * @return the status of the operation.
    */
-  virtual Status sent(uint8_t* const buf) = 0;
+  virtual Status sent(const uint16_t len, uint8_t* const data) = 0;
 };
 
 }

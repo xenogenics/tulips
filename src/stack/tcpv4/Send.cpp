@@ -155,6 +155,7 @@ Processor::sendAck(Connection& e)
   if (unlikely(e.hasPendingSendData())) {
     memcpy(bdat, e.m_sdat, e.m_slen);
     blen = e.m_slen;
+    e.m_slen = 0;
   }
   /*
    * Prepare the frame for an ACK.
