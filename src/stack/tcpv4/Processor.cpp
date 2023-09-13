@@ -174,7 +174,8 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   auto i = m_index.find(std::hash<Header>()(*INTCP));
   if (i != m_index.end()) {
     auto& c = m_conns[i->second];
-    if (c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
+    if (c.m_state != Connection::CLOSED &&
+        c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
       return process(c, len, data, ts);
     }
   }
