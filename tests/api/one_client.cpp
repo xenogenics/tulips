@@ -210,6 +210,9 @@ TEST_F(API_OneClient, ListenConnectAndAbort)
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   // Client closed
   ASSERT_TRUE(m_client->isClosed(id));
+  // Client and server close the connections
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectAndClose)
@@ -335,6 +338,13 @@ TEST_F(API_OneClient, ConnectCookie)
    * Check if the cookie was found.
    */
   ASSERT_TRUE(m_server_delegate.isListenCookieValid());
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client->abort(id));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ConnectTwo)
@@ -360,7 +370,6 @@ TEST_F(API_OneClient, ConnectTwo)
   ASSERT_EQ(Status::Ok, m_client->connect(id1, dst_ip, 12345));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-
   /*
    * Connection client 2.
    */
@@ -370,6 +379,17 @@ TEST_F(API_OneClient, ConnectTwo)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id2, dst_ip, 12345));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client->abort(id1));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_client->abort(id2));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
@@ -433,10 +453,18 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }
+  /*
+   * Make sure the connections are closed.
+   */
   ASSERT_TRUE(m_client->isClosed(id1));
   ASSERT_TRUE(m_server->isClosed(0));
   ASSERT_TRUE(m_client->isClosed(id2));
   ASSERT_TRUE(m_server->isClosed(1));
+  /*
+   * Clean-up.
+   */
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)

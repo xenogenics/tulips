@@ -343,9 +343,20 @@ TEST_F(SSL_OneClient, ListenConnectSendAndCloseFromServer)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   /*
-   * Client is closed.
+   * Advance the timers because of TIME WAIT.
+   */
+  for (int i = 0; i < 120; i += 1) {
+    system::Clock::get().offsetBy(system::Clock::SECOND);
+    ASSERT_EQ(Status::Ok, m_client->run());
+    ASSERT_EQ(Status::Ok, m_server->run());
+  }
+  /*
+   * Make sure the connection is closed.
    */
   ASSERT_TRUE(m_client->isClosed(id));
+  /*
+   * Clean-up.
+   */
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }

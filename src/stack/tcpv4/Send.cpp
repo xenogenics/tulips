@@ -51,23 +51,25 @@ Processor::sendAbort(Connection& e)
 {
   m_log.debug("TCP4", "connection RST");
   /*
-   * Unlisten the local port and close the connection.
-   */
-  m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-  m_index.erase(std::hash<Connection>()(e));
-  e.m_state = Connection::CLOSED;
-  /*
-   * Ignore any pending data.
-   */
-  e.m_slen = 0;
-  /*
    * Update the TCP headers.
    */
   uint8_t* outdata = e.m_sdat;
   OUTTCP->flags = Flag::RST;
   OUTTCP->flags |= e.m_newdata ? Flag::ACK : 0;
   OUTTCP->offset = 5;
-  return send(e);
+  /*
+   * Ignore any pending data.
+   */
+  e.m_slen = 0;
+  /*
+   * Send the packet.
+   */
+  auto ret = send(e);
+  /*
+   * Close the connection and return.
+   */
+  close(e);
+  return ret;
 }
 
 Status

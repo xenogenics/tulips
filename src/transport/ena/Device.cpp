@@ -1,4 +1,3 @@
-#include "tulips/fifo/fifo.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/CircularBuffer.h>
@@ -11,6 +10,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 #include <dpdk/rte_config.h>
 #include <dpdk/rte_dev.h>
@@ -44,7 +44,8 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 6])
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
-  , m_sent(TULIPS_FIFO_DEFAULT_VALUE)
+  , m_free()
+  , m_sent()
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -52,9 +53,20 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_mtu(mtu)
 {
   /*
-   * Create the sent FIFOs.
+   * Reserve space in the sent queue .
    */
-  tulips_fifo_create(m_nbuf, sizeof(SentBuffer), &m_sent);
+  m_free.reserve(nbuf);
+  m_sent.reserve(nbuf);
+  /*
+   * Populate the free buffer list.
+   */
+  for (size_t i = 0; i < nbuf; i += 1) {
+    auto* mbuf = rte_pktmbuf_alloc(m_txpool);
+    if (mbuf == nullptr) {
+      throw std::runtime_error("send buffer allocation failed");
+    }
+    m_free.push_back(mbuf);
+  }
   /*
    * Print some device information.
    */
@@ -69,9 +81,31 @@ Device::Device(system::Logger& log, const uint16_t port_id,
 
 Device::~Device()
 {
-  tulips_fifo_destroy(&m_sent);
+  /*
+   * Clean-up the unreleased send buffers.
+   */
+  while (!m_sent.empty()) {
+    auto info = m_sent.back();
+    m_sent.pop_back();
+    auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(std::get<1>(info) - 8);
+    rte_pktmbuf_free(mbuf);
+  }
+  /*
+   * Clean-up the free send buffers.
+   */
+  while (!m_free.empty()) {
+    auto mbuf = m_free.back();
+    m_free.pop_back();
+    rte_pktmbuf_free(mbuf);
+  }
+  /*
+   * Delete the RETA.
+   */
   delete[] m_reta;
   m_reta = nullptr;
+  /*
+   * Delete the packet buffer.
+   */
   delete[] m_packet;
   m_packet = nullptr;
 }
@@ -170,24 +204,16 @@ Device::poll(Processor& proc)
   /*
    * Process the sent buffers.
    */
-  while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
-    SentBuffer* info;
+  while (!m_sent.empty()) {
     /*
-     * Get the front of the FIFO..
+     * Remove the last item (constant time).
      */
-    if (tulips_fifo_front(m_sent, (void**)&info) != TULIPS_FIFO_OK) {
-      return Status::HardwareError;
-    }
-    /*
-     * Pop the FIFO.
-     */
-    if (tulips_fifo_pop(m_sent) != TULIPS_FIFO_OK) {
-      return Status::HardwareError;
-    }
+    auto& info = m_sent.back();
+    m_sent.pop_back();
     /*
      * Notify the processor.
      */
-    auto ret = proc.sent(std::get<0>(*info), std::get<1>(*info));
+    auto ret = proc.sent(std::get<0>(info), std::get<1>(info));
     if (ret != Status::Ok) {
       return ret;
     }
@@ -279,17 +305,21 @@ Status
 Device::prepare(uint8_t*& buf)
 {
   /*
-   * Allocate a new buffer in the TX pool.
+   * Make sure we have free TX buffers.
    */
-  auto* mbuf = rte_pktmbuf_alloc(m_txpool);
-  if (mbuf == nullptr) {
+  if (m_free.empty()) {
     return Status::NoMoreResources;
   }
+  /*
+   * Get a new TX buffer.
+   */
+  auto mbuf = m_free.back();
+  m_free.pop_back();
   /*
    * Grab the data region.
    */
   buf = rte_pktmbuf_mtod(mbuf, uint8_t*);
-  m_log.trace("ENA", "preparing buffer ", (void*)buf);
+  m_log.trace("ENA", "preparing buffer ", (void*)buf, " ", (void*)mbuf);
   /*
    * Update the private data with the mbuf address.
    */
@@ -309,6 +339,8 @@ Device::commit(const uint16_t len, uint8_t* const buf,
    * Grab the packet buffer.
    */
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
+  m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len, " ",
+              (void*)mbuf);
   /*
    * Update the packet buffer length.
    */
@@ -360,12 +392,10 @@ Device::commit(const uint16_t len, uint8_t* const buf,
     m_log.error("ENA", "sending packet failed: ", error);
     return Status::HardwareError;
   }
-  m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len);
   /*
-   * Free the buffer.
+   * Queue the buffer.
    */
-  auto info = SentBuffer(len, buf);
-  tulips_fifo_push(m_sent, &buf);
+  m_sent.emplace_back(len, buf);
   /*
    * Done.
    */
@@ -375,9 +405,9 @@ Device::commit(const uint16_t len, uint8_t* const buf,
 Status
 Device::release(uint8_t* const buf)
 {
-  m_log.trace("ENA", "releasing buffer ", (void*)buf);
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
-  rte_pktmbuf_free(mbuf);
+  m_log.trace("ENA", "releasing buffer ", (void*)buf, " ", (void*)mbuf);
+  m_free.push_back(mbuf);
   return Status::Ok;
 }
 

@@ -51,8 +51,8 @@ Device::Device(system::Logger& log, const uint16_t nbuf)
   , m_recvbuf(nullptr)
   , m_sendmr(nullptr)
   , m_recvmr(nullptr)
-  , m_free(TULIPS_FIFO_DEFAULT_VALUE)
-  , m_sent(TULIPS_FIFO_DEFAULT_VALUE)
+  , m_free()
+  , m_sent()
   , m_bcast(nullptr)
   , m_flow(nullptr)
   , m_filters()
@@ -94,8 +94,8 @@ Device::Device(system::Logger& log, std::string_view ifn, const uint16_t nbuf)
   , m_recvbuf(nullptr)
   , m_sendmr(nullptr)
   , m_recvmr(nullptr)
-  , m_free(TULIPS_FIFO_DEFAULT_VALUE)
-  , m_sent(TULIPS_FIFO_DEFAULT_VALUE)
+  , m_free()
+  , m_sent()
   , m_bcast(nullptr)
   , m_flow(nullptr)
   , m_filters()
@@ -258,14 +258,14 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
   /*
    * Create the send buffer FIFOs.
    */
-  tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_free);
-  tulips_fifo_create(m_nbuf, sizeof(SentBuffer), &m_sent);
+  m_free.reserve(m_nbuf);
+  m_sent.reserve(m_nbuf);
   /*
    * Fill the send FIFO.
    */
   for (int i = 0; i < m_nbuf; i += 1) {
     uint8_t* address = m_sendbuf + i * m_buflen;
-    tulips_fifo_push(m_free, &address);
+    m_free.push_back(address);
   }
   /*
    * Define the raw flow attribute structure.
@@ -369,11 +369,6 @@ Device::~Device()
     m_events += 1;
   }
   ibv_ack_cq_events(m_recvcq, m_events);
-  /*
-   * Free the FIFOs.
-   */
-  tulips_fifo_destroy(&m_sent);
-  tulips_fifo_destroy(&m_free);
   /*
    * Destroy memory regions
    */
@@ -504,32 +499,18 @@ Device::poll(Processor& proc)
   /*
    * Process the sent buffers.
    */
-  while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
-    SentBuffer* info;
-    /*
-     * Get the front of the FIFO..
-     */
-    if (tulips_fifo_front(m_sent, (void**)&info) != TULIPS_FIFO_OK) {
-      return Status::HardwareError;
-    }
+  while (!m_sent.empty()) {
     /*
      * Pop the FIFO.
      */
-    if (tulips_fifo_pop(m_sent) != TULIPS_FIFO_OK) {
-      return Status::HardwareError;
-    }
+    auto& info = m_sent.back();
+    m_sent.pop_back();
     /*
      * Notify the processor.
      */
-    auto ret = proc.sent(std::get<0>(*info), std::get<1>(*info));
+    auto ret = proc.sent(std::get<0>(info), std::get<1>(info));
     if (ret != Status::Ok) {
       return ret;
-    }
-    /*
-     * Push to the free FIFO.
-     */
-    if (tulips_fifo_push(m_free, &std::get<1>(*info)) != TULIPS_FIFO_OK) {
-      return Status::HardwareError;
     }
   }
   /*
@@ -691,20 +672,24 @@ Device::prepare(uint8_t*& buf)
     uint16_t len = wc[i].byte_len;
     auto* addr = (uint8_t*)wc[i].wr_id; // NOLINT
     auto info = SentBuffer(len, addr);
-    tulips_fifo_push(m_sent, &info);
+    m_sent.emplace_back(len, addr);
   }
   /*
-   * Look for an available buffer.
+   * Check for available buffers.
    */
-  if (tulips_fifo_empty(m_free) == TULIPS_FIFO_YES) {
+  if (m_free.empty()) {
     buf = nullptr;
     return Status::NoMoreResources;
   }
-  if (tulips_fifo_front(m_free, (void**)&buf) != TULIPS_FIFO_OK) {
-    return Status::HardwareError;
-  }
+  /*
+   * Allocate a buffer.
+   */
+  buf = m_free.back();
+  m_free.pop_back();
   m_log.trace("OFED", "preparing buffer ", (void*)buf);
-  tulips_fifo_pop(m_free);
+  /*
+   * Done.
+   */
   return Status::Ok;
 }
 
@@ -798,7 +783,7 @@ Status
 Device::release(uint8_t* const buf)
 {
   m_log.trace("OFED", "releasing buffer ", (void*)buf);
-  tulips_fifo_push(m_free, &buf);
+  m_free.push_back(buf);
   return Status::Ok;
 }
 

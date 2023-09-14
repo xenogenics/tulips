@@ -31,23 +31,6 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
 
 Device::~Device()
 {
-  /*
-   * Deallocate any sent packets.
-   */
-  for (auto p : m_sent) {
-    Packet::release(p);
-  }
-  m_sent.clear();
-  /*
-   * Deallocate any uncommitted packets.
-   */
-  for (auto p : m_packets) {
-    Packet::release(p);
-  }
-  m_packets.clear();
-  /*
-   * Clear resources.
-   */
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
 }

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <tulips/fifo/fifo.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/transport/Device.h>
 #include <cstdint>
 #include <map>
 #include <string>
+#include <vector>
 #include <infiniband/verbs.h>
 
 namespace tulips::transport::ofed {
@@ -87,8 +87,8 @@ private:
   uint8_t* m_recvbuf;
   ibv_mr* m_sendmr;
   ibv_mr* m_recvmr;
-  tulips_fifo_t m_free;
-  tulips_fifo_t m_sent;
+  std::vector<uint8_t*> m_free;
+  std::vector<SentBuffer> m_sent;
   ibv_flow* m_bcast;
   ibv_flow* m_flow;
   Filters m_filters;

@@ -98,9 +98,7 @@ Processor::run()
        */
       if (e.m_timer == TIME_WAIT_TIMEOUT) {
         m_log.debug("TCP4", "connection closed");
-        m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-        m_index.erase(std::hash<Connection>()(e));
-        e.m_state = Connection::CLOSED;
+        close(e);
         continue;
       }
     }
@@ -331,6 +329,33 @@ Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
 }
 #endif
 
+void
+Processor::close(Connection& e)
+{
+  /*
+   * Unlisten the connection's local port.
+   */
+  m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+  m_index.erase(std::hash<Connection>()(e));
+  /*
+   * Clear the segments.
+   */
+  for (auto& s : e.m_segments) {
+    if (s.m_len > 0) {
+      m_ipv4to.release(s.m_dat);
+      s.clear();
+    }
+  }
+  /*
+   * Release the current send buffer.
+   */
+  m_ipv4to.release(e.m_sdat);
+  /*
+   * Update its state.
+   */
+  e.m_state = Connection::CLOSED;
+}
+
 Status
 Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
                    const Timestamp ts)
@@ -354,12 +379,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    * of this reset is within our advertised window before we accept the reset.
    */
   if (INTCP->flags & Flag::RST) {
-    m_log.debug("TCP4", "connection aborted");
-    m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-    m_index.erase(std::hash<Connection>()(e));
-    e.m_state = Connection::CLOSED;
-    m_log.debug("TCP4", "Received reset on connection ", e.id(), ", aborting");
+    m_log.debug("TCP4", "received reset on connection ", e.id(), ", aborting");
     m_handler.onAborted(e, ts);
+    close(e);
     return Status::Ok;
   }
   /*
@@ -873,10 +895,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     case Connection::LAST_ACK: {
       if (e.m_ackdata) {
         m_log.debug("TCP4", "connection closed");
-        m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-        m_index.erase(std::hash<Connection>()(e));
-        e.m_state = Connection::CLOSED;
         m_handler.onClosed(e, ts);
+        close(e);
       }
       break;
     }
