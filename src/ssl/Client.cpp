@@ -31,7 +31,6 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                const size_t nconn, const bool save_keys)
   : m_delegate(delegate)
   , m_log(log)
-  , m_dev(device)
   , m_client(std::make_unique<api::Client>(log, *this, device, nconn))
   , m_context(nullptr)
   , m_savekeys(save_keys)
@@ -354,7 +353,7 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
    * Create the context.
    */
   auto* ssl = AS_SSL(m_context);
-  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, ts, keyfd);
+  auto* c = new Context(ssl, m_log, id, cookie, ts, keyfd);
   c->state = Context::State::Connect;
   return c;
 }

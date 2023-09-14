@@ -68,21 +68,20 @@ errorToString(const int err)
  * SSL context.
  */
 
-Context::Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
+Context::Context(SSL_CTX* ctx, system::Logger& log,
                  const api::interface::Client::ID id, void* cookie,
                  const system::Clock::Value ts, const int keyfd)
   : log(log)
-  , buflen(buflen)
   , id(id)
   , cookie(cookie)
   , ts(ts)
   , keyfd(keyfd)
-  , bin(bio::allocate(buflen))
-  , bout(bio::allocate(buflen))
+  , bin(bio::allocate(BUFLEN))
+  , bout(bio::allocate(BUFLEN))
   , ssl(SSL_new(ctx))
   , state(State::Closed)
   , blocked(false)
-  , rdbf(new uint8_t[buflen])
+  , rdbf(new uint8_t[BUFLEN])
 {
   SSL_set_bio(ssl, bin, bout);
   SSL_set_app_data(ssl, this);

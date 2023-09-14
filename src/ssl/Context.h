@@ -7,6 +7,7 @@
 #include <tulips/system/Clock.h>
 #include <tulips/system/Logger.h>
 #include <string>
+#include <openssl/bio.h>
 #include <openssl/ssl.h>
 
 #define AS_SSL(__c) (reinterpret_cast<SSL_CTX*>(__c))
@@ -26,6 +27,8 @@ std::string errorToString(const int err);
 
 struct Context
 {
+  static constexpr const size_t BUFLEN = 32768;
+
   enum class State
   {
     Closed,
@@ -35,7 +38,7 @@ struct Context
     Shutdown
   };
 
-  Context(SSL_CTX* ctx, system::Logger& log, const size_t buflen,
+  Context(SSL_CTX* ctx, system::Logger& log,
           const api::interface::Client::ID id, void* const cookie,
           const system::Clock::Value ts, const int keyfd);
   ~Context();
@@ -99,15 +102,19 @@ struct Context
                    const uint8_t* const data, const uint32_t len,
                    const system::Clock::Value ts)
   {
-    int ret = 0;
     /*
      * Write the data in the input BIO.
      */
-    ret = BIO_write(bin, data, (int)len);
+    int ret = BIO_write(bin, data, (int)len);
     if (ret != (int)len) {
       log.error("SSL", "Failed to write ", len, "B in BIO");
       return Action::Abort;
     }
+    /*
+     * Show the buffer level.
+     */
+    auto acc = BIO_pending(bin);
+    log.trace("SSL", "new data: ", len, "B, (", acc, "/", BUFLEN, ")");
     /*
      * Only accept Ready state.
      */
@@ -119,7 +126,10 @@ struct Context
      * Process the internal buffer as long as there is data available.
      */
     do {
-      ret = SSL_read(ssl, rdbf, buflen);
+      auto bl0 = BIO_pending(bin);
+      ret = SSL_read(ssl, rdbf, BUFLEN);
+      auto bl1 = BIO_pending(bin);
+      log.trace("SSL", "SSL_read: ", ret, " (", bl0, " -> ", bl1, ")");
       /*
        * Handle error conditions.
        */
@@ -162,7 +172,9 @@ struct Context
          */
         else {
           auto m = errorToString(err);
-          log.error("SSL", "SSL_read error: ", m, " (", err, ")");
+          auto b = BIO_pending(bin);
+          log.error("SSL", "SSL_read error: ", m, " (", ret, ", ", err, ", ",
+                    sht, ") ", b, "B");
           return Action::Abort;
         }
       }
@@ -189,15 +201,19 @@ struct Context
                    const system::Clock::Value ts, const uint32_t alen,
                    uint8_t* const sdata, uint32_t& slen)
   {
-    int ret = 0;
     /*
      * Write the data in the input BIO.
      */
-    ret = BIO_write(bin, data, (int)len);
+    int ret = BIO_write(bin, data, (int)len);
     if (ret != (int)len) {
       log.error("SSL", "Failed to write ", len, "B in BIO");
       return Action::Abort;
     }
+    /*
+     * Show the buffer level.
+     */
+    auto avl = BIO_pending(bin);
+    log.trace("SSL", "new data: ", len, "B, (", avl, "/", BUFLEN, ")");
     /*
      * Check the connection's state.
      */
@@ -274,7 +290,10 @@ struct Context
          * Process the internal buffer as long as there is data available.
          */
         do {
-          ret = SSL_read(ssl, rdbf, buflen);
+          auto bl0 = BIO_pending(bin);
+          ret = SSL_read(ssl, rdbf, BUFLEN);
+          auto bl1 = BIO_pending(bin);
+          log.trace("SSL", "SSL_read: ", ret, " (", bl0, " -> ", bl1, ")");
           /*
            * Handle error conditions.
            */
@@ -317,7 +336,9 @@ struct Context
              */
             else {
               auto m = errorToString(err);
-              log.error("SSL", "SSL_read error: ", m, " (", err, ")");
+              auto b = BIO_pending(bin);
+              log.error("SSL", "SSL_read error: ", m, " (", ret, ", ", err,
+                        ", ", sht, ") ", b, "B");
               return Action::Abort;
             }
           }
@@ -380,9 +401,9 @@ struct Context
   }
 
   /**
-   * Return how much data is pending on the write channel.
+   * Return how much data is pending on the read channel.
    */
-  inline size_t pending() { return BIO_ctrl_pending(bout); }
+  inline size_t pending() { return BIO_pending(bout); }
 
   /**
    * Handle delegate response.
@@ -401,7 +422,6 @@ struct Context
   void saveKeys(std::string_view prefix);
 
   system::Logger& log;
-  size_t buflen;
   api::interface::Client::ID id;
   void* cookie;
   system::Clock::Value ts;

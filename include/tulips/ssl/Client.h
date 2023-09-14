@@ -94,7 +94,6 @@ private:
 
   api::interface::Client::Delegate& m_delegate;
   system::Logger& m_log;
-  transport::Device& m_dev;
   std::unique_ptr<tulips::api::Client> m_client;
   void* m_context;
   bool m_savekeys;

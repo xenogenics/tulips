@@ -10,7 +10,6 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
                std::string_view cert, std::string_view key, const size_t nconn)
   : m_delegate(delegate)
   , m_log(log)
-  , m_dev(device)
   , m_server(std::make_unique<api::Server>(log, *this, device, nconn))
   , m_context(nullptr)
 {
@@ -168,7 +167,7 @@ void*
 Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* ssl = AS_SSL(m_context);
-  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, ts, -1);
+  auto* c = new Context(ssl, m_log, id, cookie, ts, -1);
   c->state = Context::State::Accept;
   return c;
 }
