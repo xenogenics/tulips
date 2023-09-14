@@ -1,5 +1,6 @@
 #include "Debug.h"
-#include "tulips/stack/IPv4.h"
+#include "tulips/stack/TCPv4.h"
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -266,32 +267,24 @@ Processor::rexmit(Connection& e)
      */
     case Connection::SYN_RCVD: {
       m_log.debug("TCP4", "retransmit SYNACK");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return sendSynAck(e, seg);
+      const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
+      return send(e, len, e.segment());
     }
     /*
      * In the SYN_SENT state, we retransmit out SYN.
      */
     case Connection::SYN_SENT: {
       m_log.debug("TCP4", "retransmit SYN");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      uint8_t* outdata = seg.m_dat;
-      OUTTCP->flags = 0;
-      return sendSyn(e, seg);
+      const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
+      return send(e, len, e.segment());
     }
     /*
      * In the ESTABLISHED state, we resend the oldest segment.
      */
     case Connection::ESTABLISHED: {
       m_log.debug("TCP4", "retransmit PSH");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return send(e, seg, Flag::PSH);
+      const auto len = e.segment().m_len + HEADER_LEN;
+      return send(e, len, e.segment());
     }
     /*
      * In all these states we should retransmit a FINACK.
@@ -300,10 +293,7 @@ Processor::rexmit(Connection& e)
     case Connection::CLOSING:
     case Connection::LAST_ACK: {
       m_log.debug("TCP4", "retransmit FINACK");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return sendFinAck(e, e.segment());
+      return send(e, HEADER_LEN, e.segment());
     }
     /*
      * For the other states, do nothing. In the CLOSE state, if we are still
@@ -382,6 +372,12 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(e.m_ripaddr);
   m_ethto.setDestinationAddress(e.m_rethaddr);
+  /*
+   * Don't prepare a new buffer if we are rexmitting.
+   */
+  if (rexmit) {
+    return Status::Ok;
+  }
   /*
    * Prepare a new buffer
    */

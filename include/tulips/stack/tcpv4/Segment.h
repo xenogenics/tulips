@@ -28,12 +28,6 @@ private:
     m_dat = nullptr;
   }
 
-  inline void swap(uint8_t* const to)
-  {
-    memcpy(to, m_dat, m_len);
-    m_dat = to;
-  }
-
   /*
    * The len field is used to check if the segment was fully acknowledged. It
    * is also used to check if the segment is valid (=0).

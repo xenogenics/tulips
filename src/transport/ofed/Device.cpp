@@ -1,6 +1,4 @@
 #include "Utils.h"
-#include "tulips/fifo/fifo.h"
-#include <tulips/fifo/errors.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>

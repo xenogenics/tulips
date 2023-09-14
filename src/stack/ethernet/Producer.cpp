@@ -1,4 +1,4 @@
-#include "tulips/stack/Ethernet.h"
+#include <tulips/stack/Ethernet.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <arpa/inet.h>
 

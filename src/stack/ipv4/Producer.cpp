@@ -77,6 +77,7 @@ Producer::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
    * Compute the checksum
    */
 #ifndef TULIPS_HAS_HW_CHECKSUM
+  OUTIP->ipchksum = 0;
   OUTIP->ipchksum = ~checksum(outdata);
 #endif
   /*

@@ -1,8 +1,8 @@
-#include "tulips/system/Logger.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/shm/Device.h>
 #include <csignal>
 #include <cstdio>

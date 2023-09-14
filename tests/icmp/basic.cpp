@@ -1,17 +1,18 @@
-#include "tulips/system/Logger.h"
 #include <tulips/stack/arp/Processor.h>
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/icmpv4/Processor.h>
 #include <tulips/stack/ipv4/Processor.h>
 #include <tulips/stack/ipv4/Producer.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
+#include <tulips/transport/list/Device.h>
 #include <tulips/transport/pcap/Device.h>
-#include <tulips/transport/shm/Device.h>
 #include <gtest/gtest.h>
 
 using namespace tulips;
 using namespace stack;
+using namespace transport;
 
 TEST(ICMP_Basic, RequestResponse)
 {
@@ -24,13 +25,8 @@ TEST(ICMP_Basic, RequestResponse)
   /*
    * Create the transport FIFOs
    */
-  tulips_fifo_t client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-  tulips_fifo_t server_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-  /*
-   * Build the FIFOs
-   */
-  tulips_fifo_create(64, 32, &client_fifo);
-  tulips_fifo_create(64, 32, &server_fifo);
+  list::Device::List client_fifo;
+  list::Device::List server_fifo;
   /*
    * Build the devices
    */
@@ -40,10 +36,10 @@ TEST(ICMP_Basic, RequestResponse)
   ipv4::Address server_ip4(10, 1, 0, 2);
   ipv4::Address bcast(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  transport::shm::Device client(logger, client_adr, client_ip4, bcast, nmask,
-                                server_fifo, client_fifo);
-  transport::shm::Device server(logger, server_adr, server_ip4, bcast, nmask,
-                                client_fifo, server_fifo);
+  list::Device client(logger, client_adr, client_ip4, bcast, nmask, 128,
+                      server_fifo, client_fifo);
+  list::Device server(logger, server_adr, server_ip4, bcast, nmask, 128,
+                      client_fifo, server_fifo);
   /*
    * Build the pcap device
    */
@@ -120,8 +116,8 @@ TEST(ICMP_Basic, RequestResponse)
    */
   client_icmp4.detach(req);
   /*
-   * Destroy the FIFOs
+   * Clean-up.
    */
-  tulips_fifo_destroy(&client_fifo);
-  tulips_fifo_destroy(&server_fifo);
+  ASSERT_EQ(Status::NoDataAvailable, server_pcap.poll(server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, client_pcap.poll(client_eth_proc));
 }

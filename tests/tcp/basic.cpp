@@ -6,14 +6,15 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
+#include <tulips/transport/list/Device.h>
 #include <tulips/transport/pcap/Device.h>
-#include <tulips/transport/shm/Device.h>
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 
 using namespace tulips;
 using namespace stack;
+using namespace transport;
 
 namespace {
 
@@ -197,8 +198,8 @@ class TCP_Basic : public ::testing::Test
 public:
   TCP_Basic()
     : m_logger(system::Logger::Level::Trace)
-    , m_client_fifo(nullptr)
-    , m_server_fifo(nullptr)
+    , m_client_fifo()
+    , m_server_fifo()
     , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
     , m_bcast(10, 1, 0, 254)
@@ -228,25 +229,12 @@ protected:
   {
     std::string tname(
       ::testing::UnitTest::GetInstance()->current_test_info()->name());
-    /*
-     * Create the transport FIFOs.
+    /* * Build the devices.
      */
-    m_client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-    m_server_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-    /*
-     * Build the FIFOs
-     */
-    tulips_fifo_create(64, 128, &m_client_fifo);
-    tulips_fifo_create(64, 128, &m_server_fifo);
-    /*
-     * Build the devices.
-     */
-    m_client = new transport::shm::Device(m_logger, m_client_adr, m_client_ip4,
-                                          m_bcast, m_nmask, m_server_fifo,
-                                          m_client_fifo);
-    m_server = new transport::shm::Device(m_logger, m_server_adr, m_server_ip4,
-                                          m_bcast, m_nmask, m_client_fifo,
-                                          m_server_fifo);
+    m_client = new list::Device(m_logger, m_client_adr, m_client_ip4, m_bcast,
+                                m_nmask, 128, m_server_fifo, m_client_fifo);
+    m_server = new list::Device(m_logger, m_server_adr, m_server_ip4, m_bcast,
+                                m_nmask, 128, m_client_fifo, m_server_fifo);
     /*
      * Build the pcap device
      */
@@ -340,24 +328,19 @@ protected:
      */
     delete m_client;
     delete m_server;
-    /*
-     * Delete the FIFOs.
-     */
-    tulips_fifo_destroy(&m_client_fifo);
-    tulips_fifo_destroy(&m_server_fifo);
   }
 
   system::ConsoleLogger m_logger;
-  tulips_fifo_t m_client_fifo;
-  tulips_fifo_t m_server_fifo;
+  list::Device::List m_client_fifo;
+  list::Device::List m_server_fifo;
   ethernet::Address m_client_adr;
   ethernet::Address m_server_adr;
   ipv4::Address m_bcast;
   ipv4::Address m_nmask;
   ipv4::Address m_client_ip4;
   ipv4::Address m_server_ip4;
-  transport::shm::Device* m_client;
-  transport::shm::Device* m_server;
+  list::Device* m_client;
+  list::Device* m_server;
   transport::pcap::Device* m_client_pcap;
   transport::pcap::Device* m_server_pcap;
   Client* m_client_evt;
@@ -392,6 +375,13 @@ TEST_F(TCP_Basic, Connect)
   // Both end points are connected
   ASSERT_TRUE(m_client_evt->isConnected());
   ASSERT_TRUE(m_server_evt->isConnected());
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client_tcp->abort(c));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
 }
 
 TEST_F(TCP_Basic, ConnectDisconnectFromClient)
@@ -416,6 +406,13 @@ TEST_F(TCP_Basic, ConnectDisconnectFromClient)
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
   ASSERT_FALSE(m_client_evt->isConnected());
   ASSERT_FALSE(m_server_evt->isConnected());
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client_tcp->abort(c));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
 }
 
 TEST_F(TCP_Basic, ConnectDisconnectFromServer)
@@ -441,4 +438,17 @@ TEST_F(TCP_Basic, ConnectDisconnectFromServer)
   ASSERT_EQ(Status::NotConnected, m_client_tcp->close(c));
   ASSERT_FALSE(m_client_evt->isConnected());
   ASSERT_FALSE(m_server_evt->isConnected());
+  /*
+   * Advance the timers because of TIME WAIT.
+   */
+  for (int i = 0; i < 120; i += 1) {
+    system::Clock::get().offsetBy(system::Clock::SECOND);
+    ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
+  }
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
 }
