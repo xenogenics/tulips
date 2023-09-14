@@ -377,26 +377,25 @@ Device::commit(const uint16_t len, uint8_t* const buf,
 #ifdef TULIPS_HAS_HW_CHECKSUM
     mbuf->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM;
 #endif
+    /*
+     * Update the L4 offload flags.
+     */
+    auto offset = sizeof(struct rte_ether_hdr);
+    auto* ip_hdr = reinterpret_cast<const struct rte_ipv4_hdr*>(buf + offset);
+    if (ip_hdr->next_proto_id == IPPROTO_UDP) {
+      mbuf->l4_len = sizeof(struct rte_udp_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
+      mbuf->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
+#endif
+    } else if (ip_hdr->next_proto_id == IPPROTO_TCP) {
+      mbuf->l4_len = sizeof(struct rte_tcp_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
+      mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
+#endif
+    }
   }
   /*
-   * Update the L4 offload flags.
-   */
-  auto offset = sizeof(struct rte_ether_hdr);
-  auto* ip_hdr = reinterpret_cast<const struct rte_ipv4_hdr*>(buf + offset);
-  if (ip_hdr->next_proto_id == IPPROTO_UDP) {
-    mbuf->l4_len = sizeof(struct rte_udp_hdr);
-#ifdef TULIPS_HAS_HW_CHECKSUM
-    mbuf->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
-#endif
-  }
-  if (ip_hdr->next_proto_id == IPPROTO_TCP) {
-    mbuf->l4_len = sizeof(struct rte_tcp_hdr);
-#ifdef TULIPS_HAS_HW_CHECKSUM
-    mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
-#endif
-  }
-  /*
-   * Prepare the packet. NOTE(xrg): we can probably skip this.
+   * Prepare the packet.
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
@@ -427,7 +426,9 @@ Status
 Device::release(uint8_t* const buf)
 {
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
-  m_log.trace("ENA", "releasing buffer ", (void*)buf, " ", (void*)mbuf);
+  m_log.trace("ENA", "releasing buffer ", (void*)buf, " ", (void*)mbuf, " (",
+              m_free.size() + 1, "/", m_nbuf, ")");
+  rte_pktmbuf_reset(mbuf);
   m_free.push_back(mbuf);
   return Status::Ok;
 }
