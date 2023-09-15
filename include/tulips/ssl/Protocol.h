@@ -6,6 +6,7 @@ namespace tulips::ssl {
 
 enum class Protocol
 {
+  Auto,
   SSLv3,
   TLS,
 };

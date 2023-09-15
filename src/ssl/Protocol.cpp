@@ -6,6 +6,8 @@ std::string
 toString(const Protocol type)
 {
   switch (type) {
+    case Protocol::Auto:
+      return "Auto";
     case Protocol::SSLv3:
       return "SSLv3";
     case Protocol::TLS:
