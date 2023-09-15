@@ -65,6 +65,8 @@ private:
 
   system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
 
+  Status clearSentBuffers(Processor& proc);
+
   uint16_t m_portid;
   uint16_t m_queueid;
   size_t m_nbuf;

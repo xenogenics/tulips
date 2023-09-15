@@ -111,6 +111,30 @@ Device::~Device()
 }
 
 Status
+Device::clearSentBuffers(Processor& proc)
+{
+
+  while (!m_sent.empty()) {
+    /*
+     * Remove the last item (constant time).
+     */
+    auto& info = m_sent.back();
+    m_sent.pop_back();
+    /*
+     * Notify the processor.
+     */
+    auto ret = proc.sent(std::get<0>(info), std::get<1>(info));
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
+}
+
+Status
 Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
                stack::ipv4::Address const& raddr, const uint16_t rport)
 {
@@ -202,21 +226,11 @@ Status
 Device::poll(Processor& proc)
 {
   /*
-   * Process the sent buffers.
+   * Clear buffers sent out-of-band.
    */
-  while (!m_sent.empty()) {
-    /*
-     * Remove the last item (constant time).
-     */
-    auto& info = m_sent.back();
-    m_sent.pop_back();
-    /*
-     * Notify the processor.
-     */
-    auto ret = proc.sent(std::get<0>(info), std::get<1>(info));
-    if (ret != Status::Ok) {
-      return ret;
-    }
+  auto ret = clearSentBuffers(proc);
+  if (ret != Status::Ok) {
+    return ret;
   }
   /*
    * Process the internal buffer.
@@ -287,6 +301,13 @@ Device::poll(Processor& proc)
      * Free the packet.
      */
     rte_pktmbuf_free(buf);
+    /*
+     * Clear buffers sent in-band.
+     */
+    auto ret = clearSentBuffers(proc);
+    if (ret != Status::Ok) {
+      return ret;
+    }
   }
   /*
    * Done.
