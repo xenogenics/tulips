@@ -36,6 +36,16 @@ public:
    */
   virtual Status process(const uint16_t len, const uint8_t* const data,
                          const Timestamp ts) = 0;
+
+  /**
+   * Notify the processor that a buffer has been sent.
+   *
+   * @param len the length of the piece of data.
+   * @param data the piece of data.
+   *
+   * @return the status of the operation.
+   */
+  virtual Status sent(const uint16_t len, uint8_t* const data) = 0;
 };
 
 }

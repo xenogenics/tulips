@@ -1,5 +1,5 @@
 #include "Debug.h"
-#include "tulips/stack/IPv4.h"
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -106,6 +106,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
    * Bail out if there is no free connection available.
    */
   if (e == m_conns.end()) {
+    m_ipv4to.release(outdata);
     return Status::NoMoreResources;
   }
   /*
@@ -114,6 +115,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
   ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
   if (ret != Status::Ok) {
     m_log.error("TCP4", "registering client-side filter failed");
+    m_ipv4to.release(outdata);
     return ret;
   }
   /*
@@ -144,7 +146,12 @@ Processor::connect(ethernet::Address const& rhwaddr,
   e->m_timer = RTO;
   e->m_cookie = nullptr;
   /*
-   * Prepare the SYN. The length of SYN is 1.
+   * Update the connection index.
+   */
+  m_index.insert({ std::hash<Connection>()(*e), e->id() });
+  /*
+   * Prepare the SYN. SYN segments don't contain any data but have a size of 1
+   * to increase the sequence number by 1.
    */
   Segment& seg = e->nextAvailableSegment();
   seg.set(1, e->m_snd_nxt, outdata);
@@ -153,14 +160,9 @@ Processor::connect(ethernet::Address const& rhwaddr,
    * Send SYN.
    */
   if (sendSyn(*e, seg) != Status::Ok) {
-    m_device.unlisten(ipv4::Protocol::TCP, lport, ripaddr, rport);
-    e->m_state = Connection::CLOSED;
+    close(*e);
     return ret;
   }
-  /*
-   * Update the connection index.
-   */
-  m_index.insert({ std::hash<Connection>()(*e), e->id() });
   /*
    * Done.
    */
@@ -171,6 +173,7 @@ Processor::connect(ethernet::Address const& rhwaddr,
 Status
 Processor::abort(Connection::ID const& id)
 {
+  m_log.debug("TCP4", "Abort connection ", id, " requested");
   /*
    * Check if the connection is valid.
    */
@@ -179,12 +182,8 @@ Processor::abort(Connection::ID const& id)
   }
   Connection& c = m_conns[id];
   /*
-   * Abort the connection
+   * Notify the handler and return.
    */
-  m_device.unlisten(ipv4::Protocol::TCP, c.m_lport, c.m_ripaddr, c.m_rport);
-  m_index.erase(std::hash<Connection>()(c));
-  c.m_state = Connection::CLOSED;
-  m_log.debug("TCP4", "Abort connection ", id, " requested");
   m_handler.onAborted(c, system::Clock::read());
   /*
    * Send the RST message.
@@ -300,6 +299,7 @@ Processor::send(Connection::ID const& id, const uint32_t len,
    * Send immediately if Nagle's algorithm has been disabled.
    */
   if (HAS_NODELAY(c)) {
+    m_log.trace("TCP", "sending ", slen, "B from client");
     return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
   /*

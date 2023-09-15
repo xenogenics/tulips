@@ -57,6 +57,7 @@ public:
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
+  Status sent(const uint16_t len, uint8_t* const data) override;
 
   Processor& setEthernetProcessor(ethernet::Processor& eth)
   {
@@ -130,6 +131,25 @@ private:
                            const uint16_t len, const uint8_t* const data);
 #endif
 
+  /**
+   * Close a connection.
+   *
+   * @param e the connection to close.
+   *
+   * @return the status of the operation.
+   */
+  void close(Connection& e);
+
+  /**
+   * Process the incoming packet for a given connection.
+   *
+   * @param e the connection.
+   * @param len the length of the packet.
+   * @param data the packet data.
+   * @param ts the timestamp of the event.
+   *
+   * @return the status of the operation.
+   */
   Status process(Connection& e, const uint16_t len, const uint8_t* const data,
                  const Timestamp ts);
 

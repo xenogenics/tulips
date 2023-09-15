@@ -1,12 +1,12 @@
 #pragma once
 
-#include <tulips/fifo/fifo.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/transport/Device.h>
 #include <cstdint>
 #include <map>
 #include <string>
+#include <vector>
 #include <infiniband/verbs.h>
 
 namespace tulips::transport::ofed {
@@ -55,11 +55,13 @@ public:
   uint32_t mss() const override { return m_buflen; }
 
   Status prepare(uint8_t*& buf) override;
-  Status commit(const uint32_t len, uint8_t* const buf,
+  Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
+  Status release(uint8_t* const buf) override;
 
 private:
   using Filters = std::map<uint16_t, ibv_flow*>;
+  using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 
   void construct(std::string_view ifn, const uint16_t nbuf);
   Status postReceive(const uint16_t id);
@@ -85,7 +87,8 @@ private:
   uint8_t* m_recvbuf;
   ibv_mr* m_sendmr;
   ibv_mr* m_recvmr;
-  tulips_fifo_t m_fifo;
+  std::vector<uint8_t*> m_free;
+  std::vector<SentBuffer> m_sent;
   ibv_flow* m_bcast;
   ibv_flow* m_flow;
   Filters m_filters;

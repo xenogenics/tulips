@@ -26,8 +26,9 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
   , m_nm(nm)
   , m_read_buffer()
   , m_write_buffer()
-  , read_fd(-1)
-  , write_fd(-1)
+  , m_rdfd(-1)
+  , m_wrfd(-1)
+  , m_sent(0)
 {
   memset(m_read_buffer, 0, BUFLEN);
   memset(m_write_buffer, 0, BUFLEN);
@@ -46,7 +47,7 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf,
+Device::commit(const uint16_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
   /*
@@ -67,6 +68,17 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    * Success.
    */
   m_log.debug("NPIPE", "commit ", len, "B");
+  m_sent = true;
+  return Status::Ok;
+}
+
+Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  m_log.trace("NPIPE", "releasing buffer ", (void*)buf);
+  /*
+   * NOTE(xrg): the NPIPE device does not support out-of-order buffer release.
+   */
   return Status::Ok;
 }
 
@@ -76,9 +88,19 @@ Device::poll(Processor& proc)
   ssize_t ret = 0;
   uint32_t len = 0;
   /*
+   * Check if any data was sent.
+   */
+  if (m_sent > 0) {
+    auto ret = proc.sent(m_sent, m_write_buffer);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+    m_sent = 0;
+  }
+  /*
    * Read length first.
    */
-  ret = ::read(read_fd, &len, sizeof(len));
+  ret = ::read(m_rdfd, &len, sizeof(len));
   if (ret < 0) {
     if (errno == EAGAIN) {
       return Status::NoDataAvailable;
@@ -94,7 +116,7 @@ Device::poll(Processor& proc)
    * Now read the payload.
    */
   do {
-    ret = ::read(read_fd, m_read_buffer, len);
+    ret = ::read(m_rdfd, m_read_buffer, len);
     if (ret == 0 || (ret < 0 && errno != EAGAIN)) {
       m_log.error("NPIPE", "read error: ", strerror(errno));
       return Status::HardwareLinkLost;
@@ -124,9 +146,9 @@ Device::waitForInput(const uint64_t ns)
 
   fd_set fdset;
   FD_ZERO(&fdset);
-  FD_SET(read_fd, &fdset);
+  FD_SET(m_rdfd, &fdset);
 
-  return ::select(read_fd + 1, &fdset, nullptr, nullptr, &tv);
+  return ::select(m_rdfd + 1, &fdset, nullptr, nullptr, &tv);
 }
 
 /*
@@ -150,16 +172,16 @@ ClientDevice::ClientDevice(system::Logger& log,
    * Open the FIFOs.
    */
   auto rp = std::string(rf);
-  read_fd = open(rp.c_str(), O_RDONLY);
-  if (read_fd < 0) {
+  m_rdfd = open(rp.c_str(), O_RDONLY);
+  if (m_rdfd < 0) {
     throw std::runtime_error(strerror(errno));
   }
-  if (fcntl(read_fd, F_SETFL, O_NONBLOCK)) {
+  if (fcntl(m_rdfd, F_SETFL, O_NONBLOCK)) {
     throw std::runtime_error(strerror(errno));
   }
   auto wp = std::string(wf);
-  write_fd = open(wp.c_str(), O_WRONLY);
-  if (write_fd < 0) {
+  m_wrfd = open(wp.c_str(), O_WRONLY);
+  if (m_wrfd < 0) {
     throw std::runtime_error(strerror(errno));
   }
 }
@@ -201,16 +223,16 @@ ServerDevice::ServerDevice(system::Logger& log,
   /*
    * Open the FIFOs
    */
-  write_fd = open(m_wf.c_str(), O_WRONLY);
-  if (write_fd < 0) {
+  m_wrfd = open(m_wf.c_str(), O_WRONLY);
+  if (m_wrfd < 0) {
     throw std::runtime_error(strerror(errno));
   }
   sleep(1);
-  read_fd = open(m_rf.c_str(), O_RDONLY);
-  if (read_fd < 0) {
+  m_rdfd = open(m_rf.c_str(), O_RDONLY);
+  if (m_rdfd < 0) {
     throw std::runtime_error(strerror(errno));
   }
-  if (fcntl(read_fd, F_SETFL, O_NONBLOCK)) {
+  if (fcntl(m_rdfd, F_SETFL, O_NONBLOCK)) {
     throw std::runtime_error(strerror(errno));
   }
 }

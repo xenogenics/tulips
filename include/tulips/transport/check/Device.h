@@ -65,13 +65,15 @@ public:
   }
 
   Status prepare(uint8_t*& buf) override;
-  Status commit(const uint32_t len, uint8_t* const buf,
+  Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
+  Status release(uint8_t* const buf) override;
 
 private:
   Status run() override { return Status::Ok; }
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
+  Status sent(const uint16_t len, uint8_t* const buf) override;
 
   static bool check(const uint8_t* const data, const size_t len);
 

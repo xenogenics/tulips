@@ -9,7 +9,7 @@ namespace tulips::stack::tcpv4 {
 class Segment
 {
 public:
-  Segment();
+  Segment() = default;
 
 private:
   inline void set(const uint32_t len, const uint32_t seq, uint8_t* const dat)
@@ -26,12 +26,6 @@ private:
     m_len = 0;
     m_seq = 0;
     m_dat = nullptr;
-  }
-
-  inline void swap(uint8_t* const to)
-  {
-    memcpy(to, m_dat, m_len);
-    m_dat = to;
   }
 
   /*

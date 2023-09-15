@@ -6,7 +6,7 @@ EXTFLAGS ?=
 
 .PHONY: build
 
-default: release
+default: build
 
 build:
 	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS)
@@ -53,4 +53,5 @@ release-lib:
 
 clean:
 	@rm -rf $(BUILDDIR)
+	@rm -f *.keys *.log *.pcap
 

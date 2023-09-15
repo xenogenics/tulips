@@ -2,6 +2,7 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <tulips/transport/list/Device.h>
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 
@@ -20,6 +21,7 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
   , m_mtu(mtu)
   , m_read(rf)
   , m_write(wf)
+  , m_sent()
   , m_mutex()
   , m_cond()
 {
@@ -29,16 +31,6 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
 
 Device::~Device()
 {
-  /*
-   * Deallocate any uncommitted packets.
-   */
-  for (auto p : m_packets) {
-    Packet::release(p);
-  }
-  m_packets.clear();
-  /*
-   * Clear resources.
-   */
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
 }
@@ -46,6 +38,18 @@ Device::~Device()
 Status
 Device::poll(Processor& proc)
 {
+  /*
+   * Process the sent packets.
+   */
+  while (!m_sent.empty()) {
+    auto p = m_sent.front();
+    m_sent.pop_front();
+    m_log.trace("LIST", "packet sent: ", p);
+    auto ret = proc.sent(p->len, p->data);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
   /*
    * If there is no data, return.
    */
@@ -82,7 +86,7 @@ Device::wait(Processor& proc, const uint64_t ns)
 Status
 Device::prepare(uint8_t*& buf)
 {
-  auto* packet = Packet::allocate(m_mtu);
+  auto packet = Packet::allocate(m_mtu);
   m_log.debug("LIST", "preparing packet: ", mss(), "B, ", packet);
   buf = packet->data;
   m_packets.push_back(packet);
@@ -90,15 +94,25 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf,
+Device::commit(const uint16_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
-  auto* packet = (Packet*)(buf - sizeof(uint32_t));
+  auto packet = (Packet*)(buf - sizeof(Packet));
   m_log.trace("LIST", "committing packet: ", len, "B, ", packet);
   packet->len = len;
-  m_write.push_back(packet);
-  pthread_cond_signal(&m_cond);
   m_packets.remove(packet);
+  m_write.push_back(packet->clone());
+  m_sent.push_back(packet);
+  pthread_cond_signal(&m_cond);
+  return Status::Ok;
+}
+
+Status
+Device::release(uint8_t* const buf)
+{
+  auto packet = (Packet*)(buf - sizeof(Packet));
+  m_log.trace("LIST", "releasing packet: ", packet);
+  Packet::release(packet);
   return Status::Ok;
 }
 
@@ -108,7 +122,7 @@ Device::drop()
   if (m_read.empty()) {
     return Status::NoDataAvailable;
   }
-  Packet* packet = m_read.front();
+  auto packet = m_read.front();
   m_read.pop_front();
   Packet::release(packet);
   return Status::Ok;

@@ -13,12 +13,13 @@
 #include <tulips/transport/Device.h>
 #include <list>
 #include <map>
+#include <optional>
 #include <vector>
 #include <unistd.h>
 
 namespace tulips::api {
 
-class Client
+class Client final
   : public interface::Client
   , public stack::tcpv4::EventHandler
 {
@@ -47,6 +48,11 @@ public:
     return m_ethfrom.process(len, data, ts);
   }
 
+  inline Status sent(const uint16_t len, uint8_t* const data) override
+  {
+    return m_ethfrom.sent(len, data);
+  }
+
   /**
    * Client interface.
    */
@@ -54,6 +60,10 @@ public:
   using interface::Client::open;
 
   Status open(const uint8_t options, ID& id) override;
+
+  Status setHostName(const ID id, std::string_view hn) override;
+
+  Status getHostName(const ID id, std::optional<std::string>& hn) override;
 
   Status connect(const ID id, stack::ipv4::Address const& ripaddr,
                  const stack::tcpv4::Port rport) override;
@@ -110,6 +120,7 @@ private:
     State state;
     stack::tcpv4::Connection::ID conn;
     uint8_t opts;
+    std::optional<std::string> hostname;
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
     size_t count;
     system::Clock::Value pre;
@@ -129,6 +140,11 @@ private:
 
     Status process(UNUSED const uint16_t len, UNUSED const uint8_t* const data,
                    UNUSED const Timestamp ts) override
+    {
+      return Status::Ok;
+    }
+
+    Status sent(UNUSED const uint16_t len, UNUSED uint8_t* const buf) override
     {
       return Status::Ok;
     }

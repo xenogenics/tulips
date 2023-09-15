@@ -115,4 +115,10 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   return m_ip4out.commit(len, outdata);
 }
 
+Status
+Processor::sent(UNUSED const uint16_t len, uint8_t* const buf)
+{
+  return m_ip4out.release(buf);
+}
+
 }

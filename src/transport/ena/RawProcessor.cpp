@@ -28,6 +28,12 @@ RawProcessor::process(const uint16_t len, const uint8_t* const data,
   return Status::Ok;
 }
 
+Status
+RawProcessor::sent(UNUSED const uint16_t len, UNUSED uint8_t* const data)
+{
+  return Status::Ok;
+}
+
 void
 RawProcessor::add(system::CircularBuffer::Ref const& buffer)
 {

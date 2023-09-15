@@ -1,5 +1,6 @@
 #include "Debug.h"
 #include <tulips/stack/IPv4.h>
+#include <tulips/stack/TCPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -97,9 +98,7 @@ Processor::run()
        */
       if (e.m_timer == TIME_WAIT_TIMEOUT) {
         m_log.debug("TCP4", "connection closed");
-        m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-        m_index.erase(std::hash<Connection>()(e));
-        e.m_state = Connection::CLOSED;
+        close(e);
         continue;
       }
     }
@@ -269,10 +268,11 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   e->m_rto = RTO;
   e->m_timer = RTO;
   /*
-   * Prepare the connection segment.
+   * Prepare the connection segment. SYN segments don't contain any data but
+   * have a size of 1 to increase the sequence number by 1.
    */
   Segment& seg = e->nextAvailableSegment();
-  seg.set(1, e->m_snd_nxt, sdat); // TCP length of the SYN is one
+  seg.set(1, e->m_snd_nxt, sdat);
   /*
    * Parse the TCP MSS option, if present.
    */
@@ -285,9 +285,25 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    */
   m_index.insert({ std::hash<Connection>()(*e), e->id() });
   /*
-   * Send the SYN/ACK
+   * Send the SYN/ACK.
    */
   return sendSynAck(*e, seg);
+}
+
+Status
+Processor::sent(const uint16_t len, uint8_t* const data)
+{
+  m_log.trace("TCP4", "buffer ", (void*)data, " len ", len, " sent");
+  /*
+   * Release packets with no data have no segments (ACK & RST).
+   */
+  if (len == HEADER_LEN && (INTCP->flags & Flag::FIN) == 0) {
+    return m_ipv4to.release(data);
+  }
+  /*
+   * Otherwise, we only release once the segment has cleared.
+   */
+  return Status::Ok;
 }
 
 #if !(defined(TULIPS_HAS_HW_CHECKSUM) && defined(TULIPS_DISABLE_CHECKSUM_CHECK))
@@ -313,6 +329,33 @@ Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
 }
 #endif
 
+void
+Processor::close(Connection& e)
+{
+  /*
+   * Unlisten the connection's local port.
+   */
+  m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+  m_index.erase(std::hash<Connection>()(e));
+  /*
+   * Clear the segments.
+   */
+  for (auto& s : e.m_segments) {
+    if (s.m_len > 0) {
+      m_ipv4to.release(s.m_dat);
+      s.clear();
+    }
+  }
+  /*
+   * Release the current send buffer.
+   */
+  m_ipv4to.release(e.m_sdat);
+  /*
+   * Update its state.
+   */
+  e.m_state = Connection::CLOSED;
+}
+
 Status
 Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
                    const Timestamp ts)
@@ -336,12 +379,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    * of this reset is within our advertised window before we accept the reset.
    */
   if (INTCP->flags & Flag::RST) {
-    m_log.debug("TCP4", "connection aborted");
-    m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-    m_index.erase(std::hash<Connection>()(e));
-    e.m_state = Connection::CLOSED;
-    m_log.debug("TCP4", "Received reset on connection ", e.id(), ", aborting");
+    m_log.debug("TCP4", "received reset on connection ", e.id(), ", aborting");
     m_handler.onAborted(e, ts);
+    close(e);
     return Status::Ok;
   }
   /*
@@ -469,9 +509,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_timer = e.m_rto;
       }
       /*
-       * Reset length and buffer of outstanding data and go to the next
-       * segment. The compiler will generate the wrap-around appropriate for
-       * the bit length of the index.
+       * Release the buffer associated with the segment.
+       */
+      m_ipv4to.release(seg.m_dat);
+      /*
+       * Clear the current seqgment and go to the next segment. The compiler
+       * will generate the wrap-around appropriate for the bit length of the
+       * index.
        */
       seg.clear();
       e.m_segidx += 1;
@@ -604,7 +648,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         }
         /*
          * Acknowledge the FIN. If we are here there is no more outstanding
-         * segment, so one must be available.
+         * segment, so one must be available. FIN segments don't contain any
+         * data but have a size of 1 to increase the sequence number by 1.
          */
         m_log.debug("TCP4", "connection last ACK");
         e.m_state = Connection::LAST_ACK;
@@ -802,6 +847,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             if (rlen > alen) {
               rlen = alen;
             }
+            m_log.trace("TCP", "queueing ", rlen, "B from onNewData()");
             e.m_slen += rlen;
           }
           /*
@@ -850,10 +896,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     case Connection::LAST_ACK: {
       if (e.m_ackdata) {
         m_log.debug("TCP4", "connection closed");
-        m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-        m_index.erase(std::hash<Connection>()(e));
-        e.m_state = Connection::CLOSED;
         m_handler.onClosed(e, ts);
+        close(e);
       }
       break;
     }
@@ -953,7 +997,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       }
       /*
        * Send a FIN/ACK message. TCP does not require to send an ACK with FIN,
-       * but Linux seems pretty bent on wanting one. So we play nice.
+       * but Linux seems pretty bent on wanting one. So we play nice. FIN
+       * segments don't contain any data but have a size of 1 to increase the
+       * sequence number by 1.
        */
       return sendFinAck(e, seg);
     }
@@ -979,5 +1025,4 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    */
   return Status::Ok;
 }
-
 }

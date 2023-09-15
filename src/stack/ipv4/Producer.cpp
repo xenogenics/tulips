@@ -65,10 +65,10 @@ Producer::prepare(uint8_t*& buf)
 }
 
 Status
-Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
+Producer::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   uint8_t* outdata = buf - HEADER_LEN;
-  uint32_t outlen = len + HEADER_LEN;
+  uint16_t outlen = len + HEADER_LEN;
   /*
    * Fill in the remaining header fields.
    */
@@ -77,6 +77,7 @@ Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
    * Compute the checksum
    */
 #ifndef TULIPS_HAS_HW_CHECKSUM
+  OUTIP->ipchksum = 0;
   OUTIP->ipchksum = ~checksum(outdata);
 #endif
   /*
@@ -85,6 +86,12 @@ Producer::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   m_stats.sent += 1;
   m_log.trace("IP4", "committing packet: ", len, "B");
   return m_eth.commit(outlen, outdata, mss);
+}
+
+Status
+Producer::release(uint8_t* const buf)
+{
+  return m_eth.release(buf - HEADER_LEN);
 }
 
 }

@@ -84,6 +84,12 @@ tulips_fifo_must_commit(tulips_fifo_t const fifo)
   return TULIPS_FIFO_NO;
 }
 
+USED static inline size_t
+tulips_fifo_length(tulips_fifo_t const fifo)
+{
+  return fifo->write_count - fifo->read_count;
+}
+
 USED static inline tulips_fifo_error_t
 tulips_fifo_front(tulips_fifo_t const fifo, void** const data)
 {

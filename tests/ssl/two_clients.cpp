@@ -1,8 +1,8 @@
-#include "tulips/system/Logger.h"
 #include <tulips/api/Defaults.h>
 #include <tulips/ssl/Client.h>
 #include <tulips/ssl/Server.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/list/Device.h>
 #include <tulips/transport/pcap/Device.h>
@@ -167,6 +167,10 @@ public:
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     /*
+     * Advance the timers because of TIME WAIT.
+     */
+    expireTimeWait();
+    /*
      * We are closed.
      */
     ASSERT_EQ(Status::NotConnected, m_client->close(id));
@@ -209,16 +213,19 @@ public:
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
     ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
     ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
     expireTimeWait();
     ASSERT_TRUE(m_server->isClosed(id));
+    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   }
 
   void expireTimeWait()
   {
     for (int i = 0; i < tcpv4::TIME_WAIT_TIMEOUT; i += 1) {
       system::Clock::get().offsetBy(system::Clock::SECOND);
+      ASSERT_EQ(Status::Ok, m_client->run());
       ASSERT_EQ(Status::Ok, m_server->run());
     }
   }

@@ -1,8 +1,8 @@
-#include "tulips/system/Logger.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/list/Device.h>
 #include <tulips/transport/pcap/Device.h>
@@ -213,7 +213,6 @@ TEST_F(API_TwoClients, ConnectTwo)
   ASSERT_EQ(Status::Ok, m_client1->connect(id1, dst_ip, 12345));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-
   /*
    * Connection client 2.
    */
@@ -228,6 +227,17 @@ TEST_F(API_TwoClients, ConnectTwo)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client2));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client2->connect(id2, dst_ip, 12345));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client2));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client1->abort(id1));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_client2->abort(id2));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client2));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
@@ -291,6 +301,21 @@ TEST_F(API_TwoClients, ConnectTwoAndDisconnectFromServer)
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client2));
   /*
+   * Advance the timers because of TIME WAIT.
+   */
+  for (int i = 0; i < 120; i += 1) {
+    system::Clock::get().offsetBy(system::Clock::SECOND);
+    ASSERT_EQ(Status::Ok, m_client1->run());
+    ASSERT_EQ(Status::Ok, m_client2->run());
+    ASSERT_EQ(Status::Ok, m_server->run());
+  }
+  /*
+   * Clean-up.
+   */
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client2));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  /*
    * Final checks.
    */
   ASSERT_EQ(0, m_server_delegate.connections().size());
@@ -328,6 +353,13 @@ TEST_F(API_TwoClients, ConnectSend)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client1));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client1->abort(id));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_TwoClients, ConnectSendReceive)
@@ -367,4 +399,11 @@ TEST_F(API_TwoClients, ConnectSendReceive)
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
   ASSERT_TRUE(m_client_delegate1.dataReceived());
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client1->abort(id));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client1));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }

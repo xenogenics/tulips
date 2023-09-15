@@ -34,8 +34,17 @@ public:
    *
    * @return the status of the operation.
    */
-  virtual Status commit(const uint32_t len, uint8_t* const buf,
+  virtual Status commit(const uint16_t len, uint8_t* const buf,
                         const uint16_t mss = 0) = 0;
+
+  /**
+   * Release a prepared buffer.
+   *
+   * @param buf a reference to the buffer to release.
+   *
+   * @return the status of the operation.
+   */
+  virtual Status release(uint8_t* const buf) = 0;
 };
 
 }

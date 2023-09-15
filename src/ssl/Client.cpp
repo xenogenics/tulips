@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/tls1.h>
 #include <openssl/types.h>
 
 namespace {
@@ -31,7 +32,6 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                const size_t nconn, const bool save_keys)
   : m_delegate(delegate)
   , m_log(log)
-  , m_dev(device)
   , m_client(std::make_unique<api::Client>(log, *this, device, nconn))
   , m_context(nullptr)
   , m_savekeys(save_keys)
@@ -106,11 +106,19 @@ Client::~Client()
 Status
 Client::open(const uint8_t options, ID& id)
 {
-  Status res = m_client->open(options, id);
-  if (res != Status::Ok) {
-    return res;
-  }
-  return Status::Ok;
+  return m_client->open(options, id);
+}
+
+Status
+Client::setHostName(const ID id, std::string_view hn)
+{
+  return m_client->setHostName(id, hn);
+}
+
+Status
+Client::getHostName(const ID id, std::optional<std::string>& hn)
+{
+  return m_client->getHostName(id, hn);
 }
 
 Status
@@ -135,53 +143,83 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
   Context& c = *reinterpret_cast<Context*>(cookie);
   switch (c.state) {
     /*
-     * Perform the client SSL handshake.
+     * Context is closed.
      */
-    case Context::State::Connect: {
-      int ret = SSL_connect(c.ssl);
-      switch (ret) {
-        case 0: {
-          m_log.error("SSLCLI", "connect error");
-          return Status::ProtocolError;
-        }
-        case 1: {
-          m_log.debug("SSLCLI", "SSL_connect successful");
-          c.cookie = m_delegate.onConnected(c.id, c.cookie, c.ts);
-          c.state = Context::State::Ready;
-          return Status::Ok;
-        }
-        default: {
-          auto err = SSL_get_error(c.ssl, ret);
-          if (err != SSL_ERROR_WANT_READ) {
-            auto error = ssl::errorToString(err);
-            m_log.error("SSLCLI", "connect error: ", error);
-            return Status::ProtocolError;
-          }
-          Status res = flush(id, cookie);
-          if (res != Status::Ok) {
-            return res;
-          }
-          return Status::OperationInProgress;
-        }
-      }
+    case Context::State::Closed: {
+      return Status::NotConnected;
     }
     /*
-     * Connection is ready.
+     * Start the SSL handshake.
+     */
+    case Context::State::Open: {
+      std::optional<std::string> hostname;
+      m_client->getHostName(id, hostname);
+      /*
+       * Set the host name for SNI-enabled servers.
+       */
+      if (hostname.has_value()) {
+        SSL_set_tlsext_host_name(c.ssl, hostname.value().c_str());
+      }
+      /*
+       * Connect.
+       */
+      if (SSL_connect(c.ssl) != -1) {
+        m_log.error("SSLCLI", "connect error");
+        return Status::ProtocolError;
+      }
+      /*
+       * Check the error.
+       */
+      auto err = SSL_get_error(c.ssl, -1);
+      if (err != SSL_ERROR_WANT_READ) {
+        auto error = ssl::errorToString(err);
+        m_log.error("SSLCLI", "connect error: ", error);
+        return Status::ProtocolError;
+      }
+      /*
+       * Flush any pending data.
+       */
+      Status res = flush(id, cookie);
+      if (res != Status::Ok) {
+        return res;
+      }
+      /*
+       * Update the state and return.
+       */
+      c.state = Context::State::Connecting;
+      return Status::OperationInProgress;
+    }
+    /*
+     * Context is connecting.
+     */
+    case Context::State::Connecting: {
+      return Status::OperationInProgress;
+    }
+    /*
+     * Context is accepting.
+     */
+    case Context::State::Accepting: {
+      return Status::ProtocolError;
+    }
+    /*
+     * Context is connected.
+     */
+    case Context::State::Connected: {
+      c.state = Context::State::Ready;
+      c.cookie = m_delegate.onConnected(c.id, c.cookie, c.ts);
+      return Status::Ok;
+    }
+    /*
+     * Context is ready.
      */
     case Context::State::Ready: {
       return Status::Ok;
     }
     /*
-     * Connection is being shut down.
+     * Context is being shut down.
      */
     case Context::State::Shutdown: {
       return Status::InvalidArgument;
-    }
-    /*
-     * Default.
-     */
-    default: {
-      return Status::ProtocolError;
     }
   }
 }
@@ -354,8 +392,8 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
    * Create the context.
    */
   auto* ssl = AS_SSL(m_context);
-  auto* c = new Context(ssl, m_log, m_dev.mss(), id, cookie, ts, keyfd);
-  c->state = Context::State::Connect;
+  auto* c = new Context(ssl, m_log, id, cookie, ts, keyfd);
+  c->state = Context::State::Open;
   return c;
 }
 
@@ -415,22 +453,10 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * Grab the context.
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
-  auto pre = c.state;
   /*
    * Write the data in the input BIO.
    */
-  auto res = c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
-  auto post = c.state;
-  /*
-   * Check for the ready state transition.
-   */
-  if (pre == Context::State::Connect && post == Context::State::Ready) {
-    c.cookie = m_delegate.onConnected(c.id, c.cookie, ts);
-  }
-  /*
-   * Done.
-   */
-  return res;
+  return c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
 }
 
 void
@@ -453,7 +479,7 @@ Client::flush(const ID id, void* const cookie)
   /*
    * Check if there is any pending data.
    */
-  size_t len = c.pending();
+  size_t len = c.pendingRead();
   if (len == 0) {
     return Status::Ok;
   }

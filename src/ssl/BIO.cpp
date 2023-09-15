@@ -73,8 +73,6 @@ s_ctrl(BIO* h, int cmd, long num, UNUSED void* ptr)
       BIO_set_shutdown(h, (int)num);
       break;
     case BIO_CTRL_WPENDING:
-      ret = 0L;
-      break;
     case BIO_CTRL_PENDING:
       ret = (long)b->read_available();
       break;

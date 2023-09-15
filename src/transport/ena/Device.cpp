@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 #include <dpdk/rte_config.h>
 #include <dpdk/rte_dev.h>
@@ -43,12 +44,32 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 6])
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
+  , m_free()
+  , m_sent()
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
   , m_nm(nm)
   , m_mtu(mtu)
 {
+  /*
+   * Reserve space in the sent queue .
+   */
+  m_free.reserve(nbuf);
+  m_sent.reserve(nbuf);
+  /*
+   * Populate the free buffer list.
+   */
+  for (size_t i = 0; i < nbuf; i += 1) {
+    auto* mbuf = rte_pktmbuf_alloc(m_txpool);
+    if (mbuf == nullptr) {
+      throw std::runtime_error("send buffer allocation failed");
+    }
+    m_free.push_back(mbuf);
+  }
+  /*
+   * Print some device information.
+   */
   if (m_queueid > 0) {
     log.debug("ENA", "port id: ", port_id);
     log.debug("ENA", "queue id: ", queue_id);
@@ -60,10 +81,57 @@ Device::Device(system::Logger& log, const uint16_t port_id,
 
 Device::~Device()
 {
+  /*
+   * Clean-up the unreleased send buffers.
+   */
+  while (!m_sent.empty()) {
+    auto info = m_sent.back();
+    m_sent.pop_back();
+    auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(std::get<1>(info) - 8);
+    rte_pktmbuf_free(mbuf);
+  }
+  /*
+   * Clean-up the free send buffers.
+   */
+  while (!m_free.empty()) {
+    auto mbuf = m_free.back();
+    m_free.pop_back();
+    rte_pktmbuf_free(mbuf);
+  }
+  /*
+   * Delete the RETA.
+   */
   delete[] m_reta;
   m_reta = nullptr;
+  /*
+   * Delete the packet buffer.
+   */
   delete[] m_packet;
   m_packet = nullptr;
+}
+
+Status
+Device::clearSentBuffers(Processor& proc)
+{
+
+  while (!m_sent.empty()) {
+    /*
+     * Remove the last item (constant time).
+     */
+    auto& info = m_sent.back();
+    m_sent.pop_back();
+    /*
+     * Notify the processor.
+     */
+    auto ret = proc.sent(std::get<0>(info), std::get<1>(info));
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Status
@@ -158,6 +226,13 @@ Status
 Device::poll(Processor& proc)
 {
   /*
+   * Clear buffers sent out-of-band.
+   */
+  auto ret = clearSentBuffers(proc);
+  if (ret != Status::Ok) {
+    return ret;
+  }
+  /*
    * Process the internal buffer.
    */
   if (!m_buffer->empty()) {
@@ -226,6 +301,13 @@ Device::poll(Processor& proc)
      * Free the packet.
      */
     rte_pktmbuf_free(buf);
+    /*
+     * Clear buffers sent in-band.
+     */
+    auto ret = clearSentBuffers(proc);
+    if (ret != Status::Ok) {
+      return ret;
+    }
   }
   /*
    * Done.
@@ -244,17 +326,21 @@ Status
 Device::prepare(uint8_t*& buf)
 {
   /*
-   * Allocate a new buffer in the TX pool.
+   * Make sure we have free TX buffers.
    */
-  auto* mbuf = rte_pktmbuf_alloc(m_txpool);
-  if (mbuf == nullptr) {
+  if (m_free.empty()) {
     return Status::NoMoreResources;
   }
+  /*
+   * Get a new TX buffer.
+   */
+  auto mbuf = m_free.back();
+  m_free.pop_back();
   /*
    * Grab the data region.
    */
   buf = rte_pktmbuf_mtod(mbuf, uint8_t*);
-  m_log.trace("ENA", "preparing buffer ", (void*)buf);
+  m_log.trace("ENA", "preparing buffer ", (void*)buf, " ", (void*)mbuf);
   /*
    * Update the private data with the mbuf address.
    */
@@ -266,7 +352,7 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf,
+Device::commit(const uint16_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
   uint16_t res = 0;
@@ -274,6 +360,8 @@ Device::commit(const uint32_t len, uint8_t* const buf,
    * Grab the packet buffer.
    */
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
+  m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len, " ",
+              (void*)mbuf);
   /*
    * Update the packet buffer length.
    */
@@ -289,26 +377,25 @@ Device::commit(const uint32_t len, uint8_t* const buf,
 #ifdef TULIPS_HAS_HW_CHECKSUM
     mbuf->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM;
 #endif
+    /*
+     * Update the L4 offload flags.
+     */
+    auto offset = sizeof(struct rte_ether_hdr);
+    auto* ip_hdr = reinterpret_cast<const struct rte_ipv4_hdr*>(buf + offset);
+    if (ip_hdr->next_proto_id == IPPROTO_UDP) {
+      mbuf->l4_len = sizeof(struct rte_udp_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
+      mbuf->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
+#endif
+    } else if (ip_hdr->next_proto_id == IPPROTO_TCP) {
+      mbuf->l4_len = sizeof(struct rte_tcp_hdr);
+#ifdef TULIPS_HAS_HW_CHECKSUM
+      mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
+#endif
+    }
   }
   /*
-   * Update the L4 offload flags.
-   */
-  auto offset = sizeof(struct rte_ether_hdr);
-  auto* ip_hdr = reinterpret_cast<const struct rte_ipv4_hdr*>(buf + offset);
-  if (ip_hdr->next_proto_id == IPPROTO_UDP) {
-    mbuf->l4_len = sizeof(struct rte_udp_hdr);
-#ifdef TULIPS_HAS_HW_CHECKSUM
-    mbuf->ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
-#endif
-  }
-  if (ip_hdr->next_proto_id == IPPROTO_TCP) {
-    mbuf->l4_len = sizeof(struct rte_tcp_hdr);
-#ifdef TULIPS_HAS_HW_CHECKSUM
-    mbuf->ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
-#endif
-  }
-  /*
-   * Prepare the packet. NOTE(xrg): we can probably skip this.
+   * Prepare the packet.
    */
   res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
   if (res != 1) {
@@ -325,14 +412,24 @@ Device::commit(const uint32_t len, uint8_t* const buf,
     m_log.error("ENA", "sending packet failed: ", error);
     return Status::HardwareError;
   }
-  m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len);
   /*
-   * Free the buffer.
+   * Queue the buffer.
    */
-  rte_pktmbuf_free(mbuf);
+  m_sent.emplace_back(len, buf);
   /*
    * Done.
    */
+  return Status::Ok;
+}
+
+Status
+Device::release(uint8_t* const buf)
+{
+  auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
+  m_log.trace("ENA", "releasing buffer ", (void*)buf, " ", (void*)mbuf, " (",
+              m_free.size() + 1, "/", m_nbuf, ")");
+  rte_pktmbuf_reset(mbuf);
+  m_free.push_back(mbuf);
   return Status::Ok;
 }
 

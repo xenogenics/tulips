@@ -1,7 +1,7 @@
-#include "tulips/stack/Utils.h"
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/TCPv4.h>
+#include <tulips/stack/Utils.h>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>

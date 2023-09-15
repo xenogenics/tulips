@@ -5,6 +5,7 @@
 #include <tulips/transport/ofed/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <csignal>
+#include <cstdint>
 #include <pthread.h>
 #include <tclap/CmdLine.h>
 
@@ -49,6 +50,11 @@ public:
      */
     value += 1;
     return send(sizeof(value), (uint8_t*)&value, true);
+  }
+
+  Status sent(UNUSED const uint16_t len, uint8_t* const data) override
+  {
+    return m_ethto->release(data);
   }
 
   Status send(const uint16_t len, const uint8_t* const data,

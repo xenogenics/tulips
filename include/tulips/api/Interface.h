@@ -7,6 +7,7 @@
 #include <tulips/system/Clock.h>
 #include <tulips/transport/Device.h>
 #include <cstdint>
+#include <optional>
 
 namespace tulips::api::interface {
 
@@ -144,6 +145,26 @@ public:
    * @return the status of the operation.
    */
   virtual Status open(const uint8_t options, ID& id) = 0;
+
+  /**
+   * Set the remote host name for a given connection.
+   *
+   * @param id the connection handle.
+   * @param hn the remote host name.
+   *
+   * @return the status of the operation.
+   */
+  virtual Status setHostName(const ID id, std::string_view hn) = 0;
+
+  /**
+   * Get the remote host name for a given connection.
+   *
+   * @param id the connection handle.
+   * @param hn the remote host name.
+   *
+   * @return the status of the operation.
+   */
+  virtual Status getHostName(const ID id, std::optional<std::string>& hn) = 0;
 
   /**
    * Connect a handle to a remote server using its IP and port.

@@ -1,5 +1,4 @@
 #include "Utils.h"
-#include <tulips/fifo/errors.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
@@ -50,7 +49,8 @@ Device::Device(system::Logger& log, const uint16_t nbuf)
   , m_recvbuf(nullptr)
   , m_sendmr(nullptr)
   , m_recvmr(nullptr)
-  , m_fifo(TULIPS_FIFO_DEFAULT_VALUE)
+  , m_free()
+  , m_sent()
   , m_bcast(nullptr)
   , m_flow(nullptr)
   , m_filters()
@@ -92,7 +92,8 @@ Device::Device(system::Logger& log, std::string_view ifn, const uint16_t nbuf)
   , m_recvbuf(nullptr)
   , m_sendmr(nullptr)
   , m_recvmr(nullptr)
-  , m_fifo(TULIPS_FIFO_DEFAULT_VALUE)
+  , m_free()
+  , m_sent()
   , m_bcast(nullptr)
   , m_flow(nullptr)
   , m_filters()
@@ -253,15 +254,16 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
     }
   }
   /*
-   * Create the send FIFO.
+   * Create the send buffer FIFOs.
    */
-  tulips_fifo_create(m_nbuf, sizeof(uint8_t*), &m_fifo);
+  m_free.reserve(m_nbuf);
+  m_sent.reserve(m_nbuf);
   /*
    * Fill the send FIFO.
    */
   for (int i = 0; i < m_nbuf; i += 1) {
     uint8_t* address = m_sendbuf + i * m_buflen;
-    tulips_fifo_push(m_fifo, &address);
+    m_free.push_back(address);
   }
   /*
    * Define the raw flow attribute structure.
@@ -368,7 +370,6 @@ Device::~Device()
   /*
    * Destroy memory regions
    */
-  tulips_fifo_destroy(&m_fifo);
   if (m_sendmr) {
     ibv_dereg_mr(m_sendmr);
   }
@@ -493,6 +494,23 @@ Device::poll(Processor& proc)
 {
   int cqn = 0;
   struct ibv_wc wc[m_nbuf];
+  /*
+   * Process the sent buffers.
+   */
+  while (!m_sent.empty()) {
+    /*
+     * Pop the FIFO.
+     */
+    auto& info = m_sent.back();
+    m_sent.pop_back();
+    /*
+     * Notify the processor.
+     */
+    auto ret = proc.sent(std::get<0>(info), std::get<1>(info));
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
   /*
    * Process the incoming recv buffers.
    */
@@ -649,28 +667,32 @@ Device::prepare(uint8_t*& buf)
    * Queue the sent buffers.
    */
   for (int i = 0; i < cqn; i += 1) {
+    uint16_t len = wc[i].byte_len;
     auto* addr = (uint8_t*)wc[i].wr_id; // NOLINT
-    tulips_fifo_push(m_fifo, &addr);
+    auto info = SentBuffer(len, addr);
+    m_sent.emplace_back(len, addr);
   }
   /*
-   * Look for an available buffer.
+   * Check for available buffers.
    */
-  if (tulips_fifo_empty(m_fifo) == TULIPS_FIFO_YES) {
+  if (m_free.empty()) {
     buf = nullptr;
     return Status::NoMoreResources;
   }
-  uint8_t** buffer = nullptr;
-  if (tulips_fifo_front(m_fifo, (void**)&buffer) != TULIPS_FIFO_OK) {
-    return Status::HardwareError;
-  }
-  buf = *buffer;
+  /*
+   * Allocate a buffer.
+   */
+  buf = m_free.back();
+  m_free.pop_back();
   m_log.trace("OFED", "preparing buffer ", (void*)buf);
-  tulips_fifo_pop(m_fifo);
+  /*
+   * Done.
+   */
   return Status::Ok;
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf,
+Device::commit(const uint16_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
   /*
@@ -752,6 +774,14 @@ Device::commit(const uint32_t len, uint8_t* const buf,
     return Status::HardwareError;
   }
   m_log.trace("OFED", "committing buffer ", (void*)buf, " len ", len);
+  return Status::Ok;
+}
+
+Status
+Device::release(uint8_t* const buf)
+{
+  m_log.trace("OFED", "releasing buffer ", (void*)buf);
+  m_free.push_back(buf);
   return Status::Ok;
 }
 

@@ -8,7 +8,6 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.h)
 add_library(tulips_transport_ofed SHARED ${SOURCES} Utils.cpp Utils.h)
 target_link_libraries(tulips_transport_ofed
   PRIVATE
-  tulips_fifo
   tulips_stack
   tulips_transport_stubs
   PUBLIC

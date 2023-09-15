@@ -36,6 +36,11 @@ public:
     return m_server->process(len, data, ts);
   }
 
+  inline Status sent(const uint16_t len, uint8_t* const data) override
+  {
+    return m_server->sent(len, data);
+  }
+
   /**
    * Server interface.
    */
@@ -94,7 +99,6 @@ private:
 
   api::interface::Server::Delegate& m_delegate;
   system::Logger& m_log;
-  transport::Device& m_dev;
   std::unique_ptr<api::Server> m_server;
   void* m_context;
 };

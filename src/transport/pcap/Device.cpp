@@ -78,13 +78,19 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
+Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   Status ret = m_device.commit(len, buf, mss);
   if (ret == Status::Ok) {
     writePacket(m_pcap_dumper, buf, len, system::Clock::read());
   }
   return ret;
+}
+
+Status
+Device::release(uint8_t* const buf)
+{
+  return m_device.release(buf);
 }
 
 Status
@@ -95,6 +101,12 @@ Device::process(const uint16_t len, const uint8_t* const data,
     writePacket(m_pcap_dumper, data, len, ts);
   }
   return m_proc->process(len, data, ts);
+}
+
+Status
+Device::sent(const uint16_t len, uint8_t* const data)
+{
+  return m_proc->sent(len, data);
 }
 
 }

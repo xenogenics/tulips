@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <limits>
 #include <string>
+#include <vector>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_mempool.h>
 
@@ -40,8 +41,9 @@ public:
   Status wait(Processor& proc, const uint64_t ns) override;
 
   Status prepare(uint8_t*& buf) override;
-  Status commit(const uint32_t len, uint8_t* const buf,
+  Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss) override;
+  Status release(uint8_t* const buf) override;
 
   uint32_t mtu() const override { return m_mtu - stack::ethernet::HEADER_LEN; }
 
@@ -52,6 +54,8 @@ public:
   uint16_t receiveBuffersAvailable() const override { return m_nbuf; }
 
 private:
+  using SentBuffer = std::tuple<uint16_t, uint8_t*>;
+
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
          const size_t nbuf, const size_t htsz, const size_t hlen,
          const uint8_t* const hkey, stack::ethernet::Address const& m_address,
@@ -60,6 +64,8 @@ private:
          stack::ipv4::Address const& nm);
 
   system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
+
+  Status clearSentBuffers(Processor& proc);
 
   uint16_t m_portid;
   uint16_t m_queueid;
@@ -71,6 +77,8 @@ private:
   struct rte_eth_rss_reta_entry64* m_reta;
   system::CircularBuffer::Ref m_buffer;
   uint8_t* m_packet;
+  std::vector<struct rte_mbuf*> m_free;
+  std::vector<SentBuffer> m_sent;
 
   friend class Port;
 

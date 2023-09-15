@@ -27,6 +27,7 @@ public:
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
+  Status sent(const uint16_t len, uint8_t* const buf) override;
 
   Address const& sourceAddress() { return m_srceAddress; }
 

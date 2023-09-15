@@ -1,5 +1,6 @@
 #include "Debug.h"
-#include "tulips/stack/IPv4.h"
+#include "tulips/stack/TCPv4.h"
+#include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -51,23 +52,25 @@ Processor::sendAbort(Connection& e)
 {
   m_log.debug("TCP4", "connection RST");
   /*
-   * Unlisten the local port and close the connection.
-   */
-  m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
-  m_index.erase(std::hash<Connection>()(e));
-  e.m_state = Connection::CLOSED;
-  /*
-   * Ignore any pending data.
-   */
-  e.m_slen = 0;
-  /*
    * Update the TCP headers.
    */
   uint8_t* outdata = e.m_sdat;
   OUTTCP->flags = Flag::RST;
   OUTTCP->flags |= e.m_newdata ? Flag::ACK : 0;
   OUTTCP->offset = 5;
-  return send(e);
+  /*
+   * Ignore any pending data.
+   */
+  e.m_slen = 0;
+  /*
+   * Send the packet.
+   */
+  auto ret = send(e);
+  /*
+   * Close the connection and return.
+   */
+  close(e);
+  return ret;
 }
 
 Status
@@ -155,6 +158,7 @@ Processor::sendAck(Connection& e)
   if (unlikely(e.hasPendingSendData())) {
     memcpy(bdat, e.m_sdat, e.m_slen);
     blen = e.m_slen;
+    e.m_slen = 0;
   }
   /*
    * Prepare the frame for an ACK.
@@ -263,32 +267,24 @@ Processor::rexmit(Connection& e)
      */
     case Connection::SYN_RCVD: {
       m_log.debug("TCP4", "retransmit SYNACK");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return sendSynAck(e, seg);
+      const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
+      return send(e, len, e.segment());
     }
     /*
      * In the SYN_SENT state, we retransmit out SYN.
      */
     case Connection::SYN_SENT: {
       m_log.debug("TCP4", "retransmit SYN");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      uint8_t* outdata = seg.m_dat;
-      OUTTCP->flags = 0;
-      return sendSyn(e, seg);
+      const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
+      return send(e, len, e.segment());
     }
     /*
      * In the ESTABLISHED state, we resend the oldest segment.
      */
     case Connection::ESTABLISHED: {
       m_log.debug("TCP4", "retransmit PSH");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return send(e, seg, Flag::PSH);
+      const auto len = e.segment().m_len + HEADER_LEN;
+      return send(e, len, e.segment());
     }
     /*
      * In all these states we should retransmit a FINACK.
@@ -297,10 +293,7 @@ Processor::rexmit(Connection& e)
     case Connection::CLOSING:
     case Connection::LAST_ACK: {
       m_log.debug("TCP4", "retransmit FINACK");
-      Segment& seg = e.segment();
-      seg.swap(e.m_sdat);
-      e.resetSendBuffer();
-      return sendFinAck(e, e.segment());
+      return send(e, HEADER_LEN, e.segment());
     }
     /*
      * For the other states, do nothing. In the CLOSE state, if we are still
@@ -359,9 +352,9 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   /*
    * Print the flow information.
    */
-  m_log.trace("FLOW", (rexmit ? "<+ " : "<- "), getFlags(*OUTTCP),
-              " len:", s.m_len, " seq:", s.m_seq, " ack:", e.m_rcv_nxt,
-              " seg:", e.id(s), " lvl:", e.freeSegments());
+  m_log.trace("FLOW", (rexmit ? "<+ " : "<- "), getFlags(*OUTTCP), " len:", len,
+              " seq:", s.m_seq, " ack:", e.m_rcv_nxt, " seg:", e.id(s),
+              " lvl:", e.freeSegments());
   /*
    * Update the connection and segment state.
    */
@@ -379,6 +372,12 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   m_ipv4to.setProtocol(ipv4::Protocol::TCP);
   m_ipv4to.setDestinationAddress(e.m_ripaddr);
   m_ethto.setDestinationAddress(e.m_rethaddr);
+  /*
+   * Don't prepare a new buffer if we are rexmitting.
+   */
+  if (rexmit) {
+    return Status::Ok;
+  }
   /*
    * Prepare a new buffer
    */

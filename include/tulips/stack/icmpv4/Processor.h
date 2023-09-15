@@ -20,6 +20,7 @@ public:
   Status run() override { return Status::Ok; }
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
+  Status sent(const uint16_t len, uint8_t* const buf) override;
 
   Request& attach(ethernet::Producer& eth, ipv4::Producer& ip4);
   void detach(Request& req);

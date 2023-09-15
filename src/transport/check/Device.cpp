@@ -36,6 +36,12 @@ Device::process(const uint16_t len, const uint8_t* const data,
 }
 
 Status
+Device::sent(const uint16_t len, uint8_t* const buf)
+{
+  return m_proc->sent(len, buf);
+}
+
+Status
 Device::prepare(uint8_t*& buf)
 {
   Status ret = m_device.prepare(buf);
@@ -44,12 +50,18 @@ Device::prepare(uint8_t*& buf)
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
+Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   if (!check(m_buffer, len)) {
     throw std::runtime_error("Empty packet has been received !");
   }
   return m_device.commit(len, buf, mss);
+}
+
+Status
+Device::release(uint8_t* const buf)
+{
+  return m_device.release(buf);
 }
 
 bool

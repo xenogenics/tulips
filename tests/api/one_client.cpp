@@ -1,9 +1,8 @@
-#include "tulips/system/Logger.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
-#include <tulips/fifo/fifo.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/Logger.h>
 #include <tulips/transport/Processor.h>
 #include <tulips/transport/list/Device.h>
 #include <tulips/transport/pcap/Device.h>
@@ -11,6 +10,7 @@
 
 using namespace tulips;
 using namespace stack;
+using namespace transport;
 
 namespace {
 
@@ -62,8 +62,6 @@ class API_OneClient : public ::testing::Test
 public:
   API_OneClient()
     : m_logger(system::Logger::Level::Trace)
-    , m_client_fifo(nullptr)
-    , m_server_fifo(nullptr)
     , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
     , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
     , m_client_ip4(10, 1, 0, 1)
@@ -88,24 +86,14 @@ protected:
     std::string tname(
       ::testing::UnitTest::GetInstance()->current_test_info()->name());
     /*
-     * Create the transport FIFOs.
-     */
-    m_client_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-    m_server_fifo = TULIPS_FIFO_DEFAULT_VALUE;
-    /*
-     * Build the FIFOs
-     */
-    tulips_fifo_create(64, 128, &m_client_fifo);
-    tulips_fifo_create(64, 128, &m_server_fifo);
-    /*
      * Build the devices.
      */
-    m_client_ldev =
-      new transport::list::Device(m_logger, m_client_adr, m_client_ip4, bcast,
-                                  nmask, 1514, m_server_list, m_client_list);
-    m_server_ldev =
-      new transport::list::Device(m_logger, m_server_adr, m_server_ip4, bcast,
-                                  nmask, 1514, m_client_list, m_server_list);
+    m_client_ldev = new list::Device(m_logger, m_client_adr, m_client_ip4,
+                                     bcast, nmask, 1514, m_server_list,
+                                     m_client_list);
+    m_server_ldev = new list::Device(m_logger, m_server_adr, m_server_ip4,
+                                     bcast, nmask, 1514, m_client_list,
+                                     m_server_list);
     /*
      * Build the pcap device
      */
@@ -142,24 +130,17 @@ protected:
      */
     delete m_client_ldev;
     delete m_server_ldev;
-    /*
-     * Delete the FIFOs.
-     */
-    tulips_fifo_destroy(&m_client_fifo);
-    tulips_fifo_destroy(&m_server_fifo);
   }
 
   system::ConsoleLogger m_logger;
-  tulips_fifo_t m_client_fifo;
-  tulips_fifo_t m_server_fifo;
   ethernet::Address m_client_adr;
   ethernet::Address m_server_adr;
   ipv4::Address m_client_ip4;
   ipv4::Address m_server_ip4;
-  transport::list::Device::List m_client_list;
-  transport::list::Device::List m_server_list;
-  transport::list::Device* m_client_ldev;
-  transport::list::Device* m_server_ldev;
+  list::Device::List m_client_list;
+  list::Device::List m_server_list;
+  list::Device* m_client_ldev;
+  list::Device* m_server_ldev;
   transport::pcap::Device* m_client_pcap;
   transport::pcap::Device* m_server_pcap;
   api::defaults::ClientDelegate m_client_delegate;
@@ -210,6 +191,9 @@ TEST_F(API_OneClient, ListenConnectAndAbort)
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   // Client closed
   ASSERT_TRUE(m_client->isClosed(id));
+  // Client and server close the connections
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectAndClose)
@@ -302,7 +286,7 @@ TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
     ASSERT_EQ(Status::Ok, m_server->run());
   }
   /*
-   * Client closed
+   * Client closed.
    */
   ASSERT_TRUE(m_client->isClosed(id));
   ASSERT_TRUE(m_server->isClosed(0));
@@ -335,6 +319,13 @@ TEST_F(API_OneClient, ConnectCookie)
    * Check if the cookie was found.
    */
   ASSERT_TRUE(m_server_delegate.isListenCookieValid());
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client->abort(id));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ConnectTwo)
@@ -360,7 +351,6 @@ TEST_F(API_OneClient, ConnectTwo)
   ASSERT_EQ(Status::Ok, m_client->connect(id1, dst_ip, 12345));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-
   /*
    * Connection client 2.
    */
@@ -370,6 +360,17 @@ TEST_F(API_OneClient, ConnectTwo)
   ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id2, dst_ip, 12345));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  /*
+   * Abort the connection and clean-up.
+   */
+  ASSERT_EQ(Status::Ok, m_client->abort(id1));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_client->abort(id2));
+  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
   ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
   ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
@@ -433,10 +434,18 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
     ASSERT_EQ(Status::Ok, m_client->run());
     ASSERT_EQ(Status::Ok, m_server->run());
   }
+  /*
+   * Make sure the connections are closed.
+   */
   ASSERT_TRUE(m_client->isClosed(id1));
   ASSERT_TRUE(m_server->isClosed(0));
   ASSERT_TRUE(m_client->isClosed(id2));
   ASSERT_TRUE(m_server->isClosed(1));
+  /*
+   * Clean-up.
+   */
+  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)

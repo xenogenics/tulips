@@ -1,8 +1,10 @@
 #include <tulips/fifo/errors.h>
+#include <tulips/fifo/fifo.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/shm/Device.h>
+#include <cstdint>
 #include <cstdlib>
 #include <ctime>
 
@@ -19,17 +21,20 @@ Device::Device(system::Logger& log, stack::ethernet::Address const& address,
   , m_ip(ip)
   , m_dr(dr)
   , m_nm(nm)
-  , read_fifo(rf)
-  , write_fifo(wf)
+  , m_read(rf)
+  , m_write(wf)
+  , m_sent(TULIPS_FIFO_DEFAULT_VALUE)
   , m_mutex()
   , m_cond()
 {
   pthread_mutex_init(&m_mutex, nullptr);
   pthread_cond_init(&m_cond, nullptr);
+  tulips_fifo_create(m_write->depth, m_write->data_len, &m_sent);
 }
 
 Device::~Device()
 {
+  tulips_fifo_destroy(&m_sent);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
 }
@@ -39,10 +44,35 @@ Device::poll(Processor& proc)
 {
   bool empty = false;
   /*
+   * Process the sent buffers.
+   */
+  while (tulips_fifo_empty(m_sent) == TULIPS_FIFO_NO) {
+    Packet* packet = nullptr;
+    /*
+     * Get the front of the FIFO..
+     */
+    if (tulips_fifo_front(m_sent, (void**)&packet) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+    /*
+     * Pop the FIFO.
+     */
+    if (tulips_fifo_pop(m_sent) != TULIPS_FIFO_OK) {
+      return Status::HardwareError;
+    }
+    /*
+     * Notify the processor.
+     */
+    auto ret = proc.sent(packet->len, packet->data);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
+  /*
    * Check the FIFO for data
    */
   for (size_t i = 0; i < RETRY_COUNT; i += 1) {
-    empty = tulips_fifo_empty(read_fifo) == TULIPS_FIFO_YES;
+    empty = tulips_fifo_empty(m_read) == TULIPS_FIFO_YES;
     if (!empty) {
       break;
     }
@@ -54,15 +84,18 @@ Device::poll(Processor& proc)
     return Status::NoDataAvailable;
   }
   /*
-   * Process the data
+   * Get the front packet.
    */
   Packet* packet = nullptr;
-  if (tulips_fifo_front(read_fifo, (void**)&packet) != TULIPS_FIFO_OK) {
+  if (tulips_fifo_front(m_read, (void**)&packet) != TULIPS_FIFO_OK) {
     return Status::HardwareError;
   }
+  /*
+   * Process the data.
+   */
   m_log.trace("SHM", "processing packet: ", size_t(packet->len), "B, ", packet);
   Status ret = proc.process(packet->len, packet->data, system::Clock::read());
-  tulips_fifo_pop(read_fifo);
+  tulips_fifo_pop(m_read);
   return ret;
 }
 
@@ -84,35 +117,48 @@ Device::wait(Processor& proc, const uint64_t ns)
 Status
 Device::prepare(uint8_t*& buf)
 {
-  if (tulips_fifo_full(write_fifo) == TULIPS_FIFO_YES) {
+  if (tulips_fifo_full(m_write) == TULIPS_FIFO_YES) {
     return Status::NoMoreResources;
   }
   Packet* packet = nullptr;
-  tulips_fifo_prepare(write_fifo, (void**)&packet);
-  m_log.debug("SHM", "preparing packet: ", mss(), "B, ", packet);
+  tulips_fifo_prepare(m_write, (void**)&packet);
   buf = packet->data;
+  m_log.debug("SHM", "preparing packet: ", mss(), "B, ", (void*)buf);
   return Status::Ok;
 }
 
 Status
-Device::commit(const uint32_t len, uint8_t* const buf,
+Device::commit(const uint16_t len, uint8_t* const buf,
                UNUSED const uint16_t mss)
 {
+  m_log.trace("SHM", "committing packet: ", len, "B, ", (void*)buf);
   auto* packet = (Packet*)(buf - sizeof(uint32_t));
-  m_log.trace("SHM", "committing packet: ", len, "B, ", packet);
   packet->len = len;
-  tulips_fifo_commit(write_fifo);
+  tulips_fifo_commit(m_write);
+  tulips_fifo_push(m_sent, packet);
   pthread_cond_signal(&m_cond);
+  return Status::Ok;
+}
+
+Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  m_log.trace("SHM", "releasing buffer: ", (void*)buf);
+  /*
+   * NOTE(xrg): this device does not support processing packets out of order.
+   * The m_sent FIFO is only here to make the API functional, and assumes
+   * that the packet forwarded to Processor::sent() is still somehow valid.
+   */
   return Status::Ok;
 }
 
 Status
 Device::drop()
 {
-  if (tulips_fifo_empty(read_fifo) == TULIPS_FIFO_YES) {
+  if (tulips_fifo_empty(m_read) == TULIPS_FIFO_YES) {
     return Status::NoDataAvailable;
   }
-  tulips_fifo_pop(read_fifo);
+  tulips_fifo_pop(m_read);
   return Status::Ok;
 }
 
@@ -127,7 +173,7 @@ Device::waitForInput(const uint64_t ns)
   pthread_mutex_lock(&m_mutex);
   pthread_cond_timedwait(&m_cond, &m_mutex, &ts);
   pthread_mutex_unlock(&m_mutex);
-  return tulips_fifo_empty(read_fifo) == TULIPS_FIFO_YES;
+  return tulips_fifo_empty(m_read) == TULIPS_FIFO_YES;
 }
 
 }

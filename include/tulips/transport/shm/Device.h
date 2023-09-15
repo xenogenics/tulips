@@ -47,30 +47,28 @@ public:
   Status wait(Processor& proc, const uint64_t ns) override;
 
   Status prepare(uint8_t*& buf) override;
-  Status commit(const uint32_t len, uint8_t* const buf,
+  Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
+  Status release(uint8_t* const buf) override;
 
   uint32_t mtu() const override
   {
-    return write_fifo->data_len - sizeof(Packet) - stack::ethernet::HEADER_LEN;
+    return m_write->data_len - sizeof(Packet) - stack::ethernet::HEADER_LEN;
   }
 
-  uint32_t mss() const override
-  {
-    return write_fifo->data_len - sizeof(Packet);
-  }
+  uint32_t mss() const override { return m_write->data_len - sizeof(Packet); }
 
   uint8_t receiveBufferLengthLog2() const override
   {
-    return system::utils::log2(write_fifo->data_len);
+    return system::utils::log2(m_write->data_len);
   }
 
   uint16_t receiveBuffersAvailable() const override
   {
-    if (tulips_fifo_empty(write_fifo) == TULIPS_FIFO_YES) {
-      return write_fifo->depth;
+    if (tulips_fifo_empty(m_write) == TULIPS_FIFO_YES) {
+      return m_write->depth;
     } else {
-      uint64_t delta = write_fifo->read_count - write_fifo->write_count;
+      uint64_t delta = m_write->read_count - m_write->write_count;
       if (delta > std::numeric_limits<uint16_t>::max()) {
         return std::numeric_limits<uint16_t>::max();
       }
@@ -94,8 +92,9 @@ protected:
   stack::ipv4::Address m_ip;
   stack::ipv4::Address m_dr;
   stack::ipv4::Address m_nm;
-  tulips_fifo_t read_fifo;
-  tulips_fifo_t write_fifo;
+  tulips_fifo_t m_read;
+  tulips_fifo_t m_write;
+  tulips_fifo_t m_sent;
   pthread_mutex_t m_mutex;
   pthread_cond_t m_cond;
 };
