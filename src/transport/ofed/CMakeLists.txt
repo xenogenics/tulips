@@ -1,8 +1,5 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
-
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers")
-endif ()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers")
   
 include_directories(${OFED_INCLUDE_DIRS})
 
