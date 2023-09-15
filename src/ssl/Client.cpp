@@ -434,22 +434,10 @@ Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * Grab the context.
    */
   Context& c = *reinterpret_cast<Context*>(cookie);
-  auto pre = c.state;
   /*
    * Write the data in the input BIO.
    */
-  auto res = c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
-  auto post = c.state;
-  /*
-   * Check for the ready state transition.
-   */
-  if (pre == Context::State::Connect && post == Context::State::Ready) {
-    c.cookie = m_delegate.onConnected(c.id, c.cookie, ts);
-  }
-  /*
-   * Done.
-   */
-  return res;
+  return c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
 }
 
 void
@@ -472,7 +460,7 @@ Client::flush(const ID id, void* const cookie)
   /*
    * Check if there is any pending data.
    */
-  size_t len = c.pending();
+  size_t len = c.pendingRead();
   if (len == 0) {
     return Status::Ok;
   }

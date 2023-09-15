@@ -847,6 +847,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             if (rlen > alen) {
               rlen = alen;
             }
+            m_log.trace("TCP", "queueing ", rlen, "B from onNewData()");
             e.m_slen += rlen;
           }
           /*

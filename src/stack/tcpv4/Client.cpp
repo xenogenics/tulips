@@ -299,6 +299,7 @@ Processor::send(Connection::ID const& id, const uint32_t len,
    * Send immediately if Nagle's algorithm has been disabled.
    */
   if (HAS_NODELAY(c)) {
+    m_log.trace("TCP", "sending ", slen, "B from client");
     return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
   /*

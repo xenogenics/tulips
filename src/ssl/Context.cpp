@@ -163,14 +163,18 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   /*
    * Check and send any data in the BIO buffer.
    */
-  size_t len = pending();
+  size_t len = pendingRead();
   if (len == 0) {
     return Action::Continue;
   }
   /*
-   * Send the response.
+   * Get how much data to send back.
    */
   size_t rlen = len > alen ? alen : len;
+  log.trace("SSL", "flushing ", rlen, "B (", len, "/", alen, ")");
+  /*
+   * Send the response.
+   */
   BIO_read(bout, sdata, (int)rlen);
   slen = rlen;
   return Action::Continue;

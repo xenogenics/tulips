@@ -58,7 +58,7 @@ struct Context
     /*
      * If the BIO has data pending, flush it.
      */
-    if (pending() > 0) {
+    if (pendingRead() > 0) {
       return flush(alen, sdata, slen);
     }
     /*
@@ -113,7 +113,7 @@ struct Context
     /*
      * Show the buffer level.
      */
-    auto acc = BIO_pending(bin);
+    auto acc = pendingWrite();
     log.trace("SSL", "new data: ", len, "B, (", acc, "/", BUFLEN, ")");
     /*
      * Only accept Ready state.
@@ -126,9 +126,9 @@ struct Context
      * Process the internal buffer as long as there is data available.
      */
     do {
-      auto bl0 = BIO_pending(bin);
+      auto bl0 = pendingWrite();
       ret = SSL_read(ssl, rdbf, BUFLEN);
-      auto bl1 = BIO_pending(bin);
+      auto bl1 = pendingWrite();
       log.trace("SSL", "SSL_read: ", ret, " (", bl0, " -> ", bl1, ")");
       /*
        * Handle error conditions.
@@ -172,7 +172,7 @@ struct Context
          */
         else {
           auto m = errorToString(err);
-          auto b = BIO_pending(bin);
+          auto b = pendingWrite();
           log.error("SSL", "SSL_read error: ", m, " (", ret, ", ", err, ", ",
                     sht, ") ", b, "B");
           return Action::Abort;
@@ -212,7 +212,7 @@ struct Context
     /*
      * Show the buffer level.
      */
-    auto avl = BIO_pending(bin);
+    auto avl = pendingWrite();
     log.trace("SSL", "new data: ", len, "B, (", avl, "/", BUFLEN, ")");
     /*
      * Check the connection's state.
@@ -290,9 +290,9 @@ struct Context
          * Process the internal buffer as long as there is data available.
          */
         do {
-          auto bl0 = BIO_pending(bin);
+          auto bl0 = pendingWrite();
           ret = SSL_read(ssl, rdbf, BUFLEN);
-          auto bl1 = BIO_pending(bin);
+          auto bl1 = pendingWrite();
           log.trace("SSL", "SSL_read: ", ret, " (", bl0, " -> ", bl1, ")");
           /*
            * Handle error conditions.
@@ -336,7 +336,7 @@ struct Context
              */
             else {
               auto m = errorToString(err);
-              auto b = BIO_pending(bin);
+              auto b = pendingWrite();
               log.error("SSL", "SSL_read error: ", m, " (", ret, ", ", err,
                         ", ", sht, ") ", b, "B");
               return Action::Abort;
@@ -403,7 +403,12 @@ struct Context
   /**
    * Return how much data is pending on the read channel.
    */
-  inline size_t pending() { return BIO_pending(bout); }
+  inline size_t pendingRead() { return BIO_pending(bout); }
+
+  /**
+   * Return how much data is pending on the write channel.
+   */
+  inline size_t pendingWrite() { return BIO_pending(bin); }
 
   /**
    * Handle delegate response.

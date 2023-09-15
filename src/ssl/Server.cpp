@@ -264,7 +264,7 @@ Server::flush(const ID id, void* const cookie)
   /*
    * Send the pending data.
    */
-  size_t len = c.pending();
+  size_t len = c.pendingRead();
   if (len == 0) {
     return Status::Ok;
   }
