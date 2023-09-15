@@ -32,8 +32,10 @@ struct Context
   enum class State
   {
     Closed,
-    Connect,
-    Accept,
+    Open,
+    Connecting,
+    Connected,
+    Accepting,
     Ready,
     Shutdown
   };
@@ -221,14 +223,21 @@ struct Context
       /*
        * Closed is not a valid state.
        */
+      case State::Open: {
+        log.error("SSL", "Received data on OPEN");
+        return Action::Abort;
+      }
+      /*
+       * Closed is not a valid state.
+       */
       case State::Closed: {
-        log.error("SSL", "Received data on a closed context");
+        log.error("SSL", "Received data on CLOSED");
         return Action::Abort;
       }
       /*
        * Handle the SSL handshake.
        */
-      case State::Connect: {
+      case State::Connecting: {
         ret = SSL_connect(ssl);
         switch (ret) {
           case 0: {
@@ -237,7 +246,7 @@ struct Context
           }
           case 1: {
             log.debug("SSL", "SSL_connect successful");
-            state = State::Ready;
+            state = State::Connected;
             return flush(alen, sdata, slen);
           }
           default: {
@@ -256,7 +265,7 @@ struct Context
       /*
        * Process SSL_accept.
        */
-      case State::Accept: {
+      case State::Accepting: {
         ret = SSL_accept(ssl);
         switch (ret) {
           case 0: {
@@ -282,6 +291,7 @@ struct Context
       /*
        * Decrypt and pass the data to the delegate.
        */
+      case State::Connected:
       case State::Ready:
       case State::Shutdown: {
         uint32_t acc = 0;

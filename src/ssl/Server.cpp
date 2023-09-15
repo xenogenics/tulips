@@ -168,7 +168,7 @@ Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* ssl = AS_SSL(m_context);
   auto* c = new Context(ssl, m_log, id, cookie, ts, -1);
-  c->state = Context::State::Accept;
+  c->state = Context::State::Accepting;
   return c;
 }
 
@@ -236,8 +236,11 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
   auto post = c.state;
   /*
    * Check for the ready state transition.
+   *
+   * FIXME(xrg): we will run into issues here if the delegate sends data while
+   * at the same time the SSL context needs to flush back data.
    */
-  if (pre == Context::State::Accept && post == Context::State::Ready) {
+  if (pre == Context::State::Accepting && post == Context::State::Ready) {
     c.cookie = m_delegate.onConnected(c.id, c.cookie, ts);
   }
   /*
