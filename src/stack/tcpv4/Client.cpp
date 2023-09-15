@@ -7,6 +7,7 @@
 #include <tulips/system/Utils.h>
 #include <algorithm>
 #include <cstring>
+#include <optional>
 
 #ifdef __linux__
 #include <arpa/inet.h>

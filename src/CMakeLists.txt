@@ -3,7 +3,6 @@ if (TULIPS_TOOLS)
 endif (TULIPS_TOOLS)
 
 add_subdirectory(api)
-add_subdirectory(fifo)
 add_subdirectory(stack)
 add_subdirectory(ssl)
 add_subdirectory(system)

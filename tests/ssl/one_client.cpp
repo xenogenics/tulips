@@ -1,5 +1,4 @@
 #include <tulips/api/Defaults.h>
-#include <tulips/fifo/fifo.h>
 #include <tulips/ssl/Client.h>
 #include <tulips/ssl/Server.h>
 #include <tulips/system/Compiler.h>

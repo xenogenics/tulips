@@ -70,7 +70,9 @@ public:
     m_opts = options;
   }
 
+#ifdef TULIPS_ENABLE_ARP
   void resolving() { m_state = State::Resolving; }
+#endif
 
   void connecting() { m_state = State::Connecting; }
 

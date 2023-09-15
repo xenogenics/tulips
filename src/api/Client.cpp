@@ -1,6 +1,6 @@
-#include "tulips/stack/tcpv4/Connection.h"
 #include <tulips/api/Client.h>
 #include <tulips/stack/ARP.h>
+#include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/system/Compiler.h>
 
 namespace tulips::api {

@@ -102,7 +102,6 @@ public:
 
 private:
   using Connections = std::vector<Connection>;
-  using ConnectionIndex = std::map<stack::tcpv4::Connection::ID, ID>;
 
 #ifdef TULIPS_ENABLE_RAW
   class RawProcessor : public Processor
