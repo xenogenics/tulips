@@ -103,6 +103,46 @@ Client::open(const uint8_t options, ID& id)
 }
 
 Status
+Client::setHostName(const ID id, std::string_view hostname)
+{
+  /*
+   * Check if connection ID is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  Connection& c = m_cns[id];
+  /*
+   * Check if the connection is the right state.
+   */
+  if (c.state != Connection::State::Opened) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Set the hostname for the connection.
+   */
+  c.hostname.emplace(hostname);
+  return Status::Ok;
+}
+
+Status
+Client::getHostName(const ID id, std::optional<std::string>& hostname)
+{
+  /*
+   * Check if connection ID is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  Connection& c = m_cns[id];
+  /*
+   * Get the hostname.
+   */
+  hostname = c.hostname;
+  return Status::Ok;
+}
+
+Status
 Client::connect(const ID id, ipv4::Address const& ripaddr,
                 const tcpv4::Port rport)
 {
@@ -371,6 +411,7 @@ Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
     return;
   }
   d.state = Connection::State::Closed;
+  d.hostname.reset();
   m_delegate.onClosed(id, c.cookie(), ts);
   c.setCookie(nullptr);
 }
@@ -387,6 +428,7 @@ Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
     return;
   }
   d.state = Connection::State::Closed;
+  d.hostname.reset();
   m_delegate.onClosed(id, c.cookie(), ts);
   c.setCookie(nullptr);
 }
@@ -403,6 +445,7 @@ Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
     return;
   }
   d.state = Connection::State::Closed;
+  d.hostname.reset();
   m_delegate.onClosed(id, c.cookie(), ts);
   c.setCookie(nullptr);
 }

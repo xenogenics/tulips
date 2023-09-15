@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/tls1.h>
 #include <openssl/types.h>
 
 namespace {
@@ -105,11 +106,19 @@ Client::~Client()
 Status
 Client::open(const uint8_t options, ID& id)
 {
-  Status res = m_client->open(options, id);
-  if (res != Status::Ok) {
-    return res;
-  }
-  return Status::Ok;
+  return m_client->open(options, id);
+}
+
+Status
+Client::setHostName(const ID id, std::string_view hn)
+{
+  return m_client->setHostName(id, hn);
+}
+
+Status
+Client::getHostName(const ID id, std::optional<std::string>& hn)
+{
+  return m_client->getHostName(id, hn);
 }
 
 Status
@@ -137,6 +146,17 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      * Perform the client SSL handshake.
      */
     case Context::State::Connect: {
+      std::optional<std::string> hostname;
+      m_client->getHostName(id, hostname);
+      /*
+       * Set the host name for SNI-enabled servers.
+       */
+      if (hostname.has_value()) {
+        SSL_set_tlsext_host_name(c.ssl, hostname.value().c_str());
+      }
+      /*
+       * Connect.
+       */
       int ret = SSL_connect(c.ssl);
       switch (ret) {
         case 0: {

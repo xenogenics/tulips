@@ -7,7 +7,7 @@
 
 namespace tulips::ssl {
 
-class Client
+class Client final
   : public api::interface::Client
   , public api::interface::Client::Delegate
 {
@@ -52,6 +52,10 @@ public:
   using api::interface::Client::open;
 
   Status open(const uint8_t options, ID& id) override;
+
+  Status setHostName(const ID id, std::string_view hn) override;
+
+  Status getHostName(const ID id, std::optional<std::string>& hn) override;
 
   Status connect(const ID id, stack::ipv4::Address const& ripaddr,
                  const stack::tcpv4::Port rport) override;
