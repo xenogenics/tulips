@@ -237,30 +237,30 @@ class TCP_Transmit : public ::testing::Test
 public:
   TCP_Transmit()
     : m_logger(system::Logger::Level::Trace)
-    , m_client_fifo()
-    , m_server_fifo()
-    , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
-    , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
+    , m_cli_fifo()
+    , m_srv_fifo()
+    , m_cli_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
+    , m_srv_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
     , m_bcast(10, 1, 0, 254)
     , m_nmask(255, 255, 255, 0)
-    , m_client_ip4(10, 1, 0, 1)
-    , m_server_ip4(10, 1, 0, 2)
+    , m_cli_ip4(10, 1, 0, 1)
+    , m_srv_ip4(10, 1, 0, 2)
     , m_client(nullptr)
     , m_server(nullptr)
-    , m_client_pcap(nullptr)
-    , m_server_pcap(nullptr)
-    , m_client_evt(nullptr)
-    , m_client_ip4_prod(nullptr)
-    , m_client_ip4_proc(nullptr)
-    , m_client_tcp(nullptr)
-    , m_client_eth_prod(nullptr)
-    , m_client_eth_proc(nullptr)
-    , m_server_evt(nullptr)
-    , m_server_ip4_prod(nullptr)
-    , m_server_ip4_proc(nullptr)
-    , m_server_tcp(nullptr)
-    , m_server_eth_prod(nullptr)
-    , m_server_eth_proc(nullptr)
+    , m_cli_pcap(nullptr)
+    , m_srv_pcap(nullptr)
+    , m_cli_evt(nullptr)
+    , m_cli_ip4_prod(nullptr)
+    , m_cli_ip4_proc(nullptr)
+    , m_cli_tcp(nullptr)
+    , m_cli_eth_prod(nullptr)
+    , m_cli_eth_proc(nullptr)
+    , m_srv_evt(nullptr)
+    , m_srv_ip4_prod(nullptr)
+    , m_srv_ip4_proc(nullptr)
+    , m_srv_tcp(nullptr)
+    , m_srv_eth_prod(nullptr)
+    , m_srv_eth_proc(nullptr)
   {}
 
 protected:
@@ -271,71 +271,65 @@ protected:
     /*
      * Build the devices.
      */
-    m_client = new list::Device(m_logger, m_client_adr, m_client_ip4, m_bcast,
-                                m_nmask, 128, m_server_fifo, m_client_fifo);
-    m_server = new list::Device(m_logger, m_server_adr, m_server_ip4, m_bcast,
-                                m_nmask, 128, m_client_fifo, m_server_fifo);
+    m_client = new list::Device(m_logger, m_cli_adr, m_cli_ip4, m_bcast,
+                                m_nmask, 128, m_srv_fifo, m_cli_fifo);
+    m_server = new list::Device(m_logger, m_srv_adr, m_srv_ip4, m_bcast,
+                                m_nmask, 128, m_cli_fifo, m_srv_fifo);
     /*
      * Build the pcap device
      */
-    std::string client_n = "tcp_transmit.client." + tname;
-    std::string server_n = "tcp_transmit.server." + tname;
-    m_client_pcap = new transport::pcap::Device(m_logger, *m_client, client_n);
-    m_server_pcap = new transport::pcap::Device(m_logger, *m_server, server_n);
+    std::string cli_n = "tcp_transmit.client." + tname;
+    std::string srv_n = "tcp_transmit.server." + tname;
+    m_cli_pcap = new transport::pcap::Device(m_logger, *m_client, cli_n);
+    m_srv_pcap = new transport::pcap::Device(m_logger, *m_server, srv_n);
     /*
      * Client stack
      */
-    m_client_evt = new Client(client_n + ".log");
-    m_client_eth_prod = new ethernet::Producer(m_logger, *m_client_pcap,
-                                               m_client_pcap->address());
-    m_client_ip4_prod =
-      new ipv4::Producer(m_logger, *m_client_eth_prod, m_client_ip4);
-    m_client_eth_proc =
-      new ethernet::Processor(m_logger, m_client_pcap->address());
-    m_client_ip4_proc = new ipv4::Processor(m_logger, m_client_ip4);
-    m_client_tcp = new tcpv4::Processor(m_logger, *m_client_pcap,
-                                        *m_client_eth_prod, *m_client_ip4_prod,
-                                        *m_client_evt, 1);
+    m_cli_evt = new Client(cli_n + ".log");
+    m_cli_eth_prod =
+      new ethernet::Producer(m_logger, *m_cli_pcap, m_cli_pcap->address());
+    m_cli_ip4_prod = new ipv4::Producer(m_logger, *m_cli_eth_prod, m_cli_ip4);
+    m_cli_eth_proc = new ethernet::Processor(m_logger, m_cli_pcap->address());
+    m_cli_ip4_proc = new ipv4::Processor(m_logger, m_cli_ip4);
+    m_cli_tcp = new tcpv4::Processor(m_logger, *m_cli_pcap, *m_cli_eth_prod,
+                                     *m_cli_ip4_prod, *m_cli_evt, 1);
     /*
      * Client processor binding
      */
-    (*m_client_tcp)
-      .setEthernetProcessor(*m_client_eth_proc)
-      .setIPv4Processor(*m_client_ip4_proc);
-    (*m_client_ip4_prod).setDefaultRouterAddress(m_bcast).setNetMask(m_nmask);
-    (*m_client_ip4_proc)
-      .setEthernetProcessor(*m_client_eth_proc)
-      .setTCPv4Processor(*m_client_tcp);
-    (*m_client_eth_proc).setIPv4Processor(*m_client_ip4_proc);
+    (*m_cli_tcp)
+      .setEthernetProcessor(*m_cli_eth_proc)
+      .setIPv4Processor(*m_cli_ip4_proc);
+    (*m_cli_ip4_prod).setDefaultRouterAddress(m_bcast).setNetMask(m_nmask);
+    (*m_cli_ip4_proc)
+      .setEthernetProcessor(*m_cli_eth_proc)
+      .setTCPv4Processor(*m_cli_tcp);
+    (*m_cli_eth_proc).setIPv4Processor(*m_cli_ip4_proc);
     /*
      * Server stack
      */
-    m_server_evt = new Server(server_n + ".log");
-    m_server_eth_prod = new ethernet::Producer(m_logger, *m_server_pcap,
-                                               m_server_pcap->address());
-    m_server_ip4_prod =
-      new ipv4::Producer(m_logger, *m_server_eth_prod, m_server_ip4);
-    m_server_eth_proc =
-      new ethernet::Processor(m_logger, m_server_pcap->address());
-    m_server_ip4_proc = new ipv4::Processor(m_logger, m_server_ip4);
-    m_server_tcp = new tcpv4::Processor(m_logger, *m_server_pcap,
-                                        *m_server_eth_prod, *m_server_ip4_prod,
-                                        *m_server_evt, 1);
+    m_srv_evt = new Server(srv_n + ".log");
+    m_srv_eth_prod =
+      new ethernet::Producer(m_logger, *m_srv_pcap, m_srv_pcap->address());
+    m_srv_ip4_prod = new ipv4::Producer(m_logger, *m_srv_eth_prod, m_srv_ip4);
+    m_srv_eth_proc = new ethernet::Processor(m_logger, m_srv_pcap->address());
+    m_srv_ip4_proc = new ipv4::Processor(m_logger, m_srv_ip4);
+    m_srv_tcp = new tcpv4::Processor(m_logger, *m_srv_pcap, *m_srv_eth_prod,
+                                     *m_srv_ip4_prod, *m_srv_evt, 1);
     /*
      * Server processor binding
      */
-    (*m_server_tcp)
-      .setEthernetProcessor(*m_server_eth_proc)
-      .setIPv4Processor(*m_server_ip4_proc);
-    (*m_server_ip4_prod).setDefaultRouterAddress(m_bcast).setNetMask(m_nmask);
-    (*m_server_ip4_proc)
-      .setEthernetProcessor(*m_server_eth_proc)
-      .setTCPv4Processor(*m_server_tcp);
-    (*m_server_eth_proc).setIPv4Processor(*m_server_ip4_proc);
+    (*m_srv_tcp)
+      .setEthernetProcessor(*m_srv_eth_proc)
+      .setIPv4Processor(*m_srv_ip4_proc);
+    (*m_srv_ip4_prod).setDefaultRouterAddress(m_bcast).setNetMask(m_nmask);
+    (*m_srv_ip4_proc)
+      .setEthernetProcessor(*m_srv_eth_proc)
+      .setTCPv4Processor(*m_srv_tcp);
+    (*m_srv_eth_proc).setIPv4Processor(*m_srv_ip4_proc);
     /*
      * TCP server listens
      */
-    m_server_tcp->listen(1234);
+    m_srv_tcp->listen(1234);
   }
 
   void TearDown() override
@@ -343,26 +337,26 @@ protected:
     /*
      * Delete client stack.
      */
-    delete m_client_evt;
-    delete m_client_ip4_proc;
-    delete m_client_ip4_prod;
-    delete m_client_tcp;
-    delete m_client_eth_proc;
-    delete m_client_eth_prod;
+    delete m_cli_evt;
+    delete m_cli_ip4_proc;
+    delete m_cli_ip4_prod;
+    delete m_cli_tcp;
+    delete m_cli_eth_proc;
+    delete m_cli_eth_prod;
     /*
      * Delete server stack.
      */
-    delete m_server_evt;
-    delete m_server_ip4_proc;
-    delete m_server_ip4_prod;
-    delete m_server_tcp;
-    delete m_server_eth_proc;
-    delete m_server_eth_prod;
+    delete m_srv_evt;
+    delete m_srv_ip4_proc;
+    delete m_srv_ip4_prod;
+    delete m_srv_tcp;
+    delete m_srv_eth_proc;
+    delete m_srv_eth_prod;
     /*
      * Delete the pcap wrappers;
      */
-    delete m_client_pcap;
-    delete m_server_pcap;
+    delete m_cli_pcap;
+    delete m_srv_pcap;
     /*
      * Delete client and server.
      */
@@ -371,30 +365,30 @@ protected:
   }
 
   system::ConsoleLogger m_logger;
-  list::Device::List m_client_fifo;
-  list::Device::List m_server_fifo;
-  ethernet::Address m_client_adr;
-  ethernet::Address m_server_adr;
+  list::Device::List m_cli_fifo;
+  list::Device::List m_srv_fifo;
+  ethernet::Address m_cli_adr;
+  ethernet::Address m_srv_adr;
   ipv4::Address m_bcast;
   ipv4::Address m_nmask;
-  ipv4::Address m_client_ip4;
-  ipv4::Address m_server_ip4;
+  ipv4::Address m_cli_ip4;
+  ipv4::Address m_srv_ip4;
   list::Device* m_client;
   list::Device* m_server;
-  transport::pcap::Device* m_client_pcap;
-  transport::pcap::Device* m_server_pcap;
-  Client* m_client_evt;
-  ipv4::Producer* m_client_ip4_prod;
-  ipv4::Processor* m_client_ip4_proc;
-  tcpv4::Processor* m_client_tcp;
-  ethernet::Producer* m_client_eth_prod;
-  ethernet::Processor* m_client_eth_proc;
-  Server* m_server_evt;
-  ipv4::Producer* m_server_ip4_prod;
-  ipv4::Processor* m_server_ip4_proc;
-  tcpv4::Processor* m_server_tcp;
-  ethernet::Producer* m_server_eth_prod;
-  ethernet::Processor* m_server_eth_proc;
+  transport::pcap::Device* m_cli_pcap;
+  transport::pcap::Device* m_srv_pcap;
+  Client* m_cli_evt;
+  ipv4::Producer* m_cli_ip4_prod;
+  ipv4::Processor* m_cli_ip4_proc;
+  tcpv4::Processor* m_cli_tcp;
+  ethernet::Producer* m_cli_eth_prod;
+  ethernet::Processor* m_cli_eth_proc;
+  Server* m_srv_evt;
+  ipv4::Producer* m_srv_ip4_prod;
+  ipv4::Processor* m_srv_ip4_proc;
+  tcpv4::Processor* m_srv_tcp;
+  ethernet::Producer* m_srv_eth_prod;
+  ethernet::Processor* m_srv_eth_proc;
 };
 
 TEST_F(TCP_Transmit, ConnectSend)
@@ -403,37 +397,37 @@ TEST_F(TCP_Transmit, ConnectSend)
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
   res = 0;
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Abort the connection and clean-up.
    */
-  ASSERT_EQ(Status::Ok, m_client_tcp->abort(c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->abort(c));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
 }
 
 TEST_F(TCP_Transmit, ConnectSendWithResponse)
@@ -442,43 +436,43 @@ TEST_F(TCP_Transmit, ConnectSendWithResponse)
   /*
    * Enable response in the server.
    */
-  m_server_evt->enableResponse(true);
+  m_srv_evt->enableResponse(true);
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
   /*
    * The client sends some data, #2
    */
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
   /*
    * Abort the connection and clean-up.
    */
-  ASSERT_EQ(Status::Ok, m_client_tcp->abort(c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->abort(c));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
 }
 
 TEST_F(TCP_Transmit, ConnectSendDisconnectFromClient)
@@ -487,50 +481,50 @@ TEST_F(TCP_Transmit, ConnectSendDisconnectFromClient)
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Client disconnects, server closes
    */
-  ASSERT_EQ(Status::Ok, m_client_tcp->close(c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->close(c));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
   /*
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
     system::Clock::get().offsetBy(system::Clock::SECOND);
-    ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-    ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
   }
   /*
    * Client closed.
    */
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
 }
 
 TEST_F(TCP_Transmit, ConnectSendDisconnectFromServer)
@@ -539,53 +533,53 @@ TEST_F(TCP_Transmit, ConnectSendDisconnectFromServer)
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
-  m_server_evt->closeUponNewData();
+  m_srv_evt->closeUponNewData();
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Client disconnects, server closes
    */
-  ASSERT_EQ(Status::NotConnected, m_client_tcp->close(c));
+  ASSERT_EQ(Status::NotConnected, m_cli_tcp->close(c));
   /*
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
     system::Clock::get().offsetBy(system::Clock::SECOND);
-    ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-    ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
   }
   /*
    * Client closed.
    */
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
 }
 
 TEST_F(TCP_Transmit, ConnectSendDisconnectFromServerWithAckCombining)
@@ -594,57 +588,57 @@ TEST_F(TCP_Transmit, ConnectSendDisconnectFromServerWithAckCombining)
   /*
    * Put the server in ACK combining mode.
    */
-  m_client_evt->setDelayedAck();
-  m_server_evt->setDelayedAck();
+  m_cli_evt->setDelayedAck();
+  m_srv_evt->setDelayedAck();
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
-  m_server_evt->closeUponNewData();
+  m_srv_evt->closeUponNewData();
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Client disconnects, server closes
    */
-  ASSERT_EQ(Status::NotConnected, m_client_tcp->close(c));
+  ASSERT_EQ(Status::NotConnected, m_cli_tcp->close(c));
   /*
    * Advance the timers because of TIME WAIT.
    */
   for (int i = 0; i < 120; i += 1) {
     system::Clock::get().offsetBy(system::Clock::SECOND);
-    ASSERT_EQ(Status::Ok, m_client_eth_proc->run());
-    ASSERT_EQ(Status::Ok, m_server_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
   }
   /*
    * Client closed.
    */
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
 }
 
 TEST_F(TCP_Transmit, ConnectSendAbortFromClient)
@@ -653,37 +647,37 @@ TEST_F(TCP_Transmit, ConnectSendAbortFromClient)
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Client aborts, server closes
    */
-  ASSERT_EQ(Status::Ok, m_client_tcp->abort(c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->abort(c));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
 }
 
 TEST_F(TCP_Transmit, ConnectSendAbortFromServer)
@@ -692,38 +686,38 @@ TEST_F(TCP_Transmit, ConnectSendAbortFromServer)
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
-  m_server_evt->abortUponNewData();
+  m_srv_evt->abortUponNewData();
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Client aborts, server closes
    */
-  ASSERT_EQ(Status::NotConnected, m_client_tcp->close(c));
+  ASSERT_EQ(Status::NotConnected, m_cli_tcp->close(c));
 }
 
 TEST_F(TCP_Transmit, ConnectSendAbortFromServerWithAckCombining)
@@ -732,40 +726,40 @@ TEST_F(TCP_Transmit, ConnectSendAbortFromServerWithAckCombining)
   /*
    * Put the server in ACK combining mode.
    */
-  m_client_evt->setDelayedAck();
-  m_server_evt->setDelayedAck();
+  m_cli_evt->setDelayedAck();
+  m_srv_evt->setDelayedAck();
   /*
    * Server listens, client connects
    */
-  ASSERT_EQ(Status::Ok,
-            m_client_tcp->connect(m_server_adr, m_server_ip4, 1234, c));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_TRUE(m_client_evt->isConnected());
-  ASSERT_TRUE(m_server_evt->isConnected());
+  ASSERT_EQ(Status::Ok, m_cli_tcp->open(c));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->connect(c, m_srv_adr, m_srv_ip4, 1234));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_TRUE(m_cli_evt->isConnected());
+  ASSERT_TRUE(m_srv_evt->isConnected());
   /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
   uint64_t pld = 0xdeadbeefULL;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * The client sends some data, #2
    */
-  m_server_evt->abortUponNewData();
+  m_srv_evt->abortUponNewData();
   res = 0;
-  ASSERT_EQ(Status::Ok, m_client_tcp->send(c, 8, (uint8_t*)&pld, res));
+  ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, 8, (uint8_t*)&pld, res));
   ASSERT_EQ(8, res);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client_eth_proc));
+  ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
   /*
    * Client aborts, server closes
    */
-  ASSERT_EQ(Status::NotConnected, m_client_tcp->close(c));
+  ASSERT_EQ(Status::NotConnected, m_cli_tcp->close(c));
 }

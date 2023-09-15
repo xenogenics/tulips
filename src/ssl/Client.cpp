@@ -110,6 +110,79 @@ Client::open(const uint8_t options, ID& id)
 }
 
 Status
+Client::abort(const ID id)
+{
+  /*
+   * Grab the context.
+   */
+  void* cookie = m_client->cookie(id);
+  if (cookie == nullptr) {
+    return Status::InvalidArgument;
+  }
+  Context& c = *reinterpret_cast<Context*>(cookie);
+  /*
+   * Check if the connection is in the right state.
+   */
+  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
+    return Status::NotConnected;
+  }
+  /*
+   * Abort the connection.
+   */
+  return m_client->abort(id);
+}
+
+Status
+Client::close(const ID id)
+{
+  /*
+   * Grab the context.
+   */
+  void* cookie = m_client->cookie(id);
+  if (cookie == nullptr) {
+    return Status::NotConnected;
+  }
+  Context& c = *reinterpret_cast<Context*>(cookie);
+  /*
+   * Check if the connection is in the right state.
+   */
+  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
+    return Status::NotConnected;
+  }
+  if (c.state == Context::State::Shutdown) {
+    return Status::OperationInProgress;
+  }
+  /*
+   * Mark the state as shut down.
+   */
+  c.state = Context::State::Shutdown;
+  /*
+   * Call SSL_shutdown, repeat if necessary.
+   */
+  int ret = SSL_shutdown(c.ssl);
+  /*
+   * Go through the shutdown state machine.
+   */
+  switch (ret) {
+    case 0: {
+      m_log.debug("SSLCLI", "SSL shutdown sent");
+      flush(id, cookie);
+      return Status::OperationInProgress;
+    }
+    case 1: {
+      m_log.debug("SSLCLI", "shutdown completed");
+      return m_client->close(id);
+    }
+    default: {
+      auto err = SSL_get_error(c.ssl, ret);
+      auto error = ssl::errorToString(err);
+      m_log.error("SSLCLI", "SSL_shutdown error: ", error);
+      return Status::ProtocolError;
+    }
+  }
+}
+
+Status
 Client::setHostName(const ID id, std::string_view hn)
 {
   return m_client->setHostName(id, hn);
@@ -220,79 +293,6 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      */
     case Context::State::Shutdown: {
       return Status::InvalidArgument;
-    }
-  }
-}
-
-Status
-Client::abort(const ID id)
-{
-  /*
-   * Grab the context.
-   */
-  void* cookie = m_client->cookie(id);
-  if (cookie == nullptr) {
-    return Status::InvalidArgument;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
-  /*
-   * Check if the connection is in the right state.
-   */
-  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
-    return Status::NotConnected;
-  }
-  /*
-   * Abort the connection.
-   */
-  return m_client->abort(id);
-}
-
-Status
-Client::close(const ID id)
-{
-  /*
-   * Grab the context.
-   */
-  void* cookie = m_client->cookie(id);
-  if (cookie == nullptr) {
-    return Status::NotConnected;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
-  /*
-   * Check if the connection is in the right state.
-   */
-  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
-    return Status::NotConnected;
-  }
-  if (c.state == Context::State::Shutdown) {
-    return Status::OperationInProgress;
-  }
-  /*
-   * Mark the state as shut down.
-   */
-  c.state = Context::State::Shutdown;
-  /*
-   * Call SSL_shutdown, repeat if necessary.
-   */
-  int ret = SSL_shutdown(c.ssl);
-  /*
-   * Go through the shutdown state machine.
-   */
-  switch (ret) {
-    case 0: {
-      m_log.debug("SSLCLI", "SSL shutdown sent");
-      flush(id, cookie);
-      return Status::OperationInProgress;
-    }
-    case 1: {
-      m_log.debug("SSLCLI", "shutdown completed");
-      return m_client->close(id);
-    }
-    default: {
-      auto err = SSL_get_error(c.ssl, ret);
-      auto error = ssl::errorToString(err);
-      m_log.error("SSLCLI", "SSL_shutdown error: ", error);
-      return Status::ProtocolError;
     }
   }
 }

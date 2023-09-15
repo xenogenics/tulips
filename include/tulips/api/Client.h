@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/api/Connection.h>
 #include <tulips/api/Interface.h>
 #ifdef TULIPS_ENABLE_ARP
 #include <tulips/stack/arp/Processor.h>
@@ -100,35 +101,6 @@ public:
   void* cookie(const ID id) const;
 
 private:
-  struct Connection
-  {
-    enum class State
-    {
-      Closed,
-      Opened,
-#ifdef TULIPS_ENABLE_ARP
-      Resolving,
-#endif
-      Connecting,
-      Connected
-    };
-
-    using History = std::list<system::Clock::Value>;
-
-    Connection();
-
-    State state;
-    stack::tcpv4::Connection::ID conn;
-    uint8_t opts;
-    std::optional<std::string> hostname;
-#ifdef TULIPS_ENABLE_LATENCY_MONITOR
-    size_t count;
-    system::Clock::Value pre;
-    system::Clock::Value lat;
-    History history;
-#endif
-  };
-
   using Connections = std::vector<Connection>;
   using ConnectionIndex = std::map<stack::tcpv4::Connection::ID, ID>;
 
@@ -189,7 +161,6 @@ private:
 #endif
   stack::tcpv4::Processor m_tcp;
   Connections m_cns;
-  ConnectionIndex m_idx;
 };
 
 }

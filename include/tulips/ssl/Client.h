@@ -29,7 +29,7 @@ public:
   ~Client() override;
 
   /**
-   * Device interface.
+   * Processor interface.
    */
 
   inline Status run() override { return m_client->run(); }
@@ -53,16 +53,16 @@ public:
 
   Status open(const uint8_t options, ID& id) override;
 
+  Status abort(const ID id) override;
+
+  Status close(const ID id) override;
+
   Status setHostName(const ID id, std::string_view hn) override;
 
   Status getHostName(const ID id, std::optional<std::string>& hn) override;
 
   Status connect(const ID id, stack::ipv4::Address const& ripaddr,
                  const stack::tcpv4::Port rport) override;
-
-  Status abort(const ID id) override;
-
-  Status close(const ID id) override;
 
   bool isClosed(const ID id) const override;
 
