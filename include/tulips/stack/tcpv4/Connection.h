@@ -66,8 +66,6 @@ public:
 
   inline void* cookie() const { return m_cookie; }
 
-  inline void setCookie(void* const cookie) { m_cookie = cookie; }
-
   inline void setOptions(const uint8_t opts) { m_opts |= opts; }
 
   inline void clearOptions(const uint8_t opts) { m_opts &= ~opts; }

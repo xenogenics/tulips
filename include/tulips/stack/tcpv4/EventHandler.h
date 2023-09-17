@@ -23,7 +23,7 @@ public:
   /**
    * Called when the connection c is connected.
    */
-  virtual void onConnected(Connection& c, const Timestamp ts) = 0;
+  virtual void* onConnected(Connection& c, const Timestamp ts) = 0;
 
   /**
    * Called when the connection c is aborted.

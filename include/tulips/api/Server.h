@@ -100,7 +100,7 @@ private:
    * TCP event interface.
    */
 
-  void onConnected(stack::tcpv4::Connection& c, const Timestamp ts) override;
+  void* onConnected(stack::tcpv4::Connection& c, const Timestamp ts) override;
   void onAborted(stack::tcpv4::Connection& c, const Timestamp ts) override;
   void onTimedOut(stack::tcpv4::Connection& c, const Timestamp ts) override;
   void onClosed(stack::tcpv4::Connection& c, const Timestamp ts) override;

@@ -29,11 +29,12 @@ public:
 
   ~Client() override { m_out.close(); }
 
-  void onConnected(UNUSED tcpv4::Connection& c,
-                   UNUSED const Timestamp ts) override
+  void* onConnected(UNUSED tcpv4::Connection& c,
+                    UNUSED const Timestamp ts) override
   {
     m_out << "onConnected:" << std::endl;
     m_connected = true;
+    return nullptr;
   }
 
   void onAborted(UNUSED tcpv4::Connection& c,
@@ -111,11 +112,12 @@ public:
 
   ~Server() override { m_out.close(); }
 
-  void onConnected(tcpv4::Connection& c, UNUSED const Timestamp ts) override
+  void* onConnected(tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {
     m_out << "onConnected:" << std::endl;
     m_connected = true;
     m_cid = c.id();
+    return nullptr;
   }
 
   void onAborted(UNUSED tcpv4::Connection& c,

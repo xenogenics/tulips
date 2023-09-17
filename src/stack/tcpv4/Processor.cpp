@@ -267,6 +267,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   e->m_sv = 4; // Initial value of the RTT variance
   e->m_rto = RTO;
   e->m_timer = RTO;
+  e->m_cookie = nullptr;
   /*
    * Prepare the connection segment. SYN segments don't contain any data but
    * have a size of 1 to increase the sequence number by 1.
@@ -353,6 +354,7 @@ Processor::close(Connection& e)
   /*
    * Update its state.
    */
+  e.m_cookie = nullptr;
   e.m_state = Connection::CLOSED;
 }
 
@@ -549,7 +551,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Send the connection event.
          */
         e.m_state = Connection::ESTABLISHED;
-        m_handler.onConnected(e, ts);
+        e.m_cookie = m_handler.onConnected(e, ts);
         /*
          * Send the newdata event. Pass the packet data directly. At this
          * stage, no data has been buffered.
@@ -592,7 +594,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * Send the connected event.
          */
-        m_handler.onConnected(e, ts);
+        e.m_cookie = m_handler.onConnected(e, ts);
         /*
          * Send the newdata event. Pass the packet data directly. At this
          * stage, no data has been buffered.

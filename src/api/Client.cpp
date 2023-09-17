@@ -386,14 +386,14 @@ Client::cookie(const ID id) const
   return m_tcp.cookie(id);
 }
 
-void
+void*
 Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
   m_log.debug("APICLI", "connection ", c.id(), " connected");
   d.connected();
-  c.setCookie(m_delegate.onConnected(c.id(), nullptr, ts));
   c.setOptions(d.options());
+  return m_delegate.onConnected(c.id(), nullptr, ts);
 }
 
 void
@@ -403,7 +403,6 @@ Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
   m_log.debug("APICLI", "connection aborted, closing");
   d.close();
   m_delegate.onClosed(c.id(), c.cookie(), ts);
-  c.setCookie(nullptr);
 }
 
 void
@@ -413,7 +412,6 @@ Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
   m_log.debug("APICLI", "connection timed out, closing");
   d.close();
   m_delegate.onClosed(c.id(), c.cookie(), ts);
-  c.setCookie(nullptr);
 }
 
 void
@@ -423,7 +421,6 @@ Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
   m_log.debug("APICLI", "connection closed");
   d.close();
   m_delegate.onClosed(c.id(), c.cookie(), ts);
-  c.setCookie(nullptr);
 }
 
 void

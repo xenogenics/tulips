@@ -114,35 +114,31 @@ Server::cookie(const ID id) const
   return m_tcp.cookie(id);
 }
 
-void
+void*
 Server::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   void* srvdata = m_cookies[c.localPort()];
-  void* appdata = m_delegate.onConnected(c.id(), srvdata, ts);
   m_log.debug("APISRV", "connection ", c.id(), " connected");
-  c.setCookie(appdata);
+  return m_delegate.onConnected(c.id(), srvdata, ts);
 }
 
 void
 Server::onAborted(tcpv4::Connection& c, const Timestamp ts)
 {
   m_delegate.onClosed(c.id(), c.cookie(), ts);
-  c.setCookie(nullptr);
 }
 
 void
 Server::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 {
   m_delegate.onClosed(c.id(), c.cookie(), ts);
-  c.setCookie(nullptr);
 }
 
 void
 Server::onClosed(tcpv4::Connection& c, const Timestamp ts)
 {
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
   m_log.debug("APISRV", "connection ", c.id(), " closed");
-  c.setCookie(nullptr);
+  m_delegate.onClosed(c.id(), c.cookie(), ts);
 }
 
 Action
