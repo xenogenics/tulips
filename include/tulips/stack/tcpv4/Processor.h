@@ -54,10 +54,18 @@ public:
             ethernet::Producer& eth, ipv4::Producer& ip4, EventHandler& h,
             const size_t nconn);
 
+  /*
+   * Processor interface.
+   */
+
   Status run() override;
   Status process(const uint16_t len, const uint8_t* const data,
                  const Timestamp ts) override;
   Status sent(const uint16_t len, uint8_t* const data) override;
+
+  /*
+   * Server-side operations.
+   */
 
   Processor& setEthernetProcessor(ethernet::Processor& eth)
   {
@@ -71,10 +79,6 @@ public:
     return *this;
   }
 
-  /*
-   * Server-side operations.
-   */
-
   void listen(const Port port);
   void unlisten(const Port port);
 
@@ -82,16 +86,17 @@ public:
    * Client-side operations.
    */
 
-  Status setOptions(Connection::ID const& id, const uint8_t options);
-  Status clearOptions(Connection::ID const& id, const uint8_t options);
+  Status open(Connection::ID& id);
+  Status abort(const Connection::ID id);
+  Status close(const Connection::ID id);
 
-  Status connect(ethernet::Address const& rhwaddr, ipv4::Address const& ripaddr,
-                 const Port rport, Connection::ID& id);
+  Status setOptions(const Connection::ID id, const uint8_t options);
+  Status clearOptions(const Connection::ID id, const uint8_t options);
 
-  Status abort(Connection::ID const& id);
-  Status close(Connection::ID const& id);
+  Status connect(const Connection::ID id, ethernet::Address const& rhwaddr,
+                 ipv4::Address const& ripaddr, const Port rport);
 
-  bool isClosed(Connection::ID const& id) const;
+  bool isClosed(const Connection::ID id) const;
 
   /*
    * In the non-error cases, the send methods may return:
@@ -99,24 +104,33 @@ public:
    * - OperationInProgress : no operation could have been performed.
    */
 
-  Status send(Connection::ID const& id, const uint32_t len,
+  Status send(const Connection::ID id, const uint32_t len,
               const uint8_t* const data, uint32_t& off);
 
-  Status get(Connection::ID const& id, ipv4::Address& ripaddr, Port& lport,
+  Status get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
              Port& rport);
 
-  void* cookie(Connection::ID const& id) const;
+  void* cookie(const Connection::ID id) const;
 
   /*
    * Some connection related methods, mostly for testing.
    */
 
-  inline Status hasOutstandingSegments(Connection::ID const& id, bool& res)
+  inline Status hasOutstandingSegments(const Connection::ID id, bool& res)
   {
+    /*
+     * Check that the connection is valid.
+     */
     if (id >= m_nconn) {
       return Status::InvalidConnection;
     }
+    /*
+     * Get the connection.
+     */
     Connection& c = m_conns[id];
+    /*
+     * Check outstanding segments.
+     */
     res = c.hasOutstandingSegments();
     return Status::Ok;
   }
@@ -139,6 +153,11 @@ private:
    * @return the status of the operation.
    */
   void close(Connection& e);
+
+  /**
+   * @return a new local port.
+   */
+  uint16_t findLocalPort() const;
 
   /**
    * Process the incoming packet for a given connection.

@@ -15,7 +15,6 @@ if (LibIBVerbs_FOUND)
     tulips_stack_static
     tulips_transport_ofed_static
     tulips_transport_stubs_static
-    tulips_fifo_static
     PUBLIC
     ${LibIBVerbs_LINK_LIBRARIES})
 endif (LibIBVerbs_FOUND)
@@ -28,7 +27,6 @@ if (LibIBVerbs_FOUND AND (TULIPS_ENABLE_RAW OR TULIPS_ENABLE_ARP))
     tulips_transport_ofed_static
     tulips_transport_pcap_static
     tulips_transport_stubs_static
-    tulips_fifo_static
     tulips_stack_static
     tulips_system_static
     PUBLIC
@@ -44,15 +42,4 @@ if (NOT TULIPS_HAS_HW_CHECKSUM OR TULIPS_DISABLE_CHECKSUM_CHECK)
       tulips_apps_static
       tulips_transport_npipe)
   endif (TULIPS_ENABLE_ARP)
-  add_executable(trc_fifo trc_fifo.cpp)
-  target_link_libraries(trc_fifo PRIVATE
-    tulips_api
-    tulips_transport_shm)
-  add_executable(ssl_fifo ssl_fifo.cpp)
-  target_link_libraries(ssl_fifo
-    PRIVATE
-    tulips_api
-    tulips_ssl
-    tulips_transport_pcap
-    tulips_transport_shm)
 endif (NOT TULIPS_HAS_HW_CHECKSUM OR TULIPS_DISABLE_CHECKSUM_CHECK)

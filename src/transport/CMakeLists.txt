@@ -3,7 +3,6 @@ add_subdirectory(erase)
 add_subdirectory(list)
 add_subdirectory(npipe)
 add_subdirectory(pcap)
-add_subdirectory(shm)
 add_subdirectory(stubs)
 
 if (LibDPDK_FOUND)

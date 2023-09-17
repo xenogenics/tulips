@@ -14,10 +14,8 @@ gtest_discover_tests(tulips_tests)
 target_link_libraries(tulips_tests
   PRIVATE
   tulips_api
-  tulips_fifo
   tulips_transport_list
   tulips_transport_pcap
-  tulips_transport_shm
   tulips_ssl
   tulips_stack
   tulips_system

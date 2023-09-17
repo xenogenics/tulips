@@ -11,7 +11,7 @@ default: build
 build:
 	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) -j $(NPROCS)
 
-test:
+test: build
 	@[ -e $(BUILDDIR) ] && CTEST_PARALLEL_LEVEL=$(NPROCS) ninja -C $(BUILDDIR) test
 
 format:
