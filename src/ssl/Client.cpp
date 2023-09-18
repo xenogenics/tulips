@@ -103,6 +103,12 @@ Client::~Client()
   SSL_CTX_free(AS_SSL(m_context));
 }
 
+bool
+Client::live() const
+{
+  return m_client.live();
+}
+
 Status
 Client::open(const uint8_t options, ID& id)
 {

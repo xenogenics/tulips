@@ -72,6 +72,23 @@ Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
   m_cns.resize(nconn);
 }
 
+bool
+Client::live() const
+{
+  /*
+   * True if any connection is not closed.
+   */
+  for (auto const& c : m_cns) {
+    if (c.state() != Connection::State::Closed) {
+      return true;
+    }
+  }
+  /*
+   * False otherwise.
+   */
+  return false;
+}
+
 Status
 Client::open(const uint8_t options, ID& id)
 {

@@ -128,6 +128,11 @@ public:
   static constexpr ID DEFAULT_ID = -1;
 
   /**
+   * @return whether or not the client has live connections.
+   */
+  virtual bool live() const = 0;
+
+  /**
    * Open a new connection.
    *
    * @param id the new connection handle.

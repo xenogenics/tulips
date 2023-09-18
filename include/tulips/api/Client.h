@@ -58,6 +58,8 @@ public:
    * Client interface.
    */
 
+  bool live() const override;
+
   using interface::Client::open;
 
   Status open(const uint8_t options, ID& id) override;
