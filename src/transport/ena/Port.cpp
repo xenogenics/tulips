@@ -41,7 +41,6 @@ Port::Port(system::Logger& log, [[maybe_unused]] std::string_view ifn,
   , m_admin()
   , m_raw()
 {
-#if 0
   int ret = 0;
   /*
    * Collect the available ports.
@@ -149,7 +148,6 @@ Port::Port(system::Logger& log, [[maybe_unused]] std::string_view ifn,
    * Allocate the admin device.
    */
   m_admin = next();
-#endif
 }
 
 Port::~Port()
@@ -157,9 +155,7 @@ Port::~Port()
   /*
    * Stop the device.
    */
-#if 0
   rte_eth_dev_stop(m_portid);
-#endif
   /*
    * Clear the TX mempools.
    */
