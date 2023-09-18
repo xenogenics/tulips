@@ -20,6 +20,7 @@ getMethod(const Protocol type, const bool server, long& flags)
     case Protocol::Auto: {
       method = server ? TLS_server_method() : TLS_client_method();
       flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1;
+      break;
     }
     case Protocol::SSLv3: {
       method = server ? SSLv23_server_method() : SSLv23_client_method();

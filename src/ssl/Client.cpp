@@ -295,6 +295,12 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       return Status::InvalidArgument;
     }
   }
+    /*
+     * Make GCC happy.
+     */
+#if defined(__GNUC__) && defined(__GNUC_PREREQ)
+  return Status::Ok;
+#endif
 }
 
 bool

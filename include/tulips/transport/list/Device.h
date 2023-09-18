@@ -29,7 +29,7 @@ public:
     static void release(Packet* packet) { free(packet); }
 
     Packet() = delete;
-    Packet(const uint32_t mtu) : mtu(mtu), len(0), data() {}
+    Packet(const uint32_t mtu) : mtu(mtu), len(0) {}
 
     Packet* clone() const
     {
