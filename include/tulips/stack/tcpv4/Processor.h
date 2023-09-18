@@ -108,7 +108,7 @@ public:
               const uint8_t* const data, uint32_t& off);
 
   Status get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
-             Port& rport);
+             Port& rport) const;
 
   void* cookie(const Connection::ID id) const;
 

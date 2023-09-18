@@ -1,6 +1,5 @@
 #pragma once
 
-#include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
@@ -18,7 +17,7 @@ class Poller
 public:
   using Ref = std::unique_ptr<Poller>;
 
-  Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap);
+  Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap, const bool ssl);
   Poller(Poller&&) = default;
   ~Poller();
 
@@ -56,7 +55,7 @@ private:
   transport::pcap::Device* m_pcap;
   transport::Device* m_device;
   api::defaults::ClientDelegate m_delegate;
-  api::Client m_client;
+  std::unique_ptr<api::interface::Client> m_client;
   volatile bool m_run;
   pthread_t m_thread;
   pthread_mutex_t m_mutex;

@@ -207,6 +207,20 @@ public:
   virtual bool isClosed(const ID id) const = 0;
 
   /**
+   * Get information about a connection.
+   *
+   * @param id the connection's handle.
+   * @param ripaddr the connection's remote IP address.
+   * @param lport the connection's local port.
+   * @param rport the connection's remote port.
+   *
+   * @return the status of the operation.
+   */
+  virtual Status get(const ID id, stack::ipv4::Address& ripaddr,
+                     stack::tcpv4::Port& lport,
+                     stack::tcpv4::Port& rport) const = 0;
+
+  /**
    * Send data through a connection. May send partial data.
    *
    * @param id the connection's handle.

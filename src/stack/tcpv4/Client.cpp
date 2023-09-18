@@ -366,7 +366,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
 
 Status
 Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
-               Port& rport)
+               Port& rport) const
 {
   /*
    * Check if the connection is valid.
@@ -374,7 +374,13 @@ Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
   if (id >= m_nconn) {
     return Status::InvalidConnection;
   }
-  Connection& c = m_conns[id];
+  /*
+   * Get the connection.
+   */
+  Connection const& c = m_conns[id];
+  /*
+   * Check the connection's state.
+   */
   if (c.m_state != Connection::ESTABLISHED) {
     return Status::NotConnected;
   }

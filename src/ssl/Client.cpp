@@ -304,6 +304,13 @@ Client::isClosed(const ID id) const
 }
 
 Status
+Client::get(const ID id, stack::ipv4::Address& ripaddr,
+            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+{
+  return m_client.get(id, ripaddr, lport, rport);
+}
+
+Status
 Client::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {

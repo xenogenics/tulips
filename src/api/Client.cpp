@@ -305,6 +305,22 @@ Client::isClosed(const ID id) const
 }
 
 Status
+Client::get(const ID id, stack::ipv4::Address& ripaddr,
+            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+{
+  /*
+   * Check if connection ID is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Get the info.
+   */
+  return m_tcp.get(id, ripaddr, lport, rport);
+}
+
+Status
 Client::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {
@@ -327,22 +343,6 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   c.pre = c.pre ?: system::Clock::read();
 #endif
   return m_tcp.send(id, len, data, off);
-}
-
-Status
-Client::get(const ID id, stack::ipv4::Address& ripaddr,
-            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport)
-{
-  /*
-   * Check if connection ID is valid.
-   */
-  if (id >= m_nconn) {
-    return Status::InvalidConnection;
-  }
-  /*
-   * Get the info.
-   */
-  return m_tcp.get(id, ripaddr, lport, rport);
 }
 
 system::Clock::Value

@@ -66,6 +66,10 @@ public:
 
   bool isClosed(const ID id) const override;
 
+  Status get(const ID id, stack::ipv4::Address& ripaddr,
+             stack::tcpv4::Port& lport,
+             stack::tcpv4::Port& rport) const override;
+
   Status send(const ID id, const uint32_t len, const uint8_t* const data,
               uint32_t& off) override;
 

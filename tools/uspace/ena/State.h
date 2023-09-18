@@ -15,12 +15,13 @@ using IDs = std::map<api::Client::ID, size_t>;
 class State : public utils::State
 {
 public:
-  State(std::string_view iff, const bool pcap = false);
+  State(std::string_view iff, const bool pcap, const bool ssl);
   ~State() override;
 
   std::string interface;
   transport::ena::Port port;
   bool with_pcap;
+  bool with_ssl;
   std::vector<poller::Poller::Ref> pollers;
   IDs ids;
 
