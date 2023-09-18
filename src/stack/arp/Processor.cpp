@@ -10,7 +10,7 @@
 
 constexpr const uint16_t HWTYPE_ETH = 1;
 constexpr const uint8_t MAX_AGE = 120;
-constexpr const size_t TABLE_SIZE = 32;
+constexpr const size_t TABLE_SIZE = 8;
 
 namespace tulips::stack::arp {
 
