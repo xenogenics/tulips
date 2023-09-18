@@ -31,7 +31,7 @@ Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
   , m_raw()
 #endif
   , m_tcp(log, device, m_ethto, m_ip4to, *this, nconn)
-  , m_cns()
+  , m_cns(nullptr)
 {
   /*
    * Hint the device about checksum.
@@ -69,7 +69,12 @@ Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
   /*
    * Reserve connections.
    */
-  m_cns.resize(nconn);
+  m_cns = new Connection[nconn];
+}
+
+Client::~Client()
+{
+  delete[] m_cns;
 }
 
 Status
