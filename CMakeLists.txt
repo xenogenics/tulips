@@ -141,8 +141,9 @@ message(STATUS "[ TULIPS PROTOCOL OPTIONS ]")
 
 if (TULIPS_ENABLE_ARP)
   add_definitions(-DTULIPS_ENABLE_ARP)
-  add_definitions(-DTULIPS_ENABLE_RAW)
   message(STATUS "ARP protocol support: ON")
+else (TULIPS_ENABLE_ARP)
+  message(STATUS "ARP protocol support: OFF")
 endif (TULIPS_ENABLE_ARP)
 
 if (TULIPS_ENABLE_ICMP)
