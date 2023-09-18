@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-debug-and-test:
+  build-debug-and-test-with-clang:
     runs-on: ubuntu-latest
     container: 
       image: xenogenics/tulips-builder
@@ -22,11 +22,43 @@ jobs:
         run: make build
       - name: test
         run: make test
-  build-release:
+  build-debug-and-test-with-gcc:
     runs-on: ubuntu-latest
     container: 
       image: xenogenics/tulips-builder
       env:
+        CC: gcc
+        CXX: g++
+        CTEST_PARALLEL_LEVEL: 2
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: make debug-all
+      - name: build
+        run: make build
+      - name: test
+        run: make test
+  build-release-with-clang:
+    runs-on: ubuntu-latest
+    container: 
+      image: xenogenics/tulips-builder
+      env:
+        CTEST_PARALLEL_LEVEL: 2
+      options: --cpus 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: cmake
+        run: make release-all
+      - name: build
+        run: make build
+  build-release-with-gcc:
+    runs-on: ubuntu-latest
+    container: 
+      image: xenogenics/tulips-builder
+      env:
+        CC: gcc
+        CXX: g++
         CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
