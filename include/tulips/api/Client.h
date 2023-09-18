@@ -35,7 +35,7 @@ public:
    */
   Client(system::Logger& log, Delegate& dlg, transport::Device& device,
          const size_t nconn);
-  ~Client() override;
+  ~Client() override = default;
 
   /**
    * Device interface.
@@ -92,6 +92,8 @@ public:
   void* cookie(const ID id) const;
 
 private:
+  using Connections = std::vector<Connection>;
+
 #ifdef TULIPS_ENABLE_RAW
   class RawProcessor : public Processor
   {
@@ -148,7 +150,7 @@ private:
   RawProcessor m_raw;
 #endif
   stack::tcpv4::Processor m_tcp;
-  Connection* m_cns;
+  Connections m_cns;
 };
 
 }
