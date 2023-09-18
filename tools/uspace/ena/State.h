@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/transport/Processor.h>
+#include <tulips/transport/ena/AbstractionLayer.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
 #include <map>
@@ -20,6 +21,7 @@ public:
   ~State() override;
 
   std::string interface;
+  transport::ena::AbstractionLayer::Ref eal;
   transport::ena::Port port;
   bool with_pcap;
   bool with_ssl;

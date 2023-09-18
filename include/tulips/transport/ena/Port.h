@@ -4,7 +4,6 @@
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
-#include <tulips/transport/ena/AbstractionLayer.h>
 #include <tulips/transport/ena/RawProcessor.h>
 #include <list>
 #include <string>
@@ -42,7 +41,6 @@ private:
   }
 
   system::Logger& m_log;
-  AbstractionLayer m_eal;
   size_t m_depth;
   uint16_t m_portid;
   stack::ethernet::Address m_address;

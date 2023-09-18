@@ -27,7 +27,6 @@ namespace tulips::transport::ena {
 Port::Port(system::Logger& log, [[maybe_unused]] std::string_view ifn,
            [[maybe_unused]] const size_t width, const size_t depth)
   : m_log(log)
-  , m_eal(log)
   , m_depth(depth)
   , m_portid(0xFFFF)
   , m_address()

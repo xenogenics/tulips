@@ -1,3 +1,4 @@
+#include "tulips/transport/ena/AbstractionLayer.h"
 #include <chrono>
 #include <thread>
 #include <uspace/ena/State.h>
@@ -7,6 +8,7 @@ namespace tulips::tools::uspace::ena {
 State::State(std::string_view iff, const bool pcap, const bool ssl)
   : utils::State()
   , interface(iff)
+  , eal(transport::ena::AbstractionLayer::allocate(logger))
   , port(logger, iff, 8, 32)
   , with_pcap(pcap)
   , with_ssl(ssl)
