@@ -109,11 +109,16 @@ Poller::close(const api::Client::ID id)
    */
   m_action = Action::Close;
   m_id = id;
-  pthread_cond_wait(&m_cond, &m_mutex);
-  result = m_status;
+  /*
+   * Wait for closing.
+   */
+  do {
+    pthread_cond_wait(&m_cond, &m_mutex);
+  } while (m_status == Status::OperationInProgress);
   /*
    * Return the result.
    */
+  result = m_status;
   pthread_mutex_unlock(&m_mutex);
   return result;
 }
@@ -164,7 +169,6 @@ Poller::write(const api::Client::ID id, std::string_view data)
 void
 Poller::run()
 {
-  bool closing = false;
   uint32_t off = 0;
   /*
    * Thread run loop.
@@ -188,27 +192,20 @@ Poller::run()
         break;
       }
       case Action::Close: {
-        /*
-         * Check if the connection is closing.
-         */
-        if (closing) {
-          if (m_client->isClosed(m_id)) {
-            closing = false;
-            m_action = Action::None;
-            pthread_cond_signal(&m_cond);
-          }
+        m_status = m_client->close(m_id);
+        if (m_status != Status::OperationInProgress) {
+          m_action = Action::None;
+        } else {
+          m_action = Action::Closing;
         }
-        /*
-         * Try to close the connection.
-         */
-        else {
-          m_status = m_client->close(m_id);
-          if (m_status != Status::Ok) {
-            m_action = Action::None;
-            pthread_cond_signal(&m_cond);
-          } else {
-            closing = true;
-          }
+        pthread_cond_signal(&m_cond);
+        break;
+      }
+      case Action::Closing: {
+        if (m_client->isClosed(m_id)) {
+          m_status = Status::Ok;
+          m_action = Action::None;
+          pthread_cond_signal(&m_cond);
         }
         break;
       }

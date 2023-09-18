@@ -17,7 +17,8 @@ class Poller
 public:
   using Ref = std::unique_ptr<Poller>;
 
-  Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap, const bool ssl);
+  Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap,
+         const bool ssl);
   Poller(Poller&&) = default;
   ~Poller();
 
@@ -36,6 +37,7 @@ private:
   {
     Connect,
     Close,
+    Closing,
     Info,
     Write,
     None

@@ -62,7 +62,7 @@ public:
     switch (s.pollers[poller]->connect(ip, port, id)) {
       case Status::Ok: {
         std::cout << "OK - " << id << std::endl;
-        s.ids[id] = poller;
+        s.ids[poller].insert(id);
         break;
       }
       default: {
@@ -91,11 +91,13 @@ private:
 class Disconnect : public utils::Command
 {
 public:
-  Disconnect() : Command("disconnect from a remote server"), m_hint(" <id>") {}
+  Disconnect()
+    : Command("disconnect from a remote server"), m_hint(" <poller> <id>")
+  {}
 
   void help(UNUSED utils::Arguments const& args) override
   {
-    std::cout << "Usage: disconnect ID" << std::endl;
+    std::cout << "Usage: disconnect POLLER ID" << std::endl;
   }
 
   void execute(utils::State& us, utils::Arguments const& args) override
@@ -104,41 +106,51 @@ public:
     /*
      * Check arity.
      */
-    if (args.size() != 2) {
+    if (args.size() != 3) {
       help(args);
       return;
     }
     /*
+     * Parse the poller ID.
+     */
+    size_t poller;
+    std::istringstream(args[1]) >> poller;
+    /*
      * Parse the port socket.
      */
     api::Client::ID c;
-    std::istringstream(args[1]) >> c;
+    std::istringstream(args[2]) >> c;
     /*
-     * Check if the connection exists.
+     * Make sure the poller is part of the index.
      */
-    if (s.ids.count(c) == 0) {
-      std::cout << "No such connection." << std::endl;
+    if (s.ids.count(poller) == 0) {
+      std::cout << "No connection for poller " << poller << std::endl;
       return;
     }
     /*
-     * Grab the poller index.
+     * Make sure the connection is open.
      */
-    size_t poller = s.ids[c];
+    if (s.ids[poller].count(c) == 0) {
+      std::cout << "Connection " << c << " for poller " << poller
+                << " is not open" << std::endl;
+      return;
+    }
     /*
      * Grab and close the connection.
      */
-    switch (s.pollers[poller]->close(c)) {
+    auto ret = s.pollers[poller]->close(c);
+    switch (ret) {
       case Status::Ok: {
         std::cout << "Connection closed." << std::endl;
-        s.ids.erase(c);
+        s.ids[poller].erase(c);
         break;
       }
       case Status::NotConnected: {
-        std::cout << "No such connection." << std::endl;
+        std::cout << "Not connected." << std::endl;
         break;
       }
       default: {
-        std::cout << "Error." << std::endl;
+        std::cout << "Error: " << toString(ret) << std::endl;
         break;
       }
     }
@@ -182,19 +194,22 @@ public:
       /*
        * Print the header.
        */
-      std::cout << std::setw(7) << std::left << "ID " << std::setw(16)
-                << std::left << "IP " << std::setw(12) << std::left
-                << "Local port" << std::setw(11) << std::left << "Remote port"
-                << std::right << std::endl;
+      std::cout << std::setw(7) << std::left << "Poller" << std::setw(7)
+                << std::left << "ID " << std::setw(16) << std::left << "IP "
+                << std::setw(12) << std::left << "Local port" << std::setw(11)
+                << std::left << "Remote port" << std::right << std::endl;
       /*
        * Print the connections.
        */
-      for (auto [key, value] : s.ids) {
-        s.pollers[value]->get(key, ip, lport, rport);
-        std::cout << std::setw(7) << std::left << key << std::setw(16)
-                  << std::left << ip.toString() << std::setw(12) << std::left
-                  << lport << std::setw(11) << std::left << rport << std::right
-                  << std::endl;
+      for (auto& [poller, ids] : s.ids) {
+        for (auto& id : ids) {
+          s.pollers[poller]->get(id, ip, lport, rport);
+          std::cout << std::setw(7) << std::left << poller << std::setw(7)
+                    << std::left << id << std::setw(16) << std::left
+                    << ip.toString() << std::setw(12) << std::left << lport
+                    << std::setw(11) << std::left << rport << std::right
+                    << std::endl;
+        }
       }
     }
   }
@@ -204,12 +219,13 @@ class Write : public utils::Command
 {
 public:
   Write()
-    : Command("write data to an active connection"), m_hint(" <id> <data> ...")
+    : Command("write data to an active connection")
+    , m_hint(" <poller> <id> <data> ...")
   {}
 
   void help(UNUSED utils::Arguments const& args) override
   {
-    std::cout << "Usage: write ID DATA [DATA ...]" << std::endl;
+    std::cout << "Usage: write POLLER ID DATA [DATA ...]" << std::endl;
   }
 
   void execute(utils::State& us, utils::Arguments const& args) override
@@ -218,33 +234,42 @@ public:
     /*
      * Check arity.
      */
-    if (args.size() < 3) {
+    if (args.size() < 4) {
       help(args);
       return;
     }
     /*
+     * Parse the poller ID.
+     */
+    size_t poller;
+    std::istringstream(args[1]) >> poller;
+    /*
      * Parse the port socket.
      */
-    api::Client::ID id;
-    std::istringstream(args[1]) >> id;
+    api::Client::ID c;
+    std::istringstream(args[2]) >> c;
     /*
-     * Check if the connection exists.
+     * Make sure the poller is part of the index.
      */
-    if (s.ids.count(id) == 0) {
-      std::cout << "No such connection." << std::endl;
+    if (s.ids.count(poller) == 0) {
+      std::cout << "No connection for poller " << poller << std::endl;
       return;
     }
     /*
-     * Grab the poller index.
+     * Make sure the connection is open.
      */
-    size_t poller = s.ids[id];
+    if (s.ids[poller].count(c) == 0) {
+      std::cout << "Connection " << c << " for poller " << poller
+                << " is not open" << std::endl;
+      return;
+    }
     /*
      * Write data.
      */
     std::string data;
     std::vector<std::string> rest(args.begin() + 2, args.end());
     system::utils::join(rest, ' ', data);
-    switch (s.pollers[poller]->write(id, data)) {
+    switch (s.pollers[poller]->write(c, data)) {
       case Status::Ok: {
         std::cout << "OK - " << data.length() << "." << std::endl;
         break;
