@@ -1,0 +1,24 @@
+#pragma once
+
+/*
+ * Performance.
+ */
+
+#cmakedefine TULIPS_ENABLE_LATENCY_MONITOR
+
+/*
+ * Hardware offloads.
+ */
+
+#cmakedefine TULIPS_DISABLE_CHECKSUM_CHECK
+#cmakedefine TULIPS_HAS_HW_CHECKSUM
+#cmakedefine TULIPS_HAS_HW_TSO
+#cmakedefine TULIPS_IGNORE_INCOMPATIBLE_HW
+
+/*
+ * Protocols.
+ */
+
+#cmakedefine TULIPS_ENABLE_ARP
+#cmakedefine TULIPS_ENABLE_ICMP
+#cmakedefine TULIPS_ENABLE_RAW 

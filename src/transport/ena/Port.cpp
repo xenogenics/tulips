@@ -24,8 +24,8 @@ log2(const uint64_t x)
 
 namespace tulips::transport::ena {
 
-Port::Port(system::Logger& log, [[maybe_unused]] std::string_view ifn,
-           [[maybe_unused]] const size_t width, const size_t depth)
+Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
+           const size_t depth)
   : m_log(log)
   , m_depth(depth)
   , m_portid(0xFFFF)

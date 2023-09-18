@@ -34,7 +34,7 @@ static constexpr int USED TIME_WAIT_TIMEOUT = 120;
 struct Statistics
 {
   uint64_t drop;    // Number of dropped TCP segments.
-  uint64_t recv;    // Number of recived TCP segments.
+  uint64_t recv;    // Number of received TCP segments.
   uint64_t sent;    // Number of sent TCP segments.
   uint64_t chkerr;  // Number of TCP segments with a bad checksum.
   uint64_t ackerr;  // Number of TCP segments with a bad ACK number.

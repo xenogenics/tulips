@@ -108,10 +108,8 @@ if (TULIPS_TESTS)
 
   add_definitions(-DTULIPS_TESTS)
   add_definitions(-DTULIPS_CLOCK_HAS_OFFSET)
-  add_definitions(-DTULIPS_FIFO_RUNTIME_CHECKS)
   add_definitions(-DTULIPS_STACK_RUNTIME_CHECKS)
   add_definitions(-DTULIPS_TRANSPORT_RUNTIME_CHECKS)
-
   add_definitions(-DTULIPS_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
 
   message(STATUS "Test mode: ON")
@@ -219,6 +217,14 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 endif ()
 
 #
+# Configure the config.h file
+#
+
+configure_file (
+  ${PROJECT_SOURCE_DIR}/include/tulips/config.h.in
+  ${PROJECT_BINARY_DIR}/include/tulips/config.h)
+
+#
 # Include directories
 #
 
@@ -248,7 +254,18 @@ endif (TULIPS_TESTS)
 # Install all headers
 #
 
-install(DIRECTORY include/tulips DESTINATION include PATTERN "*.swp" EXCLUDE)
+install(
+  DIRECTORY include/tulips
+  DESTINATION include
+  PATTERN "*.in" EXCLUDE
+  PATTERN "*.swp" EXCLUDE
+)
+
+install(
+  DIRECTORY ${CMAKE_BINARY_DIR}/include/tulips
+  DESTINATION include
+  PATTERN "*.swp" EXCLUDE
+)
 
 #
 # Formatting
