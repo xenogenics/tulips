@@ -1,6 +1,6 @@
-#include "tulips/ssl/Protocol.h"
 #include <tulips/api/Client.h>
 #include <tulips/ssl/Client.h>
+#include <tulips/ssl/Protocol.h>
 #include <tulips/transport/Device.h>
 #include <iostream>
 #include <linenoise/linenoise.h>
