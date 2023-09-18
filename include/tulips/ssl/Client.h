@@ -32,17 +32,17 @@ public:
    * Processor interface.
    */
 
-  inline Status run() override { return m_client->run(); }
+  inline Status run() override { return m_client.run(); }
 
   inline Status process(const uint16_t len, const uint8_t* const data,
                         const Timestamp ts) override
   {
-    return m_client->process(len, data, ts);
+    return m_client.process(len, data, ts);
   }
 
   inline Status sent(const uint16_t len, uint8_t* const data) override
   {
-    return m_client->sent(len, data);
+    return m_client.sent(len, data);
   }
 
   /**
@@ -98,7 +98,7 @@ private:
 
   api::interface::Client::Delegate& m_delegate;
   system::Logger& m_log;
-  std::unique_ptr<tulips::api::Client> m_client;
+  tulips::api::Client m_client;
   void* m_context;
   bool m_savekeys;
 };
