@@ -51,6 +51,9 @@ release-lib:
 	 cmake -G Ninja $(RELFLAGS) -DTULIPS_TOOLS=OFF $(EXTFLAGS) ..;	\
 	 cd ..
 
+install:
+	@[ -e $(BUILDDIR) ] && ninja -C $(BUILDDIR) install
+
 clean:
 	@rm -rf $(BUILDDIR)
 	@rm -f *.keys *.log *.pcap

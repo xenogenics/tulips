@@ -669,7 +669,6 @@ Device::prepare(uint8_t*& buf)
   for (int i = 0; i < cqn; i += 1) {
     uint16_t len = wc[i].byte_len;
     auto* addr = (uint8_t*)wc[i].wr_id; // NOLINT
-    auto info = SentBuffer(len, addr);
     m_sent.emplace_back(len, addr);
   }
   /*

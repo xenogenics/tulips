@@ -76,6 +76,7 @@ try {
   TCLAP::ValueArg<std::string> iffA("I", "interface", "Network interface", true,
                                     "", "INTERFACE", cmdL);
   TCLAP::SwitchArg pcpA("P", "pcap", "Capture packets", cmdL);
+  TCLAP::SwitchArg sslA("S", "ssl", "Use SSL", cmdL);
   cmdL.parse(argc, argv);
   /*
    * Linenoise.
@@ -86,7 +87,7 @@ try {
   /*
    * Commands.
    */
-  ena::State state(iffA.getValue(), pcpA.isSet());
+  ena::State state(iffA.getValue(), pcpA.isSet(), sslA.isSet());
   basic::populate(state.commands);
   ena::connection::populate(state.commands);
   ena::poller::populate(state.commands);

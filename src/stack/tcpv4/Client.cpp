@@ -18,11 +18,14 @@ namespace tulips::stack::tcpv4 {
 uint16_t
 Processor::findLocalPort() const
 {
+  /*
+   * Look for a free port.
+   */
   while (true) {
     /*
      * Compute a local port value.
      */
-    auto lport = system::Clock::read() & 0x3FFF + 10000;
+    auto lport = (system::Clock::read() & 0x3FFF) + 10000;
     /*
      * Find a match.
      */
@@ -37,6 +40,12 @@ Processor::findLocalPort() const
       return lport;
     }
   }
+  /*
+   * Make GCC happy.
+   */
+#if defined(__GNUC__) && defined(__GNUC_PREREQ)
+  return 0;
+#endif
 }
 
 Status
@@ -366,7 +375,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
 
 Status
 Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
-               Port& rport)
+               Port& rport) const
 {
   /*
    * Check if the connection is valid.
@@ -374,7 +383,13 @@ Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
   if (id >= m_nconn) {
     return Status::InvalidConnection;
   }
-  Connection& c = m_conns[id];
+  /*
+   * Get the connection.
+   */
+  Connection const& c = m_conns[id];
+  /*
+   * Check the connection's state.
+   */
   if (c.m_state != Connection::ESTABLISHED) {
     return Status::NotConnected;
   }

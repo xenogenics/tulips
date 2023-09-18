@@ -32,7 +32,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                const size_t nconn, const bool save_keys)
   : m_delegate(delegate)
   , m_log(log)
-  , m_client(std::make_unique<api::Client>(log, *this, device, nconn))
+  , m_client(log, *this, device, nconn)
   , m_context(nullptr)
   , m_savekeys(save_keys)
 {
@@ -103,10 +103,16 @@ Client::~Client()
   SSL_CTX_free(AS_SSL(m_context));
 }
 
+bool
+Client::live() const
+{
+  return m_client.live();
+}
+
 Status
 Client::open(const uint8_t options, ID& id)
 {
-  return m_client->open(options, id);
+  return m_client.open(options, id);
 }
 
 Status
@@ -115,7 +121,7 @@ Client::abort(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_client->cookie(id);
+  void* cookie = m_client.cookie(id);
   if (cookie == nullptr) {
     return Status::InvalidArgument;
   }
@@ -129,7 +135,7 @@ Client::abort(const ID id)
   /*
    * Abort the connection.
    */
-  return m_client->abort(id);
+  return m_client.abort(id);
 }
 
 Status
@@ -138,7 +144,7 @@ Client::close(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_client->cookie(id);
+  void* cookie = m_client.cookie(id);
   if (cookie == nullptr) {
     return Status::NotConnected;
   }
@@ -171,7 +177,7 @@ Client::close(const ID id)
     }
     case 1: {
       m_log.debug("SSLCLI", "shutdown completed");
-      return m_client->close(id);
+      return m_client.close(id);
     }
     default: {
       auto err = SSL_get_error(c.ssl, ret);
@@ -185,13 +191,13 @@ Client::close(const ID id)
 Status
 Client::setHostName(const ID id, std::string_view hn)
 {
-  return m_client->setHostName(id, hn);
+  return m_client.setHostName(id, hn);
 }
 
 Status
 Client::getHostName(const ID id, std::optional<std::string>& hn)
 {
-  return m_client->getHostName(id, hn);
+  return m_client.getHostName(id, hn);
 }
 
 Status
@@ -199,16 +205,16 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
                 const stack::tcpv4::Port rport)
 {
 
-  void* cookie = m_client->cookie(id);
+  void* cookie = m_client.cookie(id);
   /*
    * If the cookie is nullptr, we are not connected yet.
    */
   if (cookie == nullptr) {
-    Status res = m_client->connect(id, ripaddr, rport);
+    Status res = m_client.connect(id, ripaddr, rport);
     if (res != Status::Ok) {
       return res;
     }
-    cookie = m_client->cookie(id);
+    cookie = m_client.cookie(id);
   }
   /*
    * Perform the handshake.
@@ -226,7 +232,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      */
     case Context::State::Open: {
       std::optional<std::string> hostname;
-      m_client->getHostName(id, hostname);
+      m_client.getHostName(id, hostname);
       /*
        * Set the host name for SNI-enabled servers.
        */
@@ -295,12 +301,25 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       return Status::InvalidArgument;
     }
   }
+    /*
+     * Make GCC happy.
+     */
+#if defined(__GNUC__) && defined(__GNUC_PREREQ)
+  return Status::Ok;
+#endif
 }
 
 bool
 Client::isClosed(const ID id) const
 {
-  return m_client->isClosed(id);
+  return m_client.isClosed(id);
+}
+
+Status
+Client::get(const ID id, stack::ipv4::Address& ripaddr,
+            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+{
+  return m_client.get(id, ripaddr, lport, rport);
 }
 
 Status
@@ -316,7 +335,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Grab the context.
    */
-  void* cookie = m_client->cookie(id);
+  void* cookie = m_client.cookie(id);
   if (cookie == nullptr) {
     return Status::InvalidArgument;
   }
@@ -366,7 +385,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
 system::Clock::Value
 Client::averageLatency(const ID id)
 {
-  return m_client->averageLatency(id);
+  return m_client.averageLatency(id);
 }
 
 void*
@@ -379,7 +398,7 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
   if (m_savekeys) {
     stack::ipv4::Address ip;
     stack::tcpv4::Port lport, rport;
-    m_client->get(id, ip, lport, rport);
+    m_client.get(id, ip, lport, rport);
     auto path = ip.toString();
     path.append("_");
     path.append(std::to_string(lport));
@@ -487,7 +506,7 @@ Client::flush(const ID id, void* const cookie)
    * Send the pending data.
    */
   uint32_t rem = 0;
-  Status res = m_client->send(id, len, ssl::bio::readAt(c.bout), rem);
+  Status res = m_client.send(id, len, ssl::bio::readAt(c.bout), rem);
   if (res != Status::Ok) {
     c.blocked = res == Status::OperationInProgress;
     return res;

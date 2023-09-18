@@ -32,22 +32,24 @@ public:
    * Processor interface.
    */
 
-  inline Status run() override { return m_client->run(); }
+  inline Status run() override { return m_client.run(); }
 
   inline Status process(const uint16_t len, const uint8_t* const data,
                         const Timestamp ts) override
   {
-    return m_client->process(len, data, ts);
+    return m_client.process(len, data, ts);
   }
 
   inline Status sent(const uint16_t len, uint8_t* const data) override
   {
-    return m_client->sent(len, data);
+    return m_client.sent(len, data);
   }
 
   /**
    * Client interface.
    */
+
+  bool live() const override;
 
   using api::interface::Client::open;
 
@@ -65,6 +67,10 @@ public:
                  const stack::tcpv4::Port rport) override;
 
   bool isClosed(const ID id) const override;
+
+  Status get(const ID id, stack::ipv4::Address& ripaddr,
+             stack::tcpv4::Port& lport,
+             stack::tcpv4::Port& rport) const override;
 
   Status send(const ID id, const uint32_t len, const uint8_t* const data,
               uint32_t& off) override;
@@ -98,7 +104,7 @@ private:
 
   api::interface::Client::Delegate& m_delegate;
   system::Logger& m_log;
-  std::unique_ptr<tulips::api::Client> m_client;
+  tulips::api::Client m_client;
   void* m_context;
   bool m_savekeys;
 };

@@ -40,7 +40,8 @@ option(TULIPS_ENABLE_ICMP "Enable ICMP support" OFF)
 option(TULIPS_ENABLE_RAW "Enable RAW support" OFF)
 
 option(TULIPS_ENABLE_LATENCY_MONITOR "Enable client latency monitoring" OFF)
-option(TULIPS_ENABLE_SANITIZERS "Enable code sanitizers" OFF)
+option(TULIPS_ENABLE_ASAN "Enable address sanitizer" OFF)
+option(TULIPS_ENABLE_UBSAN "Enable undefined behavior sanitizer" OFF)
 
 option(TULIPS_DISABLE_CHECKSUM_CHECK "Disable checksum checks" OFF)
 option(TULIPS_HAS_HW_CHECKSUM "Target has hardware checksum" OFF)
@@ -75,7 +76,21 @@ if (TULIPS_TESTS)
 endif (TULIPS_TESTS)
 
 #
-# Option processing
+# Compiler flags
+#
+
+set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
+set(CMAKE_C_FLAGS_DEBUG "-g3 -O0")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-g3 -O3")
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
+set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
+
+#
+# Option definitions
 #
 
 message(STATUS "[ TULIPS COMPILATION OPTIONS ]")
@@ -85,27 +100,41 @@ if (TULIPS_TESTS)
   set(TULIPS_ENABLE_ARP ON)
   set(TULIPS_ENABLE_ICMP ON)
   set(TULIPS_ENABLE_RAW ON)
-  set(TULIPS_ENABLE_SANITIZERS ON)
+
+  set(TULIPS_ENABLE_ASAN ON)
+  set(TULIPS_ENABLE_UBSAN ON)
 
   set(TULIPS_IGNORE_INCOMPATIBLE_HW ON)
 
   add_definitions(-DTULIPS_TESTS)
   add_definitions(-DTULIPS_CLOCK_HAS_OFFSET)
-  add_definitions(-DTULIPS_FIFO_RUNTIME_CHECKS)
   add_definitions(-DTULIPS_STACK_RUNTIME_CHECKS)
   add_definitions(-DTULIPS_TRANSPORT_RUNTIME_CHECKS)
-
   add_definitions(-DTULIPS_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
 
   message(STATUS "Test mode: ON")
 
 endif (TULIPS_TESTS)
 
-if (TULIPS_ENABLE_SANITIZERS)
-  message(STATUS "Sanitizers: ON")
-else (TULIPS_ENABLE_SANITIZERS)
-  message(STATUS "Sanitizers: OFF")
-endif (TULIPS_ENABLE_SANITIZERS)
+#
+# Compilation options
+#
+
+if (TULIPS_ENABLE_ASAN)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+  add_link_options(-fsanitize=address)
+  message(STATUS "Address sanitizer: ON")
+endif (TULIPS_ENABLE_ASAN)
+
+if (TULIPS_ENABLE_UBSAN)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
+  add_link_options(-fsanitize=undefined)
+  message(STATUS "Undefined behavior sanitizer: ON")
+endif (TULIPS_ENABLE_UBSAN)
+
+#
+# Offload options
+#
 
 message(STATUS "[ TULIPS OFFLOAD OPTIONS ]")
 
@@ -167,28 +196,11 @@ else (TULIPS_ENABLE_LATENCY_MONITOR)
   message(STATUS "Client latency monitor: OFF")
 endif (TULIPS_ENABLE_LATENCY_MONITOR)
 
+#
+# Done with options.
+#
+
 message(STATUS "[ TULIPS OPTIONS END ]")
-
-#
-# Flags preferences
-#
-
-set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
-set(CMAKE_C_FLAGS_DEBUG "-g3 -O0")
-set(CMAKE_C_FLAGS_RELEASE "-O3")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-g3 -O3")
-
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
-set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
-
-if (TULIPS_ENABLE_SANITIZERS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-  add_link_options(-fsanitize=address)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
-  add_link_options(-fsanitize=undefined)
-endif (TULIPS_ENABLE_SANITIZERS)
 
 #
 # Per-compiler options
@@ -203,6 +215,14 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-address-of-packed-member")
   endif ()
 endif ()
+
+#
+# Configure the config.h file
+#
+
+configure_file (
+  ${PROJECT_SOURCE_DIR}/include/tulips/config.h.in
+  ${PROJECT_BINARY_DIR}/include/tulips/config.h)
 
 #
 # Include directories
@@ -234,7 +254,18 @@ endif (TULIPS_TESTS)
 # Install all headers
 #
 
-install(DIRECTORY include/tulips DESTINATION include PATTERN "*.swp" EXCLUDE)
+install(
+  DIRECTORY include/tulips
+  DESTINATION include
+  PATTERN "*.in" EXCLUDE
+  PATTERN "*.swp" EXCLUDE
+)
+
+install(
+  DIRECTORY ${CMAKE_BINARY_DIR}/include/tulips
+  DESTINATION include
+  PATTERN "*.swp" EXCLUDE
+)
 
 #
 # Formatting

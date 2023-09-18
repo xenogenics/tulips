@@ -1,3 +1,6 @@
+#include <tulips/api/Client.h>
+#include <tulips/ssl/Client.h>
+#include <tulips/ssl/Protocol.h>
 #include <tulips/transport/Device.h>
 #include <iostream>
 #include <linenoise/linenoise.h>
@@ -10,7 +13,8 @@ namespace tulips::tools::uspace::ena::poller {
  * Poller.
  */
 
-Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap)
+Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap,
+               const bool ssl)
   : m_capture(pcap)
   , m_dev(std::move(dev))
   , m_pcap(pcap ? new transport::pcap::Device(log, *m_dev, m_dev->name())
@@ -18,7 +22,7 @@ Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap)
   , m_device(pcap ? (transport::Device*)m_pcap
                   : (transport::Device*)m_dev.get())
   , m_delegate()
-  , m_client(log, m_delegate, *m_device, 32)
+  , m_client()
   , m_run(true)
   , m_thread()
   , m_mutex()
@@ -30,6 +34,19 @@ Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap)
   , m_id()
   , m_status()
 {
+  /*
+   * Build the client.
+   */
+  if (ssl) {
+    auto proto = ssl::Protocol::Auto;
+    m_client = std::make_unique<ssl::Client>(log, m_delegate, *m_device, proto,
+                                             32, false);
+  } else {
+    m_client = std::make_unique<api::Client>(log, m_delegate, *m_device, 32);
+  }
+  /*
+   * Build the thread.
+   */
   pthread_mutex_init(&m_mutex, nullptr);
   pthread_cond_init(&m_cond, nullptr);
   pthread_create(&m_thread, nullptr, &Poller::entrypoint, this);
@@ -61,7 +78,7 @@ Poller::connect(stack::ipv4::Address const& ripaddr,
   /*
    * Get a client ID.
    */
-  result = m_client.open(id);
+  result = m_client->open(id);
   /*
    * Connect the client.
    */
@@ -92,11 +109,16 @@ Poller::close(const api::Client::ID id)
    */
   m_action = Action::Close;
   m_id = id;
-  pthread_cond_wait(&m_cond, &m_mutex);
-  result = m_status;
+  /*
+   * Wait for closing.
+   */
+  do {
+    pthread_cond_wait(&m_cond, &m_mutex);
+  } while (m_status == Status::OperationInProgress);
   /*
    * Return the result.
    */
+  result = m_status;
   pthread_mutex_unlock(&m_mutex);
   return result;
 }
@@ -147,7 +169,6 @@ Poller::write(const api::Client::ID id, std::string_view data)
 void
 Poller::run()
 {
-  bool closing = false;
   uint32_t off = 0;
   /*
    * Thread run loop.
@@ -156,8 +177,8 @@ Poller::run()
     /*
      * Poll the device.
      */
-    if (m_device->wait(m_client, 100000000ULL) == Status::NoDataAvailable) {
-      m_client.run();
+    if (m_device->wait(*m_client, 100000000ULL) == Status::NoDataAvailable) {
+      m_client->run();
     }
     /*
      * Check any incoming commands from the user.
@@ -165,45 +186,38 @@ Poller::run()
     pthread_mutex_lock(&m_mutex);
     switch (m_action) {
       case Action::Connect: {
-        m_status = m_client.connect(m_id, m_ripaddr, m_rport);
+        m_status = m_client->connect(m_id, m_ripaddr, m_rport);
         m_action = Action::None;
         pthread_cond_signal(&m_cond);
         break;
       }
       case Action::Close: {
-        /*
-         * Check if the connection is closing.
-         */
-        if (closing) {
-          if (m_client.isClosed(m_id)) {
-            closing = false;
-            m_action = Action::None;
-            pthread_cond_signal(&m_cond);
-          }
+        m_status = m_client->close(m_id);
+        if (m_status != Status::OperationInProgress) {
+          m_action = Action::None;
+        } else {
+          m_action = Action::Closing;
         }
-        /*
-         * Try to close the connection.
-         */
-        else {
-          m_status = m_client.close(m_id);
-          if (m_status != Status::Ok) {
-            m_action = Action::None;
-            pthread_cond_signal(&m_cond);
-          } else {
-            closing = true;
-          }
+        pthread_cond_signal(&m_cond);
+        break;
+      }
+      case Action::Closing: {
+        if (m_client->isClosed(m_id)) {
+          m_status = Status::Ok;
+          m_action = Action::None;
+          pthread_cond_signal(&m_cond);
         }
         break;
       }
       case Action::Info: {
-        m_status = m_client.get(m_id, m_ripaddr, m_lport, m_rport);
+        m_status = m_client->get(m_id, m_ripaddr, m_lport, m_rport);
         m_action = Action::None;
         pthread_cond_signal(&m_cond);
         break;
       }
       case Action::Write: {
-        m_status = m_client.send(m_id, m_data.length(),
-                                 (const uint8_t*)m_data.c_str(), off);
+        m_status = m_client->send(m_id, m_data.length(),
+                                  (const uint8_t*)m_data.c_str(), off);
         switch (m_status) {
           case Status::Ok: {
             if (off == m_data.length()) {
@@ -273,7 +287,7 @@ public:
      * Create a new poller.
      */
     s.pollers.emplace_back(
-      new Poller(s.logger, s.port.next(ip, dr, nm), s.with_pcap));
+      new Poller(s.logger, s.port.next(ip, dr, nm), s.with_pcap, s.with_ssl));
     /*
      * Print the poller ID.
      */
