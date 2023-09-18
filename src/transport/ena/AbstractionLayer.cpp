@@ -22,12 +22,23 @@ logWrite(void* cookie, const char* buf, size_t size)
 
 namespace tulips::transport::ena {
 
-AbstractionLayer::AbstractionLayer(system::Logger& logger) : m_logfile(nullptr)
+AbstractionLayer::AbstractionLayer(system::Logger& logger)
+  : m_args(), m_logfile(nullptr)
 {
   std::call_once(s_setup, [this, &logger]() {
-    const char* const arguments[] = {
-      "dpdk", "--in-memory", "--no-telemetry", "-c", "1", "--log-level=*:6"
-    };
+    /*
+     * Build the arguments.
+     *
+     * NOTE(xrg): using a static variable does not work, for some reason
+     * rte_eal_init SIGSEGV when assigning the last item of the array.
+     */
+    m_args[0] = (char*)"dpdk";
+    // m_args[1] = (char*)"--in-memory";
+    // m_args[2] = (char*)"--no-telemetry";
+    // m_args[3] = (char*)"-c";
+    // m_args[4] = (char*)"1";
+    // m_args[5] = (char*)"--log-level=*:6";
+    m_args[1] = nullptr;
     /*
      * Define the cookie IOs.
      */
@@ -48,7 +59,7 @@ AbstractionLayer::AbstractionLayer(system::Logger& logger) : m_logfile(nullptr)
     /*
      * Initialize the abstraction layer.
      */
-    int ret = rte_eal_init(6, (char**)arguments);
+    int ret = rte_eal_init(1, (char**)m_args);
     if (ret < 0) {
       throw std::runtime_error("Failed to initialize EAL");
     }

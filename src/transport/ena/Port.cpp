@@ -24,8 +24,8 @@ log2(const uint64_t x)
 
 namespace tulips::transport::ena {
 
-Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
-           const size_t depth)
+Port::Port(system::Logger& log, [[maybe_unused]] std::string_view ifn,
+           [[maybe_unused]] const size_t width, const size_t depth)
   : m_log(log)
   , m_eal(log)
   , m_depth(depth)
@@ -42,7 +42,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   , m_admin()
   , m_raw()
 {
-
+#if 0
   int ret = 0;
   /*
    * Collect the available ports.
@@ -150,6 +150,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
    * Allocate the admin device.
    */
   m_admin = next();
+#endif
 }
 
 Port::~Port()
@@ -157,7 +158,9 @@ Port::~Port()
   /*
    * Stop the device.
    */
+#if 0
   rte_eth_dev_stop(m_portid);
+#endif
   /*
    * Clear the TX mempools.
    */

@@ -12,6 +12,7 @@ public:
   ~AbstractionLayer();
 
 private:
+  char* m_args[7];
   FILE* m_logfile;
 };
 
