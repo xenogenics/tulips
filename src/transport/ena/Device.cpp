@@ -246,14 +246,18 @@ Device::poll(Processor& proc)
   /*
    * Process the incoming receive buffers.
    */
-  struct rte_mbuf* mbufs[32];
-  auto nbrx = rte_eth_rx_burst(m_portid, m_queueid, mbufs, 32);
+  struct rte_mbuf* mbufs[m_nbuf];
+  auto nbrx = rte_eth_rx_burst(m_portid, m_queueid, mbufs, m_nbuf);
   /*
    * Check if there are any buffer.
    */
   if (nbrx == 0) {
     return Status::NoDataAvailable;
   }
+  /*
+   * Log how many buffer we will process.
+   */
+  m_log.trace("ENA", "received buffers ", nbrx, "/", m_nbuf);
   /*
    * Process the buffers.
    */
