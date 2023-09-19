@@ -25,9 +25,10 @@ log2(const uint64_t x)
 namespace tulips::transport::ena {
 
 Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
-           const size_t depth)
+           const size_t txw, const size_t rxw)
   : m_log(log)
-  , m_depth(depth)
+  , m_ntxds(0)
+  , m_nrxds(0)
   , m_portid(0xFFFF)
   , m_address()
   , m_mtu()
@@ -106,15 +107,14 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Get the queue count.
    */
-  auto nrxq = RTE_MIN(width, dev_info.max_rx_queues);
   auto ntxq = RTE_MIN(width, dev_info.max_tx_queues);
+  auto nrxq = RTE_MIN(width, dev_info.max_rx_queues);
   auto nqus = RTE_MIN(nrxq, ntxq);
   /*
    * Get the descriptor count.
    */
-  auto nrxd = RTE_MAX(depth, dev_info.rx_desc_lim.nb_min);
-  auto ntxd = RTE_MAX(nrxd, dev_info.tx_desc_lim.nb_min);
-  auto ndsc = RTE_MAX(nrxd, ntxd);
+  m_ntxds = RTE_MAX(txw, dev_info.tx_desc_lim.nb_min);
+  m_nrxds = RTE_MAX(rxw, dev_info.rx_desc_lim.nb_min);
   /*
    * Print some device information.
    */
@@ -123,7 +123,8 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   log.debug("ENA", "hardware address: ", m_address.toString());
   log.debug("ENA", "MTU: ", m_mtu);
   log.debug("ENA", "queues: ", nqus);
-  log.debug("ENA", "descriptors: ", ndsc);
+  log.debug("ENA", "TX descriptors: ", m_ntxds);
+  log.debug("ENA", "RX descriptors: ", m_nrxds);
   log.debug("ENA", "buffer length: ", buflen);
   /*
    * Configure the device.
@@ -132,7 +133,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Setup the pools and queues.
    */
-  setupPoolsAndQueues(buflen, nqus, ndsc);
+  setupPoolsAndQueues(buflen, nqus);
   /*
    * Start the port.
    */
@@ -202,8 +203,9 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(m_log, m_portid, qid, m_depth, m_retasz, m_hlen,
-                              m_hkey, m_address, m_mtu, txpool, ip, dr, nm);
+  auto* dev = new ena::Device(m_log, m_portid, qid, m_ntxds, m_nrxds, m_retasz,
+                              m_hlen, m_hkey, m_address, m_mtu, txpool, ip, dr,
+                              nm);
   /*
    * Add the device queue to the raw processor.
    */
@@ -267,8 +269,7 @@ Port::configure(UNUSED struct rte_eth_dev_info const& dev_info,
 }
 
 void
-Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
-                          const uint16_t ndsc)
+Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus)
 {
   /*
    * Get the NUMA node.
@@ -283,15 +284,15 @@ Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
      * Allocate the pool.
      */
     sprintf(name, "RX(%ld)", i);
-    auto rxpool = rte_pktmbuf_pool_create(name, ndsc, 0, 0, buflen, node);
-    if (rxpool == nullptr) {
+    auto p = rte_pktmbuf_pool_create(name, m_nrxds, 0, 0, buflen, node);
+    if (p == nullptr) {
       throw std::runtime_error("Failed to create a RX mempool");
     }
-    m_rxpools.push_back(rxpool);
+    m_rxpools.push_back(p);
     /*
      * Setup the queue.
      */
-    auto ret = rte_eth_rx_queue_setup(m_portid, i, ndsc, node, nullptr, rxpool);
+    auto ret = rte_eth_rx_queue_setup(m_portid, i, m_nrxds, node, nullptr, p);
     if (ret != 0) {
       throw std::runtime_error("Failed to setup a RX queue");
     }
@@ -305,15 +306,15 @@ Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
      * Allocate the pool.
      */
     sprintf(name, "TX(%ld)", i);
-    auto txpool = rte_pktmbuf_pool_create(name, ndsc, 0, 8, buflen, node);
-    if (txpool == nullptr) {
+    auto p = rte_pktmbuf_pool_create(name, m_ntxds, 0, 8, buflen, node);
+    if (p == nullptr) {
       throw std::runtime_error("Failed to create a TX mempool");
     }
-    m_txpools.push_back(txpool);
+    m_txpools.push_back(p);
     /*
      * Setup the queue.
      */
-    auto ret = rte_eth_tx_queue_setup(m_portid, i, ndsc, node, nullptr);
+    auto ret = rte_eth_tx_queue_setup(m_portid, i, m_ntxds, node, nullptr);
     if (ret != 0) {
       throw std::runtime_error("Failed to setup a TX queue");
     }

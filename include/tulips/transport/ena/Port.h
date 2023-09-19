@@ -17,7 +17,7 @@ class Port
 {
 public:
   Port(system::Logger& log, std::string_view ifn, const size_t width,
-       const size_t depth);
+       const size_t txw, const size_t rxw);
   ~Port();
 
   void run();
@@ -29,8 +29,7 @@ public:
 private:
   void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);
 
-  void setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus,
-                           const uint16_t ndsc);
+  void setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus);
 
   void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info);
 
@@ -41,7 +40,8 @@ private:
   }
 
   system::Logger& m_log;
-  size_t m_depth;
+  size_t m_ntxds;
+  size_t m_nrxds;
   uint16_t m_portid;
   stack::ethernet::Address m_address;
   uint32_t m_mtu;

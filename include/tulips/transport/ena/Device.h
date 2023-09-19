@@ -51,17 +51,17 @@ public:
 
   uint8_t receiveBufferLengthLog2() const override { return 11; }
 
-  uint16_t receiveBuffersAvailable() const override { return m_nbuf; }
+  uint16_t receiveBuffersAvailable() const override { return m_nrxbs; }
 
 private:
   using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
-         const size_t nbuf, const size_t htsz, const size_t hlen,
-         const uint8_t* const hkey, stack::ethernet::Address const& m_address,
-         const uint32_t m_mtu, struct rte_mempool* const txpool,
-         stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-         stack::ipv4::Address const& nm);
+         const uint16_t ntxbs, const uint16_t nrxbs, const size_t htsz,
+         const size_t hlen, const uint8_t* const hkey,
+         stack::ethernet::Address const& m_address, const uint32_t m_mtu,
+         struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
+         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
 
   system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
 
@@ -69,7 +69,8 @@ private:
 
   uint16_t m_portid;
   uint16_t m_queueid;
-  size_t m_nbuf;
+  uint16_t m_ntxbs;
+  uint16_t m_nrxbs;
   size_t m_htsz;
   size_t m_hlen;
   const uint8_t* m_hkey;

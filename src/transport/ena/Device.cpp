@@ -28,15 +28,17 @@
 namespace tulips::transport::ena {
 
 Device::Device(system::Logger& log, const uint16_t port_id,
-               const uint16_t queue_id, const size_t nbuf, const size_t htsz,
-               const size_t hlen, const uint8_t* const hkey,
+               const uint16_t queue_id, const uint16_t ntxbs,
+               const uint16_t nrxbs, const size_t htsz, const size_t hlen,
+               const uint8_t* const hkey,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
   : transport::Device(log, "ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
-  , m_nbuf(nbuf)
+  , m_ntxbs(ntxbs)
+  , m_nrxbs(nrxbs)
   , m_htsz(htsz)
   , m_hlen(hlen)
   , m_hkey(hkey)
@@ -55,12 +57,12 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   /*
    * Reserve space in the sent queue .
    */
-  m_free.reserve(nbuf);
-  m_sent.reserve(nbuf);
+  m_free.reserve(m_ntxbs);
+  m_sent.reserve(m_ntxbs);
   /*
    * Populate the free buffer list.
    */
-  for (size_t i = 0; i < nbuf; i += 1) {
+  for (size_t i = 0; i < m_ntxbs; i += 1) {
     auto* mbuf = rte_pktmbuf_alloc(m_txpool);
     if (mbuf == nullptr) {
       throw std::runtime_error("send buffer allocation failed");
@@ -246,8 +248,8 @@ Device::poll(Processor& proc)
   /*
    * Process the incoming receive buffers.
    */
-  struct rte_mbuf* mbufs[m_nbuf];
-  auto nbrx = rte_eth_rx_burst(m_portid, m_queueid, mbufs, m_nbuf);
+  struct rte_mbuf* mbufs[m_nrxbs];
+  auto nbrx = rte_eth_rx_burst(m_portid, m_queueid, mbufs, m_nrxbs);
   /*
    * Check if there are any buffer.
    */
@@ -257,7 +259,7 @@ Device::poll(Processor& proc)
   /*
    * Log how many buffer we will process.
    */
-  m_log.trace("ENA", "received buffers ", nbrx, "/", m_nbuf);
+  m_log.trace("ENA", "received buffers ", nbrx, "/", m_nrxbs);
   /*
    * Process the buffers.
    */
@@ -431,7 +433,7 @@ Device::release(uint8_t* const buf)
 {
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
   m_log.trace("ENA", "releasing buffer ", (void*)buf, " ", (void*)mbuf, " (",
-              m_free.size() + 1, "/", m_nbuf, ")");
+              m_free.size() + 1, "/", m_ntxbs, ")");
   rte_pktmbuf_reset(mbuf);
   m_free.push_back(mbuf);
   return Status::Ok;
