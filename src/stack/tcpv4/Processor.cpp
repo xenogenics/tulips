@@ -628,7 +628,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Check if we received a FIN request and process it.
        */
-      if (INTCP->flags & Flag::FIN && e.m_state != Connection::STOPPED) {
+      if (INTCP->flags & Flag::FIN) {
         /*
          * If some of our data is still in flight, ignore the FIN.
          */
@@ -670,10 +670,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * If plen > 0 we have TCP data in the packet, and we flag this by
        * setting the NEWDATA flag and update the sequence number we
-       * acknowledge. If the application has stopped the dataflow using
-       * stop(), we must not accept any data packets from the remote host.
+       * acknowledge.
        */
-      if (plen > 0 && e.m_state != Connection::STOPPED) {
+      if (plen > 0) {
         e.m_newdata = true;
         e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
         e.m_rcv_nxt += plen;
@@ -1014,9 +1013,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     /*
      * Unhandled cases.
      */
-    case Connection::STOPPED:
-    case Connection::CLOSED:
-    default: {
+    case Connection::CLOSED: {
       break;
     }
   }
