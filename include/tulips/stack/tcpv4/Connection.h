@@ -44,10 +44,9 @@ public:
     FIN_WAIT_1 = 0x6,
     FIN_WAIT_2 = 0x7,
     LAST_ACK = 0x8,
-    STOPPED = 0x9,
-    SYN_RCVD = 0xA,
-    SYN_SENT = 0xB,
-    TIME_WAIT = 0xC,
+    SYN_RCVD = 0x9,
+    SYN_SENT = 0xA,
+    TIME_WAIT = 0xB,
   };
 
   enum Option

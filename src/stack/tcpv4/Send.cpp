@@ -218,12 +218,9 @@ Processor::send(Connection& e)
   OUTTCP->srcport = e.m_lport;
   OUTTCP->dstport = e.m_rport;
   /*
-   * If the connection has issued stop(), we advertise a zero window so
-   * that the remote host will stop sending data.
+   * Update the window.
    */
-  if (e.m_state == Connection::STOPPED) {
-    OUTTCP->wnd = 0;
-  } else if (OUTTCP->flags & Flag::SYN) {
+  if (OUTTCP->flags & Flag::SYN) {
     uint32_t window = m_device.receiveBuffersAvailable()
                       << m_device.receiveBufferLengthLog2();
     OUTTCP->wnd = htons(utils::cap(window));
@@ -303,7 +300,6 @@ Processor::rexmit(Connection& e)
     case Connection::CLOSE:
     case Connection::FIN_WAIT_2:
     case Connection::TIME_WAIT:
-    case Connection::STOPPED:
     case Connection::CLOSED:
     default: {
       break;
@@ -330,12 +326,9 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   OUTTCP->srcport = e.m_lport;
   OUTTCP->dstport = e.m_rport;
   /*
-   * If the connection has issued stop(), we advertise a zero window so
-   * that the remote host will stop sending data.
+   * Update the window.
    */
-  if (e.m_state == Connection::STOPPED) {
-    OUTTCP->wnd = 0;
-  } else if (OUTTCP->flags & Flag::SYN) {
+  if (OUTTCP->flags & Flag::SYN) {
     uint32_t window = m_device.receiveBuffersAvailable()
                       << m_device.receiveBufferLengthLog2();
     OUTTCP->wnd = htons(utils::cap(window));
