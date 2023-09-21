@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "tulips/stack/TCPv4.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
@@ -67,7 +68,7 @@ Processor::open(Connection::ID& id)
      * Keep track of the time-wait connections.
      */
     if (e.m_state == Connection::TIME_WAIT) {
-      if (!match || m_conns[*match].m_timer > e.m_timer) {
+      if (!match || m_conns[*match].m_rtm > e.m_rtm) {
         match = e.m_id;
       }
     }
@@ -246,6 +247,8 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   c.m_rcv_nxt = 0;
   c.m_snd_nxt = m_iss;
   c.m_state = Connection::SYN_SENT;
+  c.m_wndlvl = WndLimits::max();
+  c.m_atm = 0;
   c.m_opts = 0;
   c.m_ackdata = false;
   c.m_newdata = false;
@@ -261,7 +264,7 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   c.m_sa = 0;
   c.m_sv = 16;
   c.m_rto = RTO;
-  c.m_timer = RTO;
+  c.m_rtm = RTO;
   c.m_cookie = nullptr;
   /*
    * Update the connection index.
