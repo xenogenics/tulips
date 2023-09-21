@@ -29,7 +29,8 @@ public:
 private:
   void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);
 
-  void setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus);
+  void setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
+                           const uint16_t nqus);
 
   void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info);
 
