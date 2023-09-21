@@ -134,7 +134,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Setup the pools and queues.
    */
-  setupPoolsAndQueues(buflen, nqus);
+  setupPoolsAndQueues(ifn, buflen, nqus);
   /*
    * Start the port.
    */
@@ -270,7 +270,8 @@ Port::configure(UNUSED struct rte_eth_dev_info const& dev_info,
 }
 
 void
-Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus)
+Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
+                          const uint16_t nqus)
 {
   /*
    * Get the NUMA node.
@@ -284,7 +285,7 @@ Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus)
     /*
      * Allocate the pool.
      */
-    sprintf(name, "RX(%ld)", i);
+    sprintf(name, "%*s_RX_%ld_", int(ifn.size()), ifn.data(), i);
     auto p = rte_pktmbuf_pool_create(name, m_nrxds, 0, 0, buflen, node);
     if (p == nullptr) {
       m_log.error("ENA", "create RX mempool failed: ", rte_strerror(rte_errno));
@@ -308,7 +309,7 @@ Port::setupPoolsAndQueues(const uint16_t buflen, const uint16_t nqus)
     /*
      * Allocate the pool.
      */
-    sprintf(name, "TX(%ld)", i);
+    sprintf(name, "%*s_TX_%ld_", int(ifn.size()), ifn.data(), i);
     auto p = rte_pktmbuf_pool_create(name, m_ntxds, 0, 8, buflen, node);
     if (p == nullptr) {
       m_log.error("ENA", "create TX mempool failed: ", rte_strerror(rte_errno));
