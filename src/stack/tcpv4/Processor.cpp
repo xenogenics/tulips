@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "tulips/stack/tcpv4/Connection.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/Utils.h>
@@ -31,9 +32,17 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   , m_conns()
   , m_index()
   , m_stats()
-  , m_timer()
+  , m_fast()
+  , m_slow()
 {
-  m_timer.set(system::Clock::SECOND);
+  /*
+   * Arm the timers.
+   */
+  m_fast.set(system::Clock::MILLISECOND);
+  m_slow.set(system::Clock::SECOND);
+  /*
+   * Resize the connections.
+   */
   m_conns.resize(nconn);
   /*
    * Set the connection IDs.
@@ -62,84 +71,40 @@ Status
 Processor::run()
 {
   /*
-   * Check if the TCP timer has expired. This timer facility is not exact and
-   * only guarantees that at least the period amount has been exhausted.
+   * Check the fast timer.
    */
-  if (!m_timer.expired()) {
-    return Status::Ok;
+  if (m_fast.expired()) {
+    /*
+     * Reset the timer.
+     */
+    m_fast.reset();
+    /*
+     * Call the handler.
+     */
+    auto ret = onFastTimer();
+    if (ret != Status::Ok) {
+      return ret;
+    }
   }
   /*
-   * Reset the timer, increase the initial sequence number.
+   * Check the slow timer.
    */
-  m_timer.reset();
-  m_iss += 1;
-  /*
-   * Scan the connections
-   */
-  for (auto& e : m_conns) {
+  if (m_slow.expired()) {
     /*
-     * Ignore closed connections
+     * Reset the timer.
      */
-    if (e.m_state == Connection::CLOSED) {
-      continue;
+    m_slow.reset();
+    /*
+     * Call the handler.
+     */
+    auto ret = onSlowTimer();
+    if (ret != Status::Ok) {
+      return ret;
     }
-    /*
-     * Handle connections that are just waiting to time out.
-     */
-    if (e.m_state == Connection::TIME_WAIT ||
-        e.m_state == Connection::FIN_WAIT_2) {
-      /*
-       * Increase the connection's timer.
-       */
-      e.m_timer += 1;
-      /*
-       * If it timed out, close the connection.
-       */
-      if (e.m_timer == TIME_WAIT_TIMEOUT) {
-        m_log.debug("TCP4", "connection closed");
-        close(e);
-      }
-      /*
-       * Skip the connection.
-       */
-      continue;
-    }
-    /*
-     * If the connection does not have any outstanding data, skip it.
-     */
-    if (!e.hasOutstandingSegments()) {
-      continue;
-    }
-    /*
-     * Check if the connection needs a retransmission.
-     */
-    if (--e.m_timer > 0) {
-      continue;
-    }
-    /*
-     * Retransmission has expired, reset the connection.
-     */
-    if (e.hasExpired()) {
-      m_log.debug("TCP4", "aborting the connection");
-      m_handler.onTimedOut(e, system::Clock::read());
-      return sendAbort(e);
-    }
-    /*
-     * Exponential backoff.
-     */
-    e.m_timer = RTO << (e.m_nrtx > 4 ? 4 : e.m_nrtx);
-    e.m_nrtx += 1;
-    /*
-     * Ok, so we need to retransmit.
-     */
-    m_log.debug("TCP4", "automatic repeat request (", size_t(e.m_nrtx), "/",
-                MAXRTX, ")");
-    m_log.debug("TCP4", "segments available? ", std::boolalpha,
-                e.hasAvailableSegments());
-    m_log.debug("TCP4", "segments outstanding? ", std::boolalpha,
-                e.hasOutstandingSegments());
-    return rexmit(e);
   }
+  /*
+   * Done.
+   */
   return Status::Ok;
 }
 
@@ -213,7 +178,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   if (e == m_conns.end()) {
     for (auto c = m_conns.begin(); c != m_conns.end(); c++) {
       if (c->m_state == Connection::TIME_WAIT) {
-        if (e == m_conns.end() || c->m_timer > e->m_timer) {
+        if (e == m_conns.end() || c->m_rtm > e->m_rtm) {
           e = c;
         }
       }
@@ -252,6 +217,8 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   e->m_rcv_nxt = ntohl(INTCP->seqno) + 1;
   e->m_snd_nxt = m_iss;
   e->m_state = Connection::SYN_RCVD;
+  e->m_wndlvl = WndLimits::max();
+  e->m_atm = 0;
   e->m_opts = 0;
   e->m_ackdata = false;
   e->m_newdata = false;
@@ -267,7 +234,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   e->m_sa = 0;
   e->m_sv = 4; // Initial value of the RTT variance
   e->m_rto = RTO;
-  e->m_timer = RTO;
+  e->m_rtm = RTO;
   /*
    * Prepare the connection segment. SYN segments don't contain any data but
    * have a size of 1 to increase the sequence number by 1.
@@ -329,6 +296,132 @@ Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
   return sum == 0 ? 0xffff : htons(sum);
 }
 #endif
+
+Status
+Processor::onFastTimer()
+{
+  /*
+   * Scan the connections.
+   */
+  for (auto& e : m_conns) {
+    /*
+     * Only care about established connections.
+     */
+    if (e.m_state != Connection::ESTABLISHED) {
+      continue;
+    }
+    /*
+     * Skip the connection if it does not have delayed ACKs.
+     */
+    if (!HAS_DELAYED_ACK(e)) {
+      continue;
+    }
+    /*
+     * Skip the connection if there is no active timer.
+     */
+    if (e.m_atm == 0) {
+      continue;
+    }
+    /*
+     * Skip the connection if the timer has not expired.
+     */
+    if (--e.m_atm > 0) {
+      continue;
+    }
+    /*
+     * Send the delayed ACK.
+     */
+    auto ret = sendAck(e);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
+}
+
+Status
+Processor::onSlowTimer()
+{
+
+  /*
+   * Increase the initial sequence number.
+   */
+  m_iss += 1;
+  /*
+   * Scan the connections.
+   */
+  for (auto& e : m_conns) {
+    /*
+     * Ignore closed connections
+     */
+    if (e.m_state == Connection::CLOSED) {
+      continue;
+    }
+    /*
+     * Handle connections that are just waiting to time out.
+     */
+    if (e.m_state == Connection::TIME_WAIT ||
+        e.m_state == Connection::FIN_WAIT_2) {
+      /*
+       * Increase the connection's timer.
+       */
+      e.m_rtm += 1;
+      /*
+       * If it timed out, close the connection.
+       */
+      if (e.m_rtm == TIME_WAIT_TIMEOUT) {
+        m_log.debug("TCP4", "connection closed");
+        close(e);
+      }
+      /*
+       * Skip the connection.
+       */
+      continue;
+    }
+    /*
+     * If the connection does not have any outstanding data, skip it.
+     */
+    if (!e.hasOutstandingSegments()) {
+      continue;
+    }
+    /*
+     * Check if the connection needs a retransmission.
+     */
+    if (--e.m_rtm > 0) {
+      continue;
+    }
+    /*
+     * Retransmission has expired, reset the connection.
+     */
+    if (e.hasExpired()) {
+      m_log.debug("TCP4", "aborting the connection");
+      m_handler.onTimedOut(e, system::Clock::read());
+      return sendAbort(e);
+    }
+    /*
+     * Exponential backoff.
+     */
+    e.m_rtm = RTO << (e.m_nrtx > 4 ? 4 : e.m_nrtx);
+    e.m_nrtx += 1;
+    /*
+     * Ok, so we need to retransmit.
+     */
+    m_log.debug("TCP4", "automatic repeat request (", size_t(e.m_nrtx), "/",
+                MAXRTX, ")");
+    m_log.debug("TCP4", "segments available? ", std::boolalpha,
+                e.hasAvailableSegments());
+    m_log.debug("TCP4", "segments outstanding? ", std::boolalpha,
+                e.hasOutstandingSegments());
+    return rexmit(e);
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
+}
 
 void
 Processor::close(Connection& e)
@@ -464,7 +557,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
            */
           if (e.m_nrtx == 0) {
             e.updateRttEstimation();
-            e.m_timer = e.m_rto;
+            e.m_rtm = e.m_rto;
           }
           /*
            * Skip scanning.
@@ -507,7 +600,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * Reset the retransmission timer.
          */
-        e.m_timer = e.m_rto;
+        e.m_rtm = e.m_rto;
       }
       /*
        * Release the buffer associated with the segment.
@@ -791,12 +884,14 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         if (e.m_newdata) {
           /*
-           * Send an ACK immediately if the connection supports DELAYED_ACK.
-           * This is preferrable when sending data back is not needed as the
-           * ACK latency is not subject to the onNewData() callback latency
-           * anymore.
+           * Decrease the local window.
            */
-          if (!HAS_DELAYED_ACK(e)) {
+          e.m_wndlvl -= datalen;
+          /*
+           * Send an ACK immediately if the connection does not have
+           * DELAYED_ACK or if the local window level is 0.
+           */
+          if (!HAS_DELAYED_ACK(e) || e.m_wndlvl == 0) {
             Status res;
             /*
              * If there is data in the send buffer, send it as well.
@@ -826,20 +921,27 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
             uint32_t alen = bound - e.m_slen;
             /*
-             * The application can send back some data.
+             * Call the handler.
              */
-            switch (m_handler.onNewData(e, dataptr, datalen, ts, alen,
-                                        e.m_sdat + HEADER_LEN + e.m_slen,
-                                        rlen)) {
-              case Action::Abort:
+            auto action = m_handler.onNewData(e, dataptr, datalen, ts, alen,
+                                              e.m_sdat + HEADER_LEN + e.m_slen,
+                                              rlen);
+            /*
+             * Execute the action.
+             */
+            switch (action) {
+              case Action::Abort: {
                 m_log.debug("TCP4", "onNewData() abort connection ", e.id());
                 m_handler.onAborted(e, ts);
                 return sendAbort(e);
-              case Action::Close:
+              }
+              case Action::Close: {
                 m_log.debug("TCP4", "onNewData() close connection ", e.id());
                 return sendClose(e);
-              default:
+              }
+              default: {
                 break;
+              }
             }
             /*
              * Truncate to available length if necessary
@@ -847,25 +949,36 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             if (rlen > alen) {
               rlen = alen;
             }
+            /*
+             * Increase the send buffer length.
+             */
             m_log.trace("TCP", "queueing ", rlen, "B from onNewData()");
             e.m_slen += rlen;
           }
           /*
-           * Notify the application and ACK if necessary. Applies when there
-           * is already data in flight or if the remote window is smaller that
-           * the outstanding data in the send buffer.
+           * Notify the application.
            */
           else {
-            switch (m_handler.onNewData(e, dataptr, datalen, ts)) {
-              case Action::Abort:
+            /*
+             * Call the handler.
+             */
+            auto action = m_handler.onNewData(e, dataptr, datalen, ts);
+            /*
+             * Execute the action.
+             */
+            switch (action) {
+              case Action::Abort: {
                 m_log.debug("TCP4", "onNewData() abort connection ", e.id());
                 m_handler.onAborted(e, ts);
                 return sendAbort(e);
-              case Action::Close:
+              }
+              case Action::Close: {
                 m_log.debug("TCP4", "onNewData() close connection ", e.id());
                 return sendClose(e);
-              default:
+              }
+              default: {
                 break;
+              }
             }
           }
         }
@@ -876,11 +989,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           return sendNoDelay(e, Flag::PSH);
         }
         /*
-         * If the connection supports DELAYED_ACK and could/dit not send
-         * anything, ACK if necessary.
+         * If the connection supports DELAYED_ACK, arm the ACK timer.
          */
-        if (HAS_DELAYED_ACK(e) && e.m_newdata) {
-          return sendAck(e);
+        if (HAS_DELAYED_ACK(e) && e.m_newdata && e.m_atm == 0) {
+          e.m_atm = ATO;
         }
         /*
          * Otherwise do nothing
@@ -917,7 +1029,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         if (e.m_ackdata) {
           m_log.debug("TCP4", "connection time-wait");
           e.m_state = Connection::TIME_WAIT;
-          e.m_timer = 0;
+          e.m_rtm = 0;
         } else {
           m_log.debug("TCP4", "connection closing");
           e.m_state = Connection::CLOSING;
@@ -953,7 +1065,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         m_log.debug("TCP4", "connection time-wait");
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
-        e.m_timer = 0;
+        e.m_rtm = 0;
         m_handler.onClosed(e, ts);
         return sendAck(e);
       }
@@ -1007,7 +1119,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       if (e.m_ackdata) {
         m_log.debug("TCP4", "connection time-wait");
         e.m_state = Connection::TIME_WAIT;
-        e.m_timer = 0;
+        e.m_rtm = 0;
       }
       break;
     }

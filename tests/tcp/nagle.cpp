@@ -525,7 +525,32 @@ TEST_F(TCP_Nagle, ConnectSendNagleRecvThenAck)
    * Receive the server payload.
    */
   ASSERT_EQ(Status::Ok, m_srv_pcap->poll(*m_srv_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  /*
+   * Advance the timers because of ACK timer.
+   */
+  for (int i = 0; i < 4; i += 1) {
+    system::Clock::get().offsetBy(system::Clock::MILLISECOND);
+    ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
+  }
+  /*
+   * Receive the ACK.
+   */
   ASSERT_EQ(Status::Ok, m_cli_pcap->poll(*m_cli_eth_proc));
+  /*
+   * Advance the timers again for good measure.
+   */
+  for (int i = 0; i < 4; i += 1) {
+    system::Clock::get().offsetBy(system::Clock::MILLISECOND);
+    ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+    ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
+  }
+  /*
+   * Make sure nothing happened.
+   */
+  ASSERT_EQ(Status::NoDataAvailable, m_cli_pcap->poll(*m_cli_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, m_srv_pcap->poll(*m_srv_eth_proc));
   /*
    * Abort the connection and clean-up.
    */

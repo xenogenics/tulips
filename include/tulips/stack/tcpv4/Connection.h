@@ -163,7 +163,7 @@ private:
 
   inline void updateRttEstimation()
   {
-    int8_t m = m_rto - m_timer;
+    int8_t m = m_rto - m_rtm;
     /*
      * This is taken directly from VJs original code in his paper
      */
@@ -214,13 +214,15 @@ private:
   uint16_t m_initialmss; // 2 - Initial maximum segment size for the connection
   uint16_t m_mss;        // 2 - Current maximum segment size for the connection
 
-  uint8_t m_sa;    // 1 - Retransmission time-out calculation state
-  uint8_t m_sv;    // 1 - Retransmission time-out calculation state
-  uint8_t m_rto;   // 1 - Retransmission time-out
-  uint8_t m_timer; // 1 - Retransmission timer
+  uint8_t m_sa;  // 1 - Retransmission time-out calculation state
+  uint8_t m_sv;  // 1 - Retransmission time-out calculation state
+  uint8_t m_rto; // 1 - Retransmission time-out
+  uint8_t m_rtm; // 1 - Retransmission timer
 
-  uint64_t m_opts; // 8 - Connection options (NO_DELAY, etc..)
-  void* m_cookie;  // 8 - Application state
+  uint32_t m_wndlvl; // 4 - Local window level
+  uint16_t m_atm;    // 2 - Delayed ACK timer
+  uint16_t m_opts;   // 2 - Connection options (NO_DELAY, etc..)
+  void* m_cookie;    // 8 - Application state
 
   /*
    * Segments. Size is 16B per segment, 4 segments per cache line, for a maximum

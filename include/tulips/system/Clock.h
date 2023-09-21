@@ -11,6 +11,7 @@ public:
   using Value = uint64_t;
 
   static constexpr const Value SECOND = 1000000000ULL;
+  static constexpr const Value MILLISECOND = 1000000ULL;
 
   inline static Clock& get()
   {

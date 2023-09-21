@@ -31,9 +31,10 @@ enum Flag : uint8_t
 using Port = uint16_t;
 
 /*
- * Sequence number limits.
+ * Limits.
  */
 using SeqLimits = std::numeric_limits<uint32_t>;
+using WndLimits = std::numeric_limits<uint16_t>;
 
 /*
  * The TCPv4 header.
@@ -60,8 +61,10 @@ struct Header
   (((tulips::stack::tcpv4::Header*)(__HDR))->offset << 2)
 
 static constexpr size_t USED HEADER_LEN = sizeof(Header);
-static constexpr uint8_t USED RTO = 3;
 static constexpr uint16_t USED HEADER_OVERHEAD = ipv4::HEADER_LEN + HEADER_LEN;
+
+static constexpr uint16_t USED ATO = 4;
+static constexpr uint8_t USED RTO = 3;
 
 }
 

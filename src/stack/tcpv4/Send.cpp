@@ -221,10 +221,10 @@ Processor::send(Connection& e)
    * Update the window.
    */
   if (OUTTCP->flags & Flag::SYN) {
-    uint32_t window = m_device.receiveBuffersAvailable()
-                      << m_device.receiveBufferLengthLog2();
-    OUTTCP->wnd = htons(utils::cap(window));
+    OUTTCP->wnd = htons(WndLimits::max());
   } else {
+    e.m_wndlvl = m_device.receiveBuffersAvailable()
+                 << m_device.receiveBufferLengthLog2();
     OUTTCP->wnd = htons(m_device.receiveBuffersAvailable());
   }
   /*
@@ -329,10 +329,10 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    * Update the window.
    */
   if (OUTTCP->flags & Flag::SYN) {
-    uint32_t window = m_device.receiveBuffersAvailable()
-                      << m_device.receiveBufferLengthLog2();
-    OUTTCP->wnd = htons(utils::cap(window));
+    OUTTCP->wnd = htons(WndLimits::max());
   } else {
+    e.m_wndlvl = m_device.receiveBuffersAvailable()
+                 << m_device.receiveBufferLengthLog2();
     OUTTCP->wnd = htons(m_device.receiveBuffersAvailable());
   }
   /*

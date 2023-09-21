@@ -146,6 +146,19 @@ private:
 #endif
 
   /**
+   * Process tasks on the fast timer.
+   *
+   * @return the status of the operation.
+   */
+  Status onFastTimer();
+
+  /**
+   * Process tasks on the fast timer.
+   *
+   * @return the status of the operation.
+   */
+  Status onSlowTimer();
+  /**
    * Close a connection.
    *
    * @param e the connection to close.
@@ -320,6 +333,13 @@ private:
      */
     OUTTCP->flags = flags | Flag::ACK;
     OUTTCP->offset = 5;
+    /*
+     * Since we are sending an ACK, we reset the ACK timer.
+     */
+    e.m_atm = 0;
+    /*
+     * Send the segment.
+     */
     return send(e, s.m_len + HEADER_LEN, s);
   }
 
@@ -364,7 +384,8 @@ private:
   Connections m_conns;
   Index m_index;
   Statistics m_stats;
-  system::Timer m_timer;
+  system::Timer m_fast;
+  system::Timer m_slow;
 };
 
 }
