@@ -1,3 +1,4 @@
+#include "tulips/stack/TCPv4.h"
 #include <tulips/stack/ethernet/Processor.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Processor.h>
@@ -529,7 +530,7 @@ TEST_F(TCP_Nagle, ConnectSendNagleRecvThenAck)
   /*
    * Advance the timers because of ACK timer.
    */
-  for (int i = 0; i < 4; i += 1) {
+  for (int i = 0; i < tcpv4::ATO; i += 1) {
     system::Clock::get().offsetBy(system::Clock::MILLISECOND);
     ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
     ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());

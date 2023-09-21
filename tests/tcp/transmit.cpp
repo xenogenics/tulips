@@ -612,7 +612,7 @@ TEST_F(TCP_Transmit, ConnectSendDisconnectFromServerWithAckCombining)
   /*
    * Advance the timers because of ACK timer, #2.
    */
-  for (int i = 0; i < 4; i += 1) {
+  for (int i = 0; i < tcpv4::ATO; i += 1) {
     system::Clock::get().offsetBy(system::Clock::MILLISECOND);
     ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
     ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
@@ -762,7 +762,7 @@ TEST_F(TCP_Transmit, ConnectSendAbortFromServerWithAckCombining)
   /*
    * Advance the timers because of ACK timer, #2.
    */
-  for (int i = 0; i < 4; i += 1) {
+  for (int i = 0; i < tcpv4::ATO; i += 1) {
     system::Clock::get().offsetBy(system::Clock::MILLISECOND);
     ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
     ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
