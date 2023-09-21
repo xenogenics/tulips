@@ -84,8 +84,7 @@ Processor::run()
       continue;
     }
     /*
-     * Check if the connection is in a state in which we simply wait for the
-     * connection to time out.
+     * Handle connections that are just waiting to time out.
      */
     if (e.m_state == Connection::TIME_WAIT ||
         e.m_state == Connection::FIN_WAIT_2) {
@@ -99,8 +98,11 @@ Processor::run()
       if (e.m_timer == TIME_WAIT_TIMEOUT) {
         m_log.debug("TCP4", "connection closed");
         close(e);
-        continue;
       }
+      /*
+       * Skip the connection.
+       */
+      continue;
     }
     /*
      * If the connection does not have any outstanding data, skip it.
@@ -111,14 +113,13 @@ Processor::run()
     /*
      * Check if the connection needs a retransmission.
      */
-    e.m_timer -= 1;
-    if (e.m_timer > 0) {
+    if (--e.m_timer > 0) {
       continue;
     }
     /*
-     * Retransmission timeout, reset the connection.
+     * Retransmission has expired, reset the connection.
      */
-    if (e.hasTimedOut()) {
+    if (e.hasExpired()) {
       m_log.debug("TCP4", "aborting the connection");
       m_handler.onTimedOut(e, system::Clock::read());
       return sendAbort(e);

@@ -101,11 +101,13 @@ private:
 
   inline bool hasPendingSendData() const { return m_slen != 0; }
 
-  inline bool hasTimedOut() const
+  inline bool hasExpired() const
   {
-    return m_nrtx == MAXRTX || ((m_state == Connection::SYN_SENT ||
-                                 m_state == Connection::SYN_RCVD) &&
-                                m_nrtx == MAXSYNRTX);
+    if (m_state == Connection::SYN_SENT || m_state == Connection::SYN_RCVD) {
+      return m_nrtx == MAXSYNRTX;
+    } else {
+      return m_nrtx == MAXRTX;
+    }
   }
 
   inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
@@ -239,7 +241,6 @@ private:
 
 static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 64,
               "Size of tcpv4::Connection is invalid");
-
 }
 
 namespace std {
