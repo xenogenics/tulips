@@ -80,7 +80,6 @@ private:
   uint8_t* m_packet;
   std::vector<struct rte_mbuf*> m_free;
   std::vector<SentBuffer> m_sent;
-  size_t m_pollcnt;
 
   friend class Port;
 

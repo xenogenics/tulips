@@ -1,4 +1,5 @@
 #include "rte_errno.h"
+#include "tulips/system/Clock.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
@@ -42,6 +43,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   , m_retasz(0)
   , m_admin()
   , m_raw()
+  , m_last(system::Clock::read())
 {
   int ret = 0;
   /*
@@ -150,6 +152,10 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
    * Allocate the admin device.
    */
   m_admin = next();
+  /*
+   * Reset the stats.
+   */
+  rte_eth_stats_reset(m_portid);
 }
 
 Port::~Port()
@@ -177,8 +183,24 @@ Port::~Port()
 void
 Port::run()
 {
+  auto now = system::Clock::read();
+  /*
+   * Poll the admin device and run the RAW processor.
+   */
   if (m_admin->poll(m_raw) == Status::NoDataAvailable) {
     m_raw.run();
+  }
+  /*
+   * Check if we should print the stats.
+   */
+  if (now - m_last >= 5 * system::Clock::SECOND) {
+    struct rte_eth_stats stats;
+    rte_eth_stats_get(m_portid, &stats);
+    m_log.debug("ENA", "TX: pkts=", stats.opackets, " byts=", stats.obytes,
+                " errs=", stats.oerrors);
+    m_log.debug("ENA", "RX: pkts=", stats.ipackets, " byts=", stats.ibytes,
+                " errs=", stats.ierrors, " miss=", stats.imissed);
+    m_last = now;
   }
 }
 

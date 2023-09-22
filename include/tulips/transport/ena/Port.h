@@ -55,6 +55,7 @@ private:
   size_t m_retasz;
   Device::Ref m_admin;
   RawProcessor m_raw;
+  uint64_t m_last;
 };
 
 }

@@ -48,7 +48,6 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_packet(new uint8_t[16384])
   , m_free()
   , m_sent()
-  , m_pollcnt(0)
   , m_address(address)
   , m_ip(ip)
   , m_dr(dr)
@@ -256,17 +255,6 @@ Device::poll(Processor& proc)
    */
   if (nbrx == 0) {
     return Status::NoDataAvailable;
-  }
-  /*
-   * Increase the sucessfull poll count and print statistics.
-   */
-  if (++m_pollcnt % 1000 == 0) {
-    struct rte_eth_stats stats;
-    rte_eth_stats_get(m_portid, &stats);
-    m_log.debug("ENA", "TX: pkts=", stats.opackets, " byts=", stats.obytes,
-                " errs=", stats.oerrors);
-    m_log.debug("ENA", "RX: pkts=", stats.ipackets, " byts=", stats.ibytes,
-                " errs=", stats.ierrors, " miss=", stats.imissed);
   }
   /*
    * Log how many buffer we will process.
