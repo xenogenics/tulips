@@ -77,6 +77,13 @@ private:
   static constexpr size_t SEGMENT_COUNT = 1 << SEGM_B;
   static constexpr size_t SEGMENT_BMASK = SEGMENT_COUNT - 1;
 
+  inline void armAckTimer(const uint32_t sendnxt)
+  {
+    if (m_newdata && m_atm == 0 && sendnxt == m_snd_nxt) {
+      m_atm = ATO;
+    }
+  }
+
   inline bool isActive() const { return m_state != CLOSED; }
 
   inline bool hasAvailableSegments() const

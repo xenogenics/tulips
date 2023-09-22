@@ -879,6 +879,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         const uint8_t* dataptr = data + tcpHdrLen + urglen;
         const uint32_t datalen = plen;
+        const uint32_t sendnxt = e.m_snd_nxt;
         /*
          * Notify the application on new data.
          */
@@ -952,8 +953,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             /*
              * Increase the send buffer length.
              */
-            m_log.trace("TCP", "queueing ", rlen, "B from onNewData()");
-            e.m_slen += rlen;
+            if (rlen > 0) {
+              m_log.trace("TCP", "queueing ", rlen, "B from onNewData()");
+              e.m_slen += rlen;
+            }
           }
           /*
            * Notify the application.
@@ -991,8 +994,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * If the connection supports DELAYED_ACK, arm the ACK timer.
          */
-        if (HAS_DELAYED_ACK(e) && e.m_newdata && e.m_atm == 0) {
-          e.m_atm = ATO;
+        if (HAS_DELAYED_ACK(e)) {
+          e.armAckTimer(sendnxt);
         }
         /*
          * Otherwise do nothing
