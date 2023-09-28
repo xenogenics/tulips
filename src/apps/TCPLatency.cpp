@@ -128,8 +128,9 @@ run(Options const& options, transport::Device& base_device)
    * Open a connection.
    */
   tulips::api::Client::ID id;
+  auto alpn = api::interface::Client::ApplicationLayerProtocol::None;
   auto opts = options.noDelay() ? tcpv4::Connection::NO_DELAY : 0;
-  client->open(opts, id);
+  client->open(alpn, opts, id);
   /*
    * Latency timer.
    */

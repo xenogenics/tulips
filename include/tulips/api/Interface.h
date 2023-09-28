@@ -122,6 +122,13 @@ struct Delegate
 class Client : public transport::Processor
 {
 public:
+  enum class ApplicationLayerProtocol : uint8_t
+  {
+    None = 0,
+    HTTP_1_1 = 1,
+    HTTP_2 = 2,
+  };
+
   using ID = stack::tcpv4::Connection::ID;
   using Delegate = interface::Delegate<ID>;
 
@@ -139,17 +146,22 @@ public:
    *
    * @return the status of the operation.
    */
-  virtual Status open(ID& id) { return open(0, id); }
+  virtual Status open(ID& id)
+  {
+    return open(ApplicationLayerProtocol::None, 0, id);
+  }
 
   /**
    * Open a new connection, with options.
    *
-   * @param options the TCP options to use.
+   * @param alpn the application layer protocol to negotiate.
+   * @param opts the TCP options to use.
    * @param id the new connection handle.
    *
    * @return the status of the operation.
    */
-  virtual Status open(const uint8_t options, ID& id) = 0;
+  virtual Status open(const ApplicationLayerProtocol alp, const uint8_t opts,
+                      ID& id) = 0;
 
   /**
    * Set the remote host name for a given connection.

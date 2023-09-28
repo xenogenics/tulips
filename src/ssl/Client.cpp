@@ -110,9 +110,9 @@ Client::live() const
 }
 
 Status
-Client::open(const uint8_t options, ID& id)
+Client::open(const ApplicationLayerProtocol alpn, const uint8_t options, ID& id)
 {
-  return m_client.open(options, id);
+  return m_client.open(alpn, options, id);
 }
 
 Status
@@ -231,6 +231,9 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      * Start the SSL handshake.
      */
     case Context::State::Open: {
+      /*
+       * Get the client's host name.
+       */
       std::optional<std::string> hostname;
       m_client.getHostName(id, hostname);
       /*
@@ -238,6 +241,30 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
        */
       if (hostname.has_value()) {
         SSL_set_tlsext_host_name(c.ssl, hostname.value().c_str());
+      }
+      /*
+       * Apply the application layer protocol.
+       */
+      switch (m_client.applicationLayerProtocol(id)) {
+        case ApplicationLayerProtocol::None: {
+          break;
+        }
+        case ApplicationLayerProtocol::HTTP_1_1: {
+          static uint8_t name[] = "\x08http/1.1";
+          if (SSL_set_alpn_protos(c.ssl, name, 9)) {
+            m_log.error("SSLCLI", "failed to set ALPN for HTTP/1.1");
+            return Status::ProtocolError;
+          };
+          break;
+        }
+        case ApplicationLayerProtocol::HTTP_2: {
+          static uint8_t name[] = "\x02h2";
+          if (SSL_set_alpn_protos(c.ssl, name, 3)) {
+            m_log.error("SSLCLI", "failed to set ALPN for HTTP/2");
+            return Status::ProtocolError;
+          };
+          break;
+        }
       }
       /*
        * Connect.

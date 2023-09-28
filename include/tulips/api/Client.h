@@ -25,19 +25,22 @@ class Client final
   , public stack::tcpv4::EventHandler
 {
 public:
-  /**
-   * Type alias import.
+  /*
+   * Types.
    */
+
+  using api::interface::Client::ApplicationLayerProtocol;
   using interface::Client::Timestamp;
 
-  /**
+  /*
    * Constructor and destructor.
    */
+
   Client(system::Logger& log, Delegate& dlg, transport::Device& device,
          const size_t nconn);
   ~Client() override = default;
 
-  /**
+  /*
    * Device interface.
    */
 
@@ -54,7 +57,7 @@ public:
     return m_ethfrom.sent(len, data);
   }
 
-  /**
+  /*
    * Client interface.
    */
 
@@ -62,7 +65,8 @@ public:
 
   using interface::Client::open;
 
-  Status open(const uint8_t options, ID& id) override;
+  Status open(const ApplicationLayerProtocol alpn, const uint8_t options,
+              ID& id) override;
 
   Status setHostName(const ID id, std::string_view hn) override;
 
@@ -87,10 +91,11 @@ public:
   system::Clock::Value averageLatency(const ID id) override;
 
   /*
-   * @param id the connection's handle.
-   *
-   * @return the user-allocate cookie for the connection.
+   * Client-specific interface.
    */
+
+  ApplicationLayerProtocol applicationLayerProtocol(const ID id) const;
+
   void* cookie(const ID id) const;
 
 private:
