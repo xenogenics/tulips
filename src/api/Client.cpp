@@ -90,7 +90,7 @@ Client::live() const
 }
 
 Status
-Client::open(const uint8_t options, ID& id)
+Client::open(const ApplicationLayerProtocol alpn, const uint8_t options, ID& id)
 {
   /*
    * Open the connection from the TCP end.
@@ -102,7 +102,7 @@ Client::open(const uint8_t options, ID& id)
   /*
    * Save the options and return.
    */
-  m_cns[id].open(options);
+  m_cns[id].open(alpn, options);
   return Status::Ok;
 }
 
@@ -386,6 +386,22 @@ Client::averageLatency(UNUSED const ID id)
 #else
   return 0;
 #endif
+}
+
+Client::ApplicationLayerProtocol
+Client::applicationLayerProtocol(const ID id) const
+{
+  /*
+   * Check if connection ID is valid.
+   */
+  if (id >= m_nconn) {
+    return ApplicationLayerProtocol::None;
+  }
+  Connection const& c = m_cns[id];
+  /*
+   * Compute the latency.
+   */
+  return c.applicationLayerProtocol();
 }
 
 void*

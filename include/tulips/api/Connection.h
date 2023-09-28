@@ -12,6 +12,11 @@ class Connection
 {
 public:
   /**
+   * Application layer protocol.
+   */
+  using ApplicationLayerProtocol = interface::Client::ApplicationLayerProtocol;
+
+  /**
    * Connection state type.
    */
   enum class State
@@ -46,6 +51,11 @@ public:
   constexpr State state() const { return m_state; }
 
   /**
+   * Get the connection's ALP.
+   */
+  constexpr auto applicationLayerProtocol() const { return m_alpn; }
+
+  /**
    * Get the connection's options.
    */
   constexpr auto options() const { return m_opts; }
@@ -64,9 +74,10 @@ public:
    * State management.
    */
 
-  void open(const uint8_t options)
+  void open(const ApplicationLayerProtocol alpn, const uint8_t options)
   {
     m_state = Connection::State::Opened;
+    m_alpn = alpn;
     m_opts = options;
   }
 
@@ -82,6 +93,8 @@ public:
   {
     m_state = Connection::State::Closed;
     m_host.reset();
+    m_alpn = ApplicationLayerProtocol::None;
+    m_opts = 0;
   }
 
 private:
@@ -90,6 +103,7 @@ private:
 #endif
 
   State m_state;
+  interface::Client::ApplicationLayerProtocol m_alpn;
   uint8_t m_opts;
   std::optional<std::string> m_host;
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR

@@ -12,14 +12,17 @@ class Client final
   , public api::interface::Client::Delegate
 {
 public:
-  /**
-   * Type alias import.
+  /*
+   * Types.
    */
+
+  using api::interface::Client::ApplicationLayerProtocol;
   using api::interface::Client::Timestamp;
 
-  /**
+  /*
    * Constructors and destructor.
    */
+
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
          transport::Device& device, const Protocol type, const size_t nconn,
          const bool save_keys);
@@ -28,7 +31,7 @@ public:
          std::string_view key, const size_t nconn);
   ~Client() override;
 
-  /**
+  /*
    * Processor interface.
    */
 
@@ -45,7 +48,7 @@ public:
     return m_client.sent(len, data);
   }
 
-  /**
+  /*
    * Client interface.
    */
 
@@ -53,7 +56,8 @@ public:
 
   using api::interface::Client::open;
 
-  Status open(const uint8_t options, ID& id) override;
+  Status open(const ApplicationLayerProtocol alpn, const uint8_t options,
+              ID& id) override;
 
   Status abort(const ID id) override;
 
