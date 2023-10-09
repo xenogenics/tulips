@@ -49,7 +49,7 @@ AbstractionLayer::AbstractionLayer(FILE* const logfile) : m_logfile(logfile)
    */
   const char* const ARGUMENTS[7] = {
     (char*)"dpdk", (char*)"--in-memory", (char*)"--no-telemetry",
-    (char*)"-c",   (char*)"1",           (char*)"--log-level=*:6",
+    (char*)"-l",   (char*)"0",           (char*)"--log-level=*:6",
     nullptr,
   };
   /*
