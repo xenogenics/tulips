@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tulips/transport/ena/RedirectionTable.h"
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/system/Logger.h>
@@ -47,12 +48,10 @@ private:
   stack::ethernet::Address m_address;
   uint32_t m_mtu;
   struct rte_eth_conf m_ethconf;
-  size_t m_hlen;
-  uint8_t* m_hkey;
+  RedirectionTable::Ref m_reta;
   std::vector<struct rte_mempool*> m_rxpools;
   std::vector<struct rte_mempool*> m_txpools;
   std::list<uint16_t> m_free;
-  size_t m_retasz;
   Device::Ref m_admin;
   RawProcessor m_raw;
 };

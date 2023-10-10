@@ -16,6 +16,8 @@ toString(const Status s)
       return "NoMoreResources";
     case Status::HardwareLinkLost:
       return "HardwareLinkLost";
+    case Status::ResourceBusy:
+      return "ResourceBusy";
     case Status::NoDataAvailable:
       return "NoDataAvailable";
     case Status::CorruptedData:

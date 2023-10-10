@@ -4,6 +4,7 @@
 #include <tulips/system/Clock.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/ena/Device.h>
+#include <tulips/transport/ena/RedirectionTable.h>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -29,8 +30,7 @@ namespace tulips::transport::ena {
 
 Device::Device(system::Logger& log, const uint16_t port_id,
                const uint16_t queue_id, const uint16_t ntxbs,
-               const uint16_t nrxbs, const size_t htsz, const size_t hlen,
-               const uint8_t* const hkey,
+               const uint16_t nrxbs, RedirectionTable& reta,
                stack::ethernet::Address const& address, const uint32_t mtu,
                struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
@@ -39,11 +39,8 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_queueid(queue_id)
   , m_ntxbs(ntxbs)
   , m_nrxbs(nrxbs)
-  , m_htsz(htsz)
-  , m_hlen(hlen)
-  , m_hkey(hkey)
+  , m_reta(reta)
   , m_txpool(txpool)
-  , m_reta(new struct rte_eth_rss_reta_entry64[htsz >> 6])
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
   , m_free()
@@ -102,11 +99,6 @@ Device::~Device()
     rte_pktmbuf_free(mbuf);
   }
   /*
-   * Delete the RETA.
-   */
-  delete[] m_reta;
-  m_reta = nullptr;
-  /*
    * Delete the packet buffer.
    */
   delete[] m_packet;
@@ -141,88 +133,14 @@ Status
 Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
                stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  /*
-   * Hash the payload and get the table index.
-   */
-  auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
-  uint64_t indx = hash % m_htsz;
-  uint64_t slot = indx >> 6;
-  uint64_t eidx = indx & 0x3F;
-  /*
-   * Clear the RETA.
-   */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
-  m_reta[slot].mask = 1ULL << eidx;
-  /*
-   * Query the RETA.
-   */
-  auto ret = rte_eth_dev_rss_reta_query(m_portid, m_reta, m_htsz);
-  if (ret < 0) {
-    m_log.error("ENA", "failed to query the RETA");
-    return Status::HardwareError;
-  }
-  /*
-   * Print the existing configuration for the index.
-   */
-  auto preq = m_reta[slot].reta[eidx];
-  m_log.debug("ENA", "LS hash/index: ", std::hex, hash, std::dec, "/", indx);
-  m_log.debug("ENA", "RETA queue: ", preq);
-  /*
-   * Check the configuration.
-   */
-  if (preq != 0 && preq != m_queueid) {
-    m_log.error("ENA", "RETA queue allocation conflict: ", preq);
-    return Status::HardwareError;
-  }
-  /*
-   * Skip if the existing queue allocation matches our queue.
-   */
-  if (preq == m_queueid) {
-    return Status::Ok;
-  }
-  /*
-   * Prepare the RETA for an update.
-   */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
-  m_reta[slot].mask = 1ULL << eidx;
-  m_reta[slot].reta[eidx] = m_queueid;
-  /*
-   * Update the RETA.
-   */
-  ret = rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
-  if (ret != 0) {
-    m_log.error("ENA", "failed to update the RETA");
-    return Status::HardwareError;
-  }
-  /*
-   * Done.
-   */
-  return Status::Ok;
+  return m_reta.set(m_ip, lport, raddr, rport, m_queueid);
 }
 
 void
-Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
-                 UNUSED const uint16_t lport,
-                 UNUSED stack::ipv4::Address const& raddr,
-                 UNUSED const uint16_t rport)
+Device::unlisten(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
+                 stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  /*
-   * Hash the payload and get the table index.
-   */
-  auto hash = stack::utils::toeplitz(raddr, m_ip, rport, lport, m_hlen, m_hkey);
-  uint64_t indx = hash % m_htsz;
-  uint64_t slot = indx >> 6;
-  uint64_t eidx = indx & 0x3F;
-  /*
-   * Prepare the RETA for an update.
-   */
-  memset(m_reta, 0, sizeof(struct rte_eth_rss_reta_entry64[m_htsz >> 6]));
-  m_reta[slot].mask = 1ULL << eidx;
-  m_reta[slot].reta[eidx] = m_queueid;
-  /*
-   * Update the RETA.
-   */
-  rte_eth_dev_rss_reta_update(m_portid, m_reta, m_htsz);
+  m_reta.clear(m_ip, lport, raddr, rport, m_queueid);
 }
 
 Status
@@ -232,7 +150,7 @@ Device::poll(Processor& proc)
   /*
    * Print the stats every seconds on queue 0.
    */
-  if (m_queueid == 0 && now - m_laststats >= system::Clock::SECOND) {
+  if (m_queueid == 0 && now - m_laststats >= 10 * system::Clock::SECOND) {
     struct rte_eth_stats stats;
     rte_eth_stats_get(m_portid, &stats);
     m_log.debug("ENA", "TX: pkts=", stats.opackets, " byts=", stats.obytes,
