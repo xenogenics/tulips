@@ -1,8 +1,8 @@
-#include "rte_errno.h"
-#include "tulips/transport/ena/RedirectionTable.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
+#include <tulips/transport/ena/RedirectionTable.h>
+#include <cerrno>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <dpdk/rte_ethdev.h>
 #include <net/ethernet.h>
+#include <rte_errno.h>
 
 namespace tulips::transport::ena {
 
@@ -136,7 +137,23 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Reset the statistics of the port.
    */
-  rte_eth_stats_reset(m_portid);
+  ret = rte_eth_stats_reset(m_portid);
+  if (ret != 0) {
+    switch (ret) {
+      case -ENODEV: {
+        m_log.debug("ENA", "reset stats failed: invalid port (", m_portid, ")");
+        break;
+      }
+      case -ENOTSUP: {
+        m_log.debug("ENA", "reset stats failed: not supported");
+        break;
+      }
+      default: {
+        m_log.debug("ENA", "reset stats failed: ", ret);
+        break;
+      }
+    }
+  }
   /*
    * Allocate the admin device.
    */

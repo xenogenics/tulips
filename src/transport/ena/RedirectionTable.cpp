@@ -36,6 +36,14 @@ RedirectionTable::RedirectionTable(const uint16_t portid, const size_t size,
   m_cache.resize(size);
 }
 
+RedirectionTable::~RedirectionTable()
+{
+  delete[] m_hkey;
+  m_hkey = nullptr;
+  delete[] m_table;
+  m_table = nullptr;
+}
+
 Status
 RedirectionTable::set(stack::ipv4::Address const& laddr, const uint16_t lport,
                       stack::ipv4::Address const& raddr, const uint16_t rport,
@@ -159,12 +167,6 @@ RedirectionTable::clear(stack::ipv4::Address const& laddr, const uint16_t lport,
    * Done.
    */
   return Status::Ok;
-}
-
-RedirectionTable::~RedirectionTable()
-{
-  delete[] m_table;
-  m_table = nullptr;
 }
 
 }

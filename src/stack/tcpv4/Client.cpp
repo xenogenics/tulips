@@ -228,10 +228,23 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
     return ret;
   }
   /*
-   * Add the filter to the device.
+   * Grab a local port.
    */
   Port lport = findLocalPort();
-  ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
+  /*
+   * Add the filter to the device. Retry a few times as some devices rely on
+   * RSS hash tables that are prone to collisions.
+   */
+  for (auto i = 0; i < 1024; i += 1) {
+    ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
+    if (ret == Status::Ok) {
+      break;
+    }
+    lport = findLocalPort();
+  }
+  /*
+   * Make sure we are now listening to the port.
+   */
   if (ret != Status::Ok) {
     m_log.error("TCP4", "registering client-side filter failed");
     m_ipv4to.release(outdata);
