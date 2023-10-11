@@ -172,6 +172,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
    */
   switch (c.state()) {
     case Connection::State::Closed: {
+      m_log.error("APICLI", "C(", id, ") connect() failed, connection closed");
       return Status::InvalidConnection;
     }
     case Connection::State::Opened: {
