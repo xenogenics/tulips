@@ -433,30 +433,60 @@ void
 Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
+  /*
+   * Close the connection.
+   */
   m_log.debug("APICLI", "connection aborted, closing");
   d.close();
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
+  /*
+   * Grab and erase the cookie.
+   */
+  auto cookie = c.cookie();
   c.setCookie(nullptr);
+  /*
+   * Call the delegate.
+   */
+  m_delegate.onClosed(c.id(), cookie, ts);
 }
 
 void
 Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
+  /*
+   * Close the connection.
+   */
   m_log.debug("APICLI", "connection timed out, closing");
   d.close();
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
+  /*
+   * Grab and erase the cookie.
+   */
+  auto cookie = c.cookie();
   c.setCookie(nullptr);
+  /*
+   * Call the delegate.
+   */
+  m_delegate.onClosed(c.id(), cookie, ts);
 }
 
 void
 Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
+  /*
+   * Close the connection.
+   */
   m_log.debug("APICLI", "connection closed");
   d.close();
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
+  /*
+   * Grab and erase the cookie.
+   */
+  auto cookie = c.cookie();
   c.setCookie(nullptr);
+  /*
+   * Call the delegate.
+   */
+  m_delegate.onClosed(c.id(), cookie, ts);
 }
 
 void
