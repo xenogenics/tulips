@@ -181,7 +181,8 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
        * Discover the remote address is we don't have a translation.
        */
       if (!m_arp.has(ripaddr)) {
-        m_log.debug("APICLI", "closed -> resolving(", ripaddr.toString(), ")");
+        m_log.debug("APICLI", "C(", id, ") closed -> resolving(",
+                    ripaddr.toString(), ")");
         ret = m_arp.discover(ripaddr);
         if (ret == Status::Ok) {
           c.resolving();
@@ -199,7 +200,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
         addr = m_ip4to.defaultRouterAddress();
       }
       if (!arp::lookup(m_log, m_dev.name(), addr, rhwaddr)) {
-        m_log.error("APICLI", "hardware translation missing for ",
+        m_log.error("APICLI", "C(", id, ") hardware translation missing for ",
                     addr.toString());
         ret = Status::HardwareTranslationMissing;
         break;
@@ -208,7 +209,8 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       /*
        * Connect the client.
        */
-      m_log.debug("APICLI", "closed -> connecting(", ripaddr.toString(), ")");
+      m_log.debug("APICLI", "C(", id, ") closed -> connecting(",
+                  ripaddr.toString(), ")");
       ret = m_tcp.connect(id, rhwaddr, ripaddr, rport);
       if (ret == Status::Ok) {
         c.connecting();
@@ -221,7 +223,8 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       if (m_arp.has(ripaddr)) {
         ethernet::Address rhwaddr;
         m_arp.query(ripaddr, rhwaddr);
-        m_log.debug("APICLI", "closed -> connecting(", ripaddr.toString(), ")");
+        m_log.debug("APICLI", "C(", id, ") closed -> connecting(",
+                    ripaddr.toString(), ")");
         ret = m_tcp.connect(id, rhwaddr, ripaddr, rport);
         if (ret == Status::Ok) {
           c.connecting();
@@ -238,7 +241,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       break;
     }
     case Connection::State::Connected: {
-      m_log.debug("APICLI", "connected");
+      m_log.debug("APICLI", "C(", id, ") connected");
       ret = Status::Ok;
       break;
     }
@@ -253,7 +256,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
 Status
 Client::abort(const ID id)
 {
-  m_log.debug("APICLI", "aborting connection ", id);
+  m_log.debug("APICLI", "C(", id, ") aborting");
   /*
    * Check if connection ID is valid.
    */
@@ -279,7 +282,7 @@ Client::abort(const ID id)
 Status
 Client::close(const ID id)
 {
-  m_log.debug("APICLI", "closing connection ", id);
+  m_log.debug("APICLI", "C(", id, ") closing");
   /*
    * Check if connection ID is valid.
    */
@@ -423,7 +426,7 @@ void
 Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
-  m_log.debug("APICLI", "connection ", c.id(), " connected");
+  m_log.debug("APICLI", "C(", c.id(), ") connected");
   d.connected();
   c.setCookie(m_delegate.onConnected(c.id(), nullptr, ts));
   c.setOptions(d.options());
@@ -436,7 +439,7 @@ Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
   /*
    * Close the connection.
    */
-  m_log.debug("APICLI", "connection aborted, closing");
+  m_log.debug("APICLI", "C(", c.id(), ") aborted, closing");
   d.close();
   /*
    * Grab and erase the cookie.
@@ -456,7 +459,7 @@ Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
   /*
    * Close the connection.
    */
-  m_log.debug("APICLI", "connection timed out, closing");
+  m_log.debug("APICLI", "C(", c.id(), ") connection timed out, closing");
   d.close();
   /*
    * Grab and erase the cookie.
@@ -476,7 +479,7 @@ Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
   /*
    * Close the connection.
    */
-  m_log.debug("APICLI", "connection closed");
+  m_log.debug("APICLI", "C(", c.id(), ") closed");
   d.close();
   /*
    * Grab and erase the cookie.
