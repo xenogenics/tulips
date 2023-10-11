@@ -181,11 +181,4 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   return Action::Continue;
 }
 
-void
-Context::saveKeys(std::string_view prefix)
-{
-  auto spath = std::string(prefix) + "_" + std::to_string(id) + ".keys";
-  keyfd = ::open(spath.c_str(), O_CREAT | O_RDWR);
-}
-
 }

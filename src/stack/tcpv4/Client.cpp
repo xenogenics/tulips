@@ -390,8 +390,8 @@ Processor::send(const Connection::ID id, const uint32_t len,
 }
 
 Status
-Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
-               Port& rport) const
+Processor::get(const Connection::ID id, ipv4::Address& laddr, Port& lport,
+               ipv4::Address& raddr, Port& rport) const
 {
   /*
    * Check if the connection is valid.
@@ -412,8 +412,9 @@ Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
   /*
    * Get the connection info.
    */
-  ripaddr = c.m_ripaddr;
+  laddr = m_ipv4to.hostAddress();
   lport = ntohs(c.m_lport);
+  raddr = c.m_ripaddr;
   rport = ntohs(c.m_rport);
   return Status::Ok;
 }

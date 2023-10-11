@@ -343,10 +343,10 @@ Client::isClosed(const ID id) const
 }
 
 Status
-Client::get(const ID id, stack::ipv4::Address& ripaddr,
-            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+Client::get(const ID id, stack::ipv4::Address& laddr, stack::tcpv4::Port& lport,
+            stack::ipv4::Address& raddr, stack::tcpv4::Port& rport) const
 {
-  return m_client.get(id, ripaddr, lport, rport);
+  return m_client.get(id, laddr, lport, raddr, rport);
 }
 
 Status
@@ -423,13 +423,16 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
    * If we need to save keys, open the key file.
    */
   if (m_savekeys) {
-    stack::ipv4::Address ip;
+    std::string path;
+    stack::ipv4::Address laddr, raddr;
     stack::tcpv4::Port lport, rport;
-    m_client.get(id, ip, lport, rport);
-    auto path = ip.toString();
-    path.append("_");
+    m_client.get(id, laddr, lport, raddr, rport);
+    path.append(laddr.toString());
+    path.append(":");
     path.append(std::to_string(lport));
     path.append("_");
+    path.append(raddr.toString());
+    path.append(":");
     path.append(std::to_string(rport));
     path.append(".keys");
     keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);

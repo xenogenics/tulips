@@ -431,11 +431,6 @@ struct Context
    */
   Action flush(const uint32_t alen, uint8_t* const sdata, uint32_t& slen);
 
-  /**
-   * Save the keys into a file.
-   */
-  void saveKeys(std::string_view prefix);
-
   system::Logger& log;
   api::interface::Client::ID id;
   void* cookie;

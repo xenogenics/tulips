@@ -322,8 +322,8 @@ Client::isClosed(const ID id) const
 }
 
 Status
-Client::get(const ID id, stack::ipv4::Address& ripaddr,
-            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+Client::get(const ID id, stack::ipv4::Address& laddr, stack::tcpv4::Port& lport,
+            stack::ipv4::Address& raddr, stack::tcpv4::Port& rport) const
 {
   /*
    * Check if connection ID is valid.
@@ -334,7 +334,7 @@ Client::get(const ID id, stack::ipv4::Address& ripaddr,
   /*
    * Get the info.
    */
-  return m_tcp.get(id, ripaddr, lport, rport);
+  return m_tcp.get(id, laddr, lport, raddr, rport);
 }
 
 Status
