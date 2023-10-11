@@ -144,7 +144,7 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
    * Check if the connection is in the right state.
    */
   if (c.state != Context::State::Ready) {
-    return Status::InvalidConnection;
+    return Status::NotConnected;
   }
   /*
    * Check if we can write anything.

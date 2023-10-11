@@ -123,7 +123,7 @@ Client::setHostName(const ID id, std::string_view hostname)
    * Check if the connection is the right state.
    */
   if (c.state() != Connection::State::Opened) {
-    return Status::InvalidConnection;
+    return Status::ResourceBusy;
   }
   /*
    * Set the hostname for the connection.

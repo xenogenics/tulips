@@ -100,10 +100,15 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   auto nrxq = RTE_MIN(width, dev_info.max_rx_queues);
   auto nqus = RTE_MIN(nrxq, ntxq);
   /*
-   * Get the descriptor count.
+   * Get the TX descriptor count.
    */
   m_ntxds = RTE_MAX(txw, dev_info.tx_desc_lim.nb_min);
+  m_ntxds = RTE_MIN(txw, dev_info.tx_desc_lim.nb_max);
+  /*
+   * Get the RX descriptor count.
+   */
   m_nrxds = RTE_MAX(rxw, dev_info.rx_desc_lim.nb_min);
+  m_nrxds = RTE_MIN(rxw, dev_info.rx_desc_lim.nb_max);
   /*
    * Print some device information.
    */
@@ -112,8 +117,8 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   log.debug("ENA", "hardware address: ", m_address.toString());
   log.debug("ENA", "MTU: ", m_mtu);
   log.debug("ENA", "queues: ", nqus);
-  log.debug("ENA", "TX descriptors: ", m_ntxds);
-  log.debug("ENA", "RX descriptors: ", m_nrxds);
+  log.debug("ENA", "TX buffers: ", m_ntxds, "/", dev_info.tx_desc_lim.nb_max);
+  log.debug("ENA", "RX buffers: ", m_nrxds, "/", dev_info.rx_desc_lim.nb_max);
   log.debug("ENA", "buffer length: ", buflen);
   /*
    * Configure the device.
