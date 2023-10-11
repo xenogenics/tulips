@@ -171,7 +171,7 @@ Client::close(const ID id)
    */
   switch (ret) {
     case 0: {
-      m_log.debug("SSLCLI", "C(", id, "), shutdown sent");
+      m_log.debug("SSLCLI", "C(", id, ") shutdown sent");
       flush(id, cookie);
       return Status::OperationInProgress;
     }

@@ -163,6 +163,10 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
 Port::~Port()
 {
   /*
+   * Deallocate the admin device.
+   */
+  m_admin.reset();
+  /*
    * Stop the device.
    */
   rte_eth_dev_stop(m_portid);
