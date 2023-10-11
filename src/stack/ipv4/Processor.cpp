@@ -84,7 +84,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data,
    */
   if (INIP->destipaddr != m_hostAddress) {
     ++m_stats.drop;
-    m_log.error("IP4", "unknown destination address");
+    m_log.error("IP4", "unknown address: ", INIP->destipaddr.toString());
     return Status::ProtocolError;
   }
   /*

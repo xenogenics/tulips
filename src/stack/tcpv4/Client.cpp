@@ -147,7 +147,7 @@ Processor::close(const Connection::ID id)
    * If we are already busy, return OK.
    */
   if (c.hasOutstandingSegments()) {
-    m_log.debug("TCP4", "connection close");
+    m_log.debug("TCP4", "connection ", id, " close");
     c.m_state = Connection::CLOSE;
     return Status::Ok;
   }
@@ -380,7 +380,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
    * Send immediately if Nagle's algorithm has been disabled.
    */
   if (HAS_NODELAY(c)) {
-    m_log.trace("TCP", "sending ", slen, "B from client");
+    m_log.trace("TCP", "sending ", slen, "B from client ", id);
     return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
   /*
