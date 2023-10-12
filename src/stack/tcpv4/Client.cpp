@@ -104,20 +104,24 @@ Processor::abort(const Connection::ID id)
   /*
    * Check the connection's state.
    */
-  if (c.m_state == Connection::OPEN) {
-    c.m_state = Connection::CLOSED;
-    return Status::Ok;
+  if (c.m_state == Connection::CLOSED) {
+    return Status::InvalidConnection;
   }
   /*
-   * Notify the handler and return.
-   */
-  m_handler.onAborted(c, system::Clock::read());
-  /*
-   * Send the RST message.
+   * Send the RST message. It MUST be done BEFORE calling the handler as the
+   * connection's state is updated in sendAbort();
    */
   uint8_t* outdata = c.m_sdat;
   OUTTCP->flags = 0;
-  return sendAbort(c);
+  auto ret = sendAbort(c);
+  /*
+   * Notify the handler.
+   */
+  m_handler.onAborted(c, system::Clock::read());
+  /*
+   * Done.
+   */
+  return ret;
 }
 
 Status
@@ -326,7 +330,13 @@ Processor::send(const Connection::ID id, const uint32_t len,
   if (id >= m_nconn) {
     return Status::InvalidConnection;
   }
+  /*
+   * Get the connection.
+   */
   Connection& c = m_conns[id];
+  /*
+   * Check the connection state.
+   */
   if (c.m_state != Connection::ESTABLISHED) {
     return Status::NotConnected;
   }
