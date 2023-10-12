@@ -116,7 +116,8 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   log.debug("ENA", "name: ", rte_dev_name(dev_info.device));
   log.debug("ENA", "hardware address: ", m_address.toString());
   log.debug("ENA", "MTU: ", m_mtu);
-  log.debug("ENA", "queues: ", nqus);
+  log.debug("ENA", "TX queues: ", nqus, "/", dev_info.max_tx_queues);
+  log.debug("ENA", "RX queues: ", nqus, "/", dev_info.max_rx_queues);
   log.debug("ENA", "TX buffers: ", m_ntxds, "/", dev_info.tx_desc_lim.nb_max);
   log.debug("ENA", "RX buffers: ", m_nrxds, "/", dev_info.rx_desc_lim.nb_max);
   log.debug("ENA", "buffer length: ", buflen);
