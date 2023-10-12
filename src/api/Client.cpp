@@ -172,7 +172,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
    */
   switch (c.state()) {
     case Connection::State::Closed: {
-      m_log.error("APICLI", "C(", id, ") connect() failed, connection closed");
+      m_log.error("APICLI", "<", id, "> connect() failed, connection closed");
       return Status::InvalidConnection;
     }
     case Connection::State::Opened: {
@@ -182,7 +182,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
        * Discover the remote address is we don't have a translation.
        */
       if (!m_arp.has(ripaddr)) {
-        m_log.debug("APICLI", "C(", id, ") closed -> resolving(",
+        m_log.debug("APICLI", "<", id, "> closed -> resolving(",
                     ripaddr.toString(), ")");
         ret = m_arp.discover(ripaddr);
         if (ret == Status::Ok) {
@@ -201,7 +201,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
         addr = m_ip4to.defaultRouterAddress();
       }
       if (!arp::lookup(m_log, m_dev.name(), addr, rhwaddr)) {
-        m_log.error("APICLI", "C(", id, ") hardware translation missing for ",
+        m_log.error("APICLI", "<", id, "> hardware translation missing for ",
                     addr.toString());
         ret = Status::HardwareTranslationMissing;
         break;
@@ -210,7 +210,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       /*
        * Connect the client.
        */
-      m_log.debug("APICLI", "C(", id, ") closed -> connecting(",
+      m_log.debug("APICLI", "<", id, "> closed -> connecting(",
                   ripaddr.toString(), ")");
       ret = m_tcp.connect(id, rhwaddr, ripaddr, rport);
       if (ret == Status::Ok) {
@@ -224,7 +224,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       if (m_arp.has(ripaddr)) {
         ethernet::Address rhwaddr;
         m_arp.query(ripaddr, rhwaddr);
-        m_log.debug("APICLI", "C(", id, ") closed -> connecting(",
+        m_log.debug("APICLI", "<", id, "> closed -> connecting(",
                     ripaddr.toString(), ")");
         ret = m_tcp.connect(id, rhwaddr, ripaddr, rport);
         if (ret == Status::Ok) {
@@ -242,7 +242,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       break;
     }
     case Connection::State::Connected: {
-      m_log.debug("APICLI", "C(", id, ") connected");
+      m_log.debug("APICLI", "<", id, "> connected");
       ret = Status::Ok;
       break;
     }
@@ -257,7 +257,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
 Status
 Client::abort(const ID id)
 {
-  m_log.debug("APICLI", "C(", id, ") aborting");
+  m_log.debug("APICLI", "<", id, "> aborting");
   /*
    * Check if connection ID is valid.
    */
@@ -283,7 +283,7 @@ Client::abort(const ID id)
 Status
 Client::close(const ID id)
 {
-  m_log.debug("APICLI", "C(", id, ") closing");
+  m_log.debug("APICLI", "<", id, "> closing");
   /*
    * Check if connection ID is valid.
    */
@@ -427,7 +427,7 @@ void
 Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
-  m_log.debug("APICLI", "C(", c.id(), ") connected");
+  m_log.debug("APICLI", "<", c.id(), "> connected");
   d.connected();
   c.setCookie(m_delegate.onConnected(c.id(), nullptr, ts));
   c.setOptions(d.options());
@@ -440,7 +440,7 @@ Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
   /*
    * Close the connection.
    */
-  m_log.debug("APICLI", "C(", c.id(), ") aborted, closing");
+  m_log.debug("APICLI", "<", c.id(), "> aborted, closing");
   d.close();
   /*
    * Grab and erase the cookie.
@@ -460,7 +460,7 @@ Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
   /*
    * Close the connection.
    */
-  m_log.debug("APICLI", "C(", c.id(), ") connection timed out, closing");
+  m_log.debug("APICLI", "<", c.id(), "> connection timed out, closing");
   d.close();
   /*
    * Grab and erase the cookie.
@@ -480,7 +480,7 @@ Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
   /*
    * Close the connection.
    */
-  m_log.debug("APICLI", "C(", c.id(), ") closed");
+  m_log.debug("APICLI", "<", c.id(), "> closed");
   d.close();
   /*
    * Grab and erase the cookie.

@@ -171,18 +171,18 @@ Client::close(const ID id)
    */
   switch (ret) {
     case 0: {
-      m_log.debug("SSLCLI", "C(", id, ") shutdown sent");
+      m_log.debug("SSLCLI", "<", id, "> shutdown sent");
       flush(id, cookie);
       return Status::OperationInProgress;
     }
     case 1: {
-      m_log.debug("SSLCLI", "C(", id, ") shutdown completed");
+      m_log.debug("SSLCLI", "<", id, "> shutdown completed");
       return m_client.close(id);
     }
     default: {
       auto err = SSL_get_error(c.ssl, ret);
       auto error = ssl::errorToString(err);
-      m_log.error("SSLCLI", "C(", id, ") SSL_shutdown error: ", error);
+      m_log.error("SSLCLI", "<", id, "> SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
   }
@@ -252,7 +252,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         case ApplicationLayerProtocol::HTTP_1_1: {
           static uint8_t name[] = "\x08http/1.1";
           if (SSL_set_alpn_protos(c.ssl, name, 9)) {
-            m_log.error("SSLCLI", "C(", id, ") failed to set ALPN for H1");
+            m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H1");
             return Status::ProtocolError;
           };
           break;
@@ -260,7 +260,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         case ApplicationLayerProtocol::HTTP_2: {
           static uint8_t name[] = "\x02h2";
           if (SSL_set_alpn_protos(c.ssl, name, 3)) {
-            m_log.error("SSLCLI", "C(", id, ") failed to set ALPN for H2");
+            m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H2");
             return Status::ProtocolError;
           };
           break;
@@ -270,7 +270,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
        * Connect.
        */
       if (SSL_connect(c.ssl) != -1) {
-        m_log.error("SSLCLI", "C(", id, ") connect error");
+        m_log.error("SSLCLI", "<", id, "> connect error");
         return Status::ProtocolError;
       }
       /*
@@ -279,7 +279,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       auto err = SSL_get_error(c.ssl, -1);
       if (err != SSL_ERROR_WANT_READ) {
         auto error = ssl::errorToString(err);
-        m_log.error("SSLCLI", "C(", id, ") connect error: ", error);
+        m_log.error("SSLCLI", "<", id, "> connect error: ", error);
         return Status::ProtocolError;
       }
       /*
@@ -389,14 +389,14 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   if (ret <= 0) {
     auto err = SSL_get_error(c.ssl, ret);
     auto m = errorToString(err);
-    m_log.error("SSL", "C(", id, ") SSL_write error: ", m);
+    m_log.error("SSL", "<", id, "> SSL_write error: ", m);
     return Status::ProtocolError;
   }
   /*
    * Handle partial data.
    */
   if (ret != (int)len) {
-    m_log.error("SSL", "C(", id, ") partial SSL_write: ", ret, "/", len);
+    m_log.error("SSL", "<", id, "> partial SSL_write: ", ret, "/", len);
     return Status::IncompleteData;
   }
   /*

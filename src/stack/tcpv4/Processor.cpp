@@ -373,7 +373,7 @@ Processor::onSlowTimer()
        * If it timed out, close the connection.
        */
       if (e.m_rtm == TIME_WAIT_TIMEOUT) {
-        m_log.debug("TCP4", "C(", e.id(), ") closed");
+        m_log.debug("TCP4", "<", e.id(), "> closed");
         close(e);
       }
       /*
@@ -397,7 +397,7 @@ Processor::onSlowTimer()
      * Retransmission has expired, reset the connection.
      */
     if (e.hasExpired()) {
-      m_log.debug("TCP4", "C(", e.id(), ") aborting");
+      m_log.debug("TCP4", "<", e.id(), "> aborting");
       m_handler.onTimedOut(e, system::Clock::read());
       return sendAbort(e);
     }
@@ -409,12 +409,12 @@ Processor::onSlowTimer()
     /*
      * Ok, so we need to retransmit.
      */
-    m_log.debug("TCP4", "C(", e.id(), ") automatic repeat request (",
+    m_log.debug("TCP4", "<", e.id(), "> automatic repeat request (",
                 size_t(e.m_nrtx), "/", MAXRTX, ")");
-    m_log.debug("TCP4", "C(", e.id(), ") segments available? ", std::boolalpha,
+    m_log.debug("TCP4", "<", e.id(), "> segments available? ", std::boolalpha,
                 e.hasAvailableSegments());
-    m_log.debug("TCP4", "C(", e.id(), ") segments outstanding? ",
-                std::boolalpha, e.hasOutstandingSegments());
+    m_log.debug("TCP4", "<", e.id(), "> segments outstanding? ", std::boolalpha,
+                e.hasOutstandingSegments());
     return rexmit(e);
   }
   /*
@@ -473,7 +473,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    * of this reset is within our advertised window before we accept the reset.
    */
   if (INTCP->flags & Flag::RST) {
-    m_log.debug("TCP4", "C(", e.id(), ") RST received, aborting");
+    m_log.debug("TCP4", "<", e.id(), "> RST received, aborting");
     m_handler.onAborted(e, ts);
     close(e);
     return Status::Ok;
@@ -487,7 +487,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
   /*
    * Print the flow information if requested.
    */
-  m_log.trace("FLOW", "C(", e.id(), ") -> ", getFlags(*INTCP), " len:", plen,
+  m_log.trace("FLOW", "<", e.id(), "> -> ", getFlags(*INTCP), " len:", plen,
               " seq:", seqno, " ack:", ackno, " seg:", size_t(e.m_segidx));
   /*
    * Check if the sequence number of the incoming packet is what we're
@@ -503,7 +503,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * Send an ACK with the proper seqno if the received seqno is wrong.
        */
       if (seqno != e.m_rcv_nxt) {
-        m_log.debug("TCP4", "C(", e.id(), ") sequence ACK: in=", seqno,
+        m_log.debug("TCP4", "<", e.id(), "> sequence ACK: in=", seqno,
                     " exp=", e.m_rcv_nxt);
         return sendAck(e);
       }
@@ -550,7 +550,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         if (e.window() != e.window(window)) {
           e.m_window = window;
-          m_log.debug("TCP4", "C(", e.id(), ") peer wnd updated: ", e.window(),
+          m_log.debug("TCP4", "<", e.id(), "> peer wnd updated: ", e.window(),
                       " on seq:", ackno);
           /*
            * Do RTT estimation, unless we have done retransmissions. There is
@@ -568,8 +568,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * In case of an OoO packet, let the ARQ do its job.
          */
-        m_log.debug("TCP4", "C(", e.id(),
-                    ") peer rexmit request on seq:", ackno);
+        m_log.debug("TCP4", "<", e.id(),
+                    "> peer rexmit request on seq:", ackno);
         return rexmit(e);
       }
       /*
@@ -640,7 +640,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * Process the ACK data if any.
        */
       if (e.m_ackdata) {
-        m_log.debug("TCP4", "C(", e.id(), ") established");
+        m_log.debug("TCP4", "<", e.id(), "> established");
         /*
          * Send the connection event.
          */
@@ -671,7 +671,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       if (e.m_ackdata &&
           (INTCP->flags & Flag::CTL) == (Flag::SYN | Flag::ACK)) {
-        m_log.debug("TCP4", "C(", e.id(), ") established");
+        m_log.debug("TCP4", "<", e.id(), "> established");
         /*
          * Update the connection info
          */
@@ -703,7 +703,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Inform the application that the connection failed.
        */
-      m_log.debug("TCP4", "C(", e.id(), ") failed, aborting");
+      m_log.debug("TCP4", "<", e.id(), "> failed, aborting");
       m_handler.onAborted(e, ts);
       /*
        * The connection is closed after we send the RST.
@@ -729,8 +729,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * If some of our data is still in flight, ignore the FIN.
          */
         if (e.hasOutstandingSegments()) {
-          m_log.debug("TCP4", "C(", e.id(),
-                      ") FIN received but outstanding data");
+          m_log.debug("TCP4", "<", e.id(),
+                      "> FIN received but outstanding data");
           return Status::Ok;
         }
         /*
@@ -748,7 +748,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * segment, so one must be available. FIN segments don't contain any
          * data but have a size of 1 to increase the sequence number by 1.
          */
-        m_log.debug("TCP4", "C(", e.id(), ") last ACK");
+        m_log.debug("TCP4", "<", e.id(), "> last ACK");
         e.m_state = Connection::LAST_ACK;
         Segment& seg = e.nextAvailableSegment();
         seg.set(1, e.m_snd_nxt, e.m_sdat);
@@ -832,11 +832,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              */
             switch (action) {
               case Action::Abort:
-                m_log.debug("TCP4", "C(", e.id(), ") onAcked() -> abort");
+                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> abort");
                 m_handler.onAborted(e, ts);
                 return sendAbort(e);
               case Action::Close:
-                m_log.debug("TCP4", "C(", e.id(), ") onAcked() -> close");
+                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> close");
                 return sendClose(e);
               default:
                 break;
@@ -866,11 +866,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              */
             switch (action) {
               case Action::Abort:
-                m_log.debug("TCP4", "C(", e.id(), ") onAcked() -> abort");
+                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> abort");
                 m_handler.onAborted(e, ts);
                 return sendAbort(e);
               case Action::Close:
-                m_log.debug("TCP4", "C(", e.id(), ") onAcked() -> close");
+                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> close");
                 return sendClose(e);
               default:
                 break;
@@ -935,12 +935,12 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              */
             switch (action) {
               case Action::Abort: {
-                m_log.debug("TCP4", "C(", e.id(), ") onNewData() -> abort");
+                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> abort");
                 m_handler.onAborted(e, ts);
                 return sendAbort(e);
               }
               case Action::Close: {
-                m_log.debug("TCP4", "C(", e.id(), ") onNewData() -> close");
+                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> close");
                 return sendClose(e);
               }
               default: {
@@ -957,7 +957,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              * Increase the send buffer length.
              */
             if (rlen > 0) {
-              m_log.trace("TCP", "C(", e.id(), ") onNewData() -> ", rlen, "B");
+              m_log.trace("TCP", "<", e.id(), "> onNewData() -> ", rlen, "B");
               e.m_slen += rlen;
             }
           }
@@ -974,12 +974,12 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              */
             switch (action) {
               case Action::Abort: {
-                m_log.debug("TCP4", "C(", e.id(), ") onNewData() -> abort");
+                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> abort");
                 m_handler.onAborted(e, ts);
                 return sendAbort(e);
               }
               case Action::Close: {
-                m_log.debug("TCP4", "C(", e.id(), ") onNewData() -> close");
+                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> close");
                 return sendClose(e);
               }
               default: {
@@ -1013,7 +1013,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
      */
     case Connection::LAST_ACK: {
       if (e.m_ackdata) {
-        m_log.debug("TCP4", "C(", e.id(), ") closed");
+        m_log.debug("TCP4", "<", e.id(), "> closed");
         m_handler.onClosed(e, ts);
         close(e);
       }
@@ -1033,11 +1033,11 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       if (INTCP->flags & Flag::FIN) {
         if (e.m_ackdata) {
-          m_log.debug("TCP4", "C(", e.id(), ") time-wait");
+          m_log.debug("TCP4", "<", e.id(), "> time-wait");
           e.m_state = Connection::TIME_WAIT;
           e.m_rtm = 0;
         } else {
-          m_log.debug("TCP4", "C(", e.id(), ") closing");
+          m_log.debug("TCP4", "<", e.id(), "> closing");
           e.m_state = Connection::CLOSING;
         }
         e.m_rcv_nxt += 1;
@@ -1048,7 +1048,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * Otherwise, if we received an ACK, moved to FIN_WAIT_2.
        */
       else if (e.m_ackdata) {
-        m_log.debug("TCP4", "C(", e.id(), ") FIN wait #2");
+        m_log.debug("TCP4", "<", e.id(), "> FIN wait #2");
         e.m_state = Connection::FIN_WAIT_2;
         return Status::Ok;
       }
@@ -1068,7 +1068,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * If we get a FIN, moved to TIME_WAIT.
        */
       if (INTCP->flags & Flag::FIN) {
-        m_log.debug("TCP4", "C(", e.id(), ") time-wait");
+        m_log.debug("TCP4", "<", e.id(), "> time-wait");
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
         e.m_rtm = 0;
@@ -1100,7 +1100,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * Switch to FIN_WAIT_1. There is no more outstanding segment here so we
        * can grab one.
        */
-      m_log.debug("TCP4", "C(", e.id(), ") FIN wait #1");
+      m_log.debug("TCP4", "<", e.id(), "> FIN wait #1");
       e.m_state = Connection::FIN_WAIT_1;
       Segment& seg = e.nextAvailableSegment();
       seg.set(1, e.m_snd_nxt, e.m_sdat);
@@ -1123,7 +1123,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     }
     case Connection::CLOSING: {
       if (e.m_ackdata) {
-        m_log.debug("TCP4", "C(", e.id(), ") time-wait");
+        m_log.debug("TCP4", "<", e.id(), "> time-wait");
         e.m_state = Connection::TIME_WAIT;
         e.m_rtm = 0;
       }
