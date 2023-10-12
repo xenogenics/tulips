@@ -149,6 +149,9 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
       state = State::Shutdown;
       return flush(alen, sdata, slen);
     }
+    /*
+     * Abort if the shutdown failed.
+     */
     log.error("SSL", "SSL_shutdown error, aborting connection");
     return Action::Abort;
   }

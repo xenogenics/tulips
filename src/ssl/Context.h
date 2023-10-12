@@ -148,6 +148,7 @@ struct Context
            */
           if (ret == 1) {
             log.debug("SSL", "<", id, "> shutdown completed");
+            state = State::Closed;
             return Action::Close;
           }
           /*
@@ -320,6 +321,7 @@ struct Context
                */
               if (ret == 1) {
                 log.debug("SSL", "<", id, "> shutdown completed");
+                state = State::Closed;
                 return Action::Close;
               }
               /*

@@ -177,6 +177,7 @@ Client::close(const ID id)
     }
     case 1: {
       m_log.debug("SSLCLI", "<", id, "> shutdown completed");
+      c.state = Context::State::Closed;
       return m_client.close(id);
     }
     default: {
