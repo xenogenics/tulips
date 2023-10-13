@@ -2,6 +2,7 @@
 
 #include <tulips/api/Client.h>
 #include <tulips/api/Interface.h>
+#include <tulips/ssl/Context.h>
 #include <tulips/ssl/Protocol.h>
 #include <vector>
 
@@ -104,13 +105,16 @@ public:
   void onClosed(ID const& id, void* const cookie, const Timestamp ts) override;
 
 private:
-  Status flush(const ID id, void* const cookie);
+  using Contexts = std::vector<Context>;
+
+  Status flush(const ID id);
 
   api::interface::Client::Delegate& m_delegate;
   system::Logger& m_log;
   tulips::api::Client m_client;
-  void* m_context;
+  void* m_ssl;
   bool m_savekeys;
+  Contexts m_contexts;
 };
 
 }

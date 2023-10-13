@@ -1,5 +1,5 @@
-#include "Context.h"
 #include <tulips/ssl/Client.h>
+#include <tulips/ssl/Context.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <cstdint>
@@ -17,9 +17,9 @@ keylogCallback(const SSL* ssl, const char* line)
 {
   void* appdata = SSL_get_app_data(ssl);
   auto* context = reinterpret_cast<tulips::ssl::Context*>(appdata);
-  if (context->keyfd != -1) {
-    ::write(context->keyfd, line, strlen(line));
-    ::write(context->keyfd, "\n", 1);
+  if (context->m_keyfd != -1) {
+    ::write(context->m_keyfd, line, strlen(line));
+    ::write(context->m_keyfd, "\n", 1);
   }
 }
 
@@ -33,8 +33,9 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
   : m_delegate(delegate)
   , m_log(log)
   , m_client(log, *this, device, nconn)
-  , m_context(nullptr)
+  , m_ssl(nullptr)
   , m_savekeys(save_keys)
+  , m_contexts()
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
   /*
@@ -48,20 +49,24 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
    * Create the SSL context.
    */
   long flags = 0;
-  m_context = SSL_CTX_new(ssl::getMethod(type, false, flags));
-  if (m_context == nullptr) {
+  m_ssl = SSL_CTX_new(ssl::getMethod(type, false, flags));
+  if (m_ssl == nullptr) {
     throw std::runtime_error("SSL_CTX_new failed");
   }
-  SSL_CTX_set_options(AS_SSL(m_context), flags);
-  SSL_CTX_set_keylog_callback(AS_SSL(m_context), keylogCallback);
+  SSL_CTX_set_options(AS_SSL(m_ssl), flags);
+  SSL_CTX_set_keylog_callback(AS_SSL(m_ssl), keylogCallback);
   /*
    * Use AES ciphers.
    */
   const char* const PREFERRED_CIPHERS = "HIGH:!aNULL:!PSK:!SRP:!MD5:!RC4:!3DES";
-  int res = SSL_CTX_set_cipher_list(AS_SSL(m_context), PREFERRED_CIPHERS);
+  int res = SSL_CTX_set_cipher_list(AS_SSL(m_ssl), PREFERRED_CIPHERS);
   if (res != 1) {
     throw std::runtime_error("SSL_CTX_set_cipher_list failed");
   }
+  /*
+   * Resize the contexts.
+   */
+  m_contexts.resize(nconn);
 }
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
@@ -74,7 +79,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
    * Load certificate and private key files, and check consistency.
    */
   auto scert = std::string(cert);
-  err = SSL_CTX_use_certificate_file(AS_SSL(m_context), scert.c_str(),
+  err = SSL_CTX_use_certificate_file(AS_SSL(m_ssl), scert.c_str(),
                                      SSL_FILETYPE_PEM);
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_certificate_file failed");
@@ -84,8 +89,8 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
    * Indicate the key file to be used.
    */
   auto skey = std::string(key);
-  err = SSL_CTX_use_PrivateKey_file(AS_SSL(m_context), skey.c_str(),
-                                    SSL_FILETYPE_PEM);
+  err =
+    SSL_CTX_use_PrivateKey_file(AS_SSL(m_ssl), skey.c_str(), SSL_FILETYPE_PEM);
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_PrivateKey_file failed");
   }
@@ -93,14 +98,17 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
   /*
    * Make sure the key and certificate file match.
    */
-  if (SSL_CTX_check_private_key(AS_SSL(m_context)) != 1) {
+  if (SSL_CTX_check_private_key(AS_SSL(m_ssl)) != 1) {
     throw std::runtime_error("SSL_CTX_check_private_key failed");
   }
+  /*
+   * Resize the contexts.
+   */
 }
 
 Client::~Client()
 {
-  SSL_CTX_free(AS_SSL(m_context));
+  SSL_CTX_free(AS_SSL(m_ssl));
 }
 
 bool
@@ -121,15 +129,12 @@ Client::abort(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_client.cookie(id);
-  if (cookie == nullptr) {
-    return Status::InvalidArgument;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
+  if (c.m_state != Context::State::Ready &&
+      c.m_state != Context::State::Shutdown) {
     return Status::NotConnected;
   }
   /*
@@ -144,44 +149,41 @@ Client::close(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_client.cookie(id);
-  if (cookie == nullptr) {
-    return Status::NotConnected;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
+  if (c.m_state != Context::State::Ready &&
+      c.m_state != Context::State::Shutdown) {
     return Status::NotConnected;
   }
-  if (c.state == Context::State::Shutdown) {
+  if (c.m_state == Context::State::Shutdown) {
     return Status::OperationInProgress;
   }
   /*
    * Mark the state as shut down.
    */
-  c.state = Context::State::Shutdown;
+  c.m_state = Context::State::Shutdown;
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
-  int ret = SSL_shutdown(c.ssl);
+  int ret = SSL_shutdown(c.m_ssl);
   /*
    * Go through the shutdown state machine.
    */
   switch (ret) {
     case 0: {
       m_log.debug("SSLCLI", "<", id, "> shutdown sent");
-      flush(id, cookie);
+      flush(id);
       return Status::OperationInProgress;
     }
     case 1: {
       m_log.debug("SSLCLI", "<", id, "> shutdown completed");
-      c.state = Context::State::Closed;
+      c.m_state = Context::State::Closed;
       return m_client.close(id);
     }
     default: {
-      auto err = SSL_get_error(c.ssl, ret);
+      auto err = SSL_get_error(c.m_ssl, ret);
       auto error = ssl::errorToString(err);
       m_log.error("SSLCLI", "<", id, "> SSL_shutdown error: ", error);
       return Status::ProtocolError;
@@ -205,28 +207,20 @@ Status
 Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
                 const stack::tcpv4::Port rport)
 {
-
-  void* cookie = m_client.cookie(id);
-  /*
-   * If the cookie is nullptr, we are not connected yet.
-   */
-  if (cookie == nullptr) {
-    Status res = m_client.connect(id, ripaddr, rport);
-    if (res != Status::Ok) {
-      return res;
-    }
-    cookie = m_client.cookie(id);
-  }
+  auto& c = m_contexts[id];
   /*
    * Perform the handshake.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
-  switch (c.state) {
+  switch (c.m_state) {
     /*
      * Context is closed.
      */
     case Context::State::Closed: {
-      return Status::NotConnected;
+      Status res = m_client.connect(id, ripaddr, rport);
+      if (res != Status::Ok) {
+        return res;
+      }
+      [[fallthrough]];
     }
     /*
      * Start the SSL handshake.
@@ -241,7 +235,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
        * Set the host name for SNI-enabled servers.
        */
       if (hostname.has_value()) {
-        SSL_set_tlsext_host_name(c.ssl, hostname.value().c_str());
+        SSL_set_tlsext_host_name(c.m_ssl, hostname.value().c_str());
       }
       /*
        * Apply the application layer protocol.
@@ -252,7 +246,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         }
         case ApplicationLayerProtocol::HTTP_1_1: {
           static uint8_t name[] = "\x08http/1.1";
-          if (SSL_set_alpn_protos(c.ssl, name, 9)) {
+          if (SSL_set_alpn_protos(c.m_ssl, name, 9)) {
             m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H1");
             return Status::ProtocolError;
           };
@@ -260,7 +254,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         }
         case ApplicationLayerProtocol::HTTP_2: {
           static uint8_t name[] = "\x02h2";
-          if (SSL_set_alpn_protos(c.ssl, name, 3)) {
+          if (SSL_set_alpn_protos(c.m_ssl, name, 3)) {
             m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H2");
             return Status::ProtocolError;
           };
@@ -270,14 +264,14 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       /*
        * Connect.
        */
-      if (SSL_connect(c.ssl) != -1) {
+      if (SSL_connect(c.m_ssl) != -1) {
         m_log.error("SSLCLI", "<", id, "> connect error");
         return Status::ProtocolError;
       }
       /*
        * Check the error.
        */
-      auto err = SSL_get_error(c.ssl, -1);
+      auto err = SSL_get_error(c.m_ssl, -1);
       if (err != SSL_ERROR_WANT_READ) {
         auto error = ssl::errorToString(err);
         m_log.error("SSLCLI", "<", id, "> connect error: ", error);
@@ -286,14 +280,14 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       /*
        * Flush any pending data.
        */
-      Status res = flush(id, cookie);
+      Status res = flush(id);
       if (res != Status::Ok) {
         return res;
       }
       /*
        * Update the state and return.
        */
-      c.state = Context::State::Connecting;
+      c.m_state = Context::State::Connecting;
       return Status::OperationInProgress;
     }
     /*
@@ -312,8 +306,8 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      * Context is connected.
      */
     case Context::State::Connected: {
-      c.state = Context::State::Ready;
-      c.cookie = m_delegate.onConnected(c.id, c.cookie, c.ts);
+      c.m_state = Context::State::Ready;
+      c.m_cookie = m_delegate.onConnected(c.m_id, c.m_cookie, c.m_ts);
       return Status::Ok;
     }
     /*
@@ -363,32 +357,28 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Grab the context.
    */
-  void* cookie = m_client.cookie(id);
-  if (cookie == nullptr) {
-    return Status::InvalidArgument;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.state != Context::State::Ready) {
+  if (c.m_state != Context::State::Ready) {
     return Status::NotConnected;
   }
   /*
    * Check if we can write anything.
    */
-  if (c.blocked) {
+  if (c.m_blocked) {
     return Status::OperationInProgress;
   }
   /*
    * Write the data.
    */
-  auto ret = SSL_write(c.ssl, data, (int)len);
+  auto ret = SSL_write(c.m_ssl, data, (int)len);
   /*
    * Handle the errors.
    */
   if (ret <= 0) {
-    auto err = SSL_get_error(c.ssl, ret);
+    auto err = SSL_get_error(c.m_ssl, ret);
     auto m = errorToString(err);
     m_log.error("SSL", "<", id, "> SSL_write error: ", m);
     return Status::ProtocolError;
@@ -407,7 +397,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Flush the data.
    */
-  return flush(id, cookie);
+  return flush(id);
 }
 
 system::Clock::Value
@@ -439,93 +429,108 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
     keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   }
   /*
-   * Create the context.
+   * Open the context.
    */
-  auto* ssl = AS_SSL(m_context);
-  auto* c = new Context(ssl, m_log, id, cookie, ts, keyfd);
-  c->state = Context::State::Open;
-  return c;
+  auto* ssl = AS_SSL(m_ssl);
+  m_contexts[id].open(ssl, id, cookie, ts, keyfd);
+  /*
+   * Done.
+   */
+  return nullptr;
 }
 
 Action
-Client::onAcked(ID const& id, void* const cookie, const Timestamp ts)
+Client::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
+                const Timestamp ts)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Return if the handshake was not done.
    */
-  if (c.state != Context::State::Ready) {
+  if (c.m_state != Context::State::Ready) {
     return Action::Continue;
   }
   /*
    * Notify the delegate.
    */
-  return m_delegate.onAcked(id, c.cookie, ts);
+  return m_delegate.onAcked(id, c.m_cookie, ts);
 }
 
 Action
-Client::onAcked(ID const& id, void* const cookie, const Timestamp ts,
-                const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
+Client::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
+                const Timestamp ts, const uint32_t alen, uint8_t* const sdata,
+                uint32_t& slen)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * If the BIO has data pending, flush it.
    */
-  return c.onAcked(id, m_delegate, ts, alen, sdata, slen);
+  return c.onAcked(m_log, id, m_delegate, ts, alen, sdata, slen);
 }
 
 Action
-Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len, const Timestamp ts)
+Client::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
+                  const uint8_t* const data, const uint32_t len,
+                  const Timestamp ts)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Decrypt the incoming data.
    */
-  return c.onNewData(id, m_delegate, data, len, ts);
+  return c.onNewData(m_log, id, m_delegate, data, len, ts);
 }
 
 Action
-Client::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len, const Timestamp ts, const uint32_t alen,
-                  uint8_t* const sdata, uint32_t& slen)
+Client::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
+                  const uint8_t* const data, const uint32_t len,
+                  const Timestamp ts, const uint32_t alen, uint8_t* const sdata,
+                  uint32_t& slen)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Write the data in the input BIO.
    */
-  return c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
+  return c.onNewData(m_log, id, m_delegate, data, len, ts, alen, sdata, slen);
 }
 
 void
-Client::onClosed(ID const& id, void* const cookie, const Timestamp ts)
-{
-  auto* c = reinterpret_cast<Context*>(cookie);
-  if (c != nullptr) {
-    m_delegate.onClosed(id, c->cookie, ts);
-    delete c;
-  }
-}
-
-Status
-Client::flush(const ID id, void* const cookie)
+Client::onClosed(ID const& id, [[maybe_unused]] void* const cookie,
+                 const Timestamp ts)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
+  auto* d = c.m_cookie;
+  /*
+   * Close the context.
+   */
+  c.close();
+  /*
+   * Notify the delegate.
+   */
+  m_delegate.onClosed(id, d, ts);
+}
+
+Status
+Client::flush(const ID id)
+{
+  /*
+   * Grab the context.
+   */
+  auto& c = m_contexts[id];
   /*
    * Check if there is any pending data.
    */
@@ -537,15 +542,15 @@ Client::flush(const ID id, void* const cookie)
    * Send the pending data.
    */
   uint32_t rem = 0;
-  Status res = m_client.send(id, len, ssl::bio::readAt(c.bout), rem);
+  Status res = m_client.send(id, len, ssl::bio::readAt(c.m_bout), rem);
   if (res != Status::Ok) {
-    c.blocked = res == Status::OperationInProgress;
+    c.m_blocked = res == Status::OperationInProgress;
     return res;
   }
   /*
    * Skip the processed data and return.
    */
-  ssl::bio::skip(c.bout, rem);
+  ssl::bio::skip(c.m_bout, rem);
   return Status::Ok;
 }
 

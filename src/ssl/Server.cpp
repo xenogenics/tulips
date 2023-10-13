@@ -1,4 +1,4 @@
-#include "Context.h"
+#include <tulips/ssl/Context.h>
 #include <tulips/ssl/Server.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -11,7 +11,8 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
   : m_delegate(delegate)
   , m_log(log)
   , m_server(std::make_unique<api::Server>(log, *this, device, nconn))
-  , m_context(nullptr)
+  , m_ssl(nullptr)
+  , m_contexts()
 {
   int err = 0;
   m_log.debug("SSLSRV", "protocol: ", ssl::toString(type));
@@ -26,16 +27,16 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
    * Create the SSL context.
    */
   long flags = 0;
-  m_context = SSL_CTX_new(ssl::getMethod(type, true, flags));
-  if (m_context == nullptr) {
+  m_ssl = SSL_CTX_new(ssl::getMethod(type, true, flags));
+  if (m_ssl == nullptr) {
     throw std::runtime_error("SSL_CTX_new failed");
   }
-  SSL_CTX_set_options(AS_SSL(m_context), flags);
+  SSL_CTX_set_options(AS_SSL(m_ssl), flags);
   /*
    * Load certificate and private key files, and check consistency.
    */
   auto scert = std::string(cert);
-  err = SSL_CTX_use_certificate_file(AS_SSL(m_context), scert.c_str(),
+  err = SSL_CTX_use_certificate_file(AS_SSL(m_ssl), scert.c_str(),
                                      SSL_FILETYPE_PEM);
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_certificate_file failed");
@@ -45,8 +46,8 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
    * Indicate the key file to be used.
    */
   auto skey = std::string(key);
-  err = SSL_CTX_use_PrivateKey_file(AS_SSL(m_context), skey.c_str(),
-                                    SSL_FILETYPE_PEM);
+  err =
+    SSL_CTX_use_PrivateKey_file(AS_SSL(m_ssl), skey.c_str(), SSL_FILETYPE_PEM);
   if (err != 1) {
     throw std::runtime_error("SSL_CTX_use_PrivateKey_file failed");
   }
@@ -54,22 +55,26 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
   /*
    * Make sure the key and certificate file match.
    */
-  if (SSL_CTX_check_private_key(AS_SSL(m_context)) != 1) {
+  if (SSL_CTX_check_private_key(AS_SSL(m_ssl)) != 1) {
     throw std::runtime_error("SSL_CTX_check_private_key failed");
   }
   /*
    * Use AES ciphers.
    */
   const char* const PREFERRED_CIPHERS = "HIGH:!aNULL:!PSK:!SRP:!MD5:!RC4:!3DES";
-  int res = SSL_CTX_set_cipher_list(AS_SSL(m_context), PREFERRED_CIPHERS);
+  int res = SSL_CTX_set_cipher_list(AS_SSL(m_ssl), PREFERRED_CIPHERS);
   if (res != 1) {
     throw std::runtime_error("SSL_CTX_set_cipher_list failed");
   }
+  /*
+   * Resize the contexts.
+   */
+  m_contexts.resize(nconn);
 }
 
 Server::~Server()
 {
-  SSL_CTX_free(AS_SSL(m_context));
+  SSL_CTX_free(AS_SSL(m_ssl));
 }
 
 Status
@@ -78,35 +83,32 @@ Server::close(const ID id)
   /*
    * Grab the context.
    */
-  void* cookie = m_server->cookie(id);
-  if (cookie == nullptr) {
-    return Status::InvalidArgument;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.state != Context::State::Ready && c.state != Context::State::Shutdown) {
+  if (c.m_state != Context::State::Ready &&
+      c.m_state != Context::State::Shutdown) {
     return Status::NotConnected;
   }
-  if (c.state == Context::State::Shutdown) {
+  if (c.m_state == Context::State::Shutdown) {
     return Status::OperationInProgress;
   }
   /*
    * Mark the state as shut down.
    */
-  c.state = Context::State::Shutdown;
+  c.m_state = Context::State::Shutdown;
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
-  int ret = SSL_shutdown(c.ssl);
+  int ret = SSL_shutdown(c.m_ssl);
   /*
    * Go through the shutdown state machine.
    */
   switch (ret) {
     case 0: {
       m_log.debug("SSLSRV", "SSL shutdown sent");
-      flush(id, cookie);
+      flush(id);
       return Status::OperationInProgress;
     }
     case 1: {
@@ -114,7 +116,7 @@ Server::close(const ID id)
       return m_server->close(id);
     }
     default: {
-      auto err = SSL_get_error(c.ssl, ret);
+      auto err = SSL_get_error(c.m_ssl, ret);
       auto error = ssl::errorToString(err);
       m_log.error("SSLSRV", "SSL_shutdown error: ", error);
       return Status::ProtocolError;
@@ -135,105 +137,106 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Grab the context.
    */
-  void* cookie = m_server->cookie(id);
-  if (cookie == nullptr) {
-    return Status::InvalidArgument;
-  }
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  Context& c = m_contexts[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.state != Context::State::Ready) {
+  if (c.m_state != Context::State::Ready) {
     return Status::NotConnected;
   }
   /*
    * Check if we can write anything.
    */
-  if (c.blocked) {
+  if (c.m_blocked) {
     return Status::OperationInProgress;
   }
   /*
    * Write the data. With BIO mem, the write will always succeed.
    */
   off = 0;
-  off += SSL_write(c.ssl, data, (int)len);
+  off += SSL_write(c.m_ssl, data, (int)len);
   /*
    * Flush the data.
    */
-  return flush(id, cookie);
+  return flush(id);
 }
 
 void*
 Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
-  auto* ssl = AS_SSL(m_context);
-  auto* c = new Context(ssl, m_log, id, cookie, ts, -1);
-  c->state = Context::State::Accepting;
-  return c;
+  auto* ssl = AS_SSL(m_ssl);
+  m_contexts[id].open(ssl, id, cookie, ts, -1);
+  m_contexts[id].m_state = Context::State::Accepting;
+  return nullptr;
 }
 
 Action
-Server::onAcked(ID const& id, void* const cookie, const Timestamp ts)
+Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
+                const Timestamp ts)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Return if the handshake was not done.
    */
-  if (c.state != Context::State::Ready) {
+  if (c.m_state != Context::State::Ready) {
     return Action::Continue;
   }
   /*
    * Notify the delegate.
    */
-  return m_delegate.onAcked(id, c.cookie, ts);
+  return m_delegate.onAcked(id, c.m_cookie, ts);
 }
 
 Action
-Server::onAcked(ID const& id, void* const cookie, const Timestamp ts,
-                const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
+Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
+                const Timestamp ts, const uint32_t alen, uint8_t* const sdata,
+                uint32_t& slen)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * If the BIO has data pending, flush it.
    */
-  return c.onAcked(id, m_delegate, ts, alen, sdata, slen);
+  return c.onAcked(m_log, id, m_delegate, ts, alen, sdata, slen);
 }
 
 Action
-Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len, const Timestamp ts)
+Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
+                  const uint8_t* const data, const uint32_t len,
+                  const Timestamp ts)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
   /*
    * Process the incoming data.
    */
-  return c.onNewData(id, m_delegate, data, len, ts);
+  return c.onNewData(m_log, id, m_delegate, data, len, ts);
 }
 
 Action
-Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                  const uint32_t len, const Timestamp ts, const uint32_t alen,
-                  uint8_t* const sdata, uint32_t& slen)
+Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
+                  const uint8_t* const data, const uint32_t len,
+                  const Timestamp ts, const uint32_t alen, uint8_t* const sdata,
+                  uint32_t& slen)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
-  auto pre = c.state;
+  auto& c = m_contexts[id];
+  auto pre = c.m_state;
   /*
    * Write the data in the input BIO.
    */
-  auto res = c.onNewData(id, m_delegate, data, len, ts, alen, sdata, slen);
-  auto post = c.state;
+  auto res =
+    c.onNewData(m_log, id, m_delegate, data, len, ts, alen, sdata, slen);
+  auto post = c.m_state;
   /*
    * Check for the ready state transition.
    *
@@ -241,7 +244,7 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
    * at the same time the SSL context needs to flush back data.
    */
   if (pre == Context::State::Accepting && post == Context::State::Ready) {
-    c.cookie = m_delegate.onConnected(c.id, c.cookie, ts);
+    c.m_cookie = m_delegate.onConnected(c.m_id, c.m_cookie, ts);
   }
   /*
    * Done.
@@ -250,34 +253,51 @@ Server::onNewData(ID const& id, void* const cookie, const uint8_t* const data,
 }
 
 void
-Server::onClosed(ID const& id, void* const cookie, const Timestamp ts)
-{
-  auto* c = reinterpret_cast<Context*>(cookie);
-  m_delegate.onClosed(id, c->cookie, ts);
-  delete c;
-}
-
-Status
-Server::flush(const ID id, void* const cookie)
+Server::onClosed(ID const& id, [[maybe_unused]] void* const cookie,
+                 const Timestamp ts)
 {
   /*
    * Grab the context.
    */
-  Context& c = *reinterpret_cast<Context*>(cookie);
+  auto& c = m_contexts[id];
+  auto* d = c.m_cookie;
   /*
-   * Send the pending data.
+   * Close the context.
+   */
+  c.close();
+  /*
+   * Notify the delegate.
+   */
+  m_delegate.onClosed(id, d, ts);
+}
+
+Status
+Server::flush(const ID id)
+{
+  /*
+   * Grab the context.
+   */
+  auto& c = m_contexts[id];
+  /*
+   * Check if there is any pending data.
    */
   size_t len = c.pendingRead();
   if (len == 0) {
     return Status::Ok;
   }
+  /*
+   * Send the pending data.
+   */
   uint32_t rem = 0;
-  Status res = m_server->send(id, len, ssl::bio::readAt(c.bout), rem);
+  Status res = m_server->send(id, len, ssl::bio::readAt(c.m_bout), rem);
   if (res != Status::Ok) {
-    c.blocked = res == Status::OperationInProgress;
+    c.m_blocked = res == Status::OperationInProgress;
     return res;
   }
-  ssl::bio::skip(c.bout, rem);
+  /*
+   * Skip the processed data and return.
+   */
+  ssl::bio::skip(c.m_bout, rem);
   return Status::Ok;
 }
 
