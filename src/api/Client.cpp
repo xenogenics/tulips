@@ -123,7 +123,7 @@ Client::setHostName(const ID id, std::string_view hostname)
    * Check if the connection is the right state.
    */
   if (c.state() != Connection::State::Opened) {
-    return Status::InvalidConnection;
+    return Status::ResourceBusy;
   }
   /*
    * Set the hostname for the connection.
@@ -172,6 +172,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
    */
   switch (c.state()) {
     case Connection::State::Closed: {
+      m_log.error("APICLI", "<", id, "> connect() failed, connection closed");
       return Status::InvalidConnection;
     }
     case Connection::State::Opened: {
@@ -181,7 +182,8 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
        * Discover the remote address is we don't have a translation.
        */
       if (!m_arp.has(ripaddr)) {
-        m_log.debug("APICLI", "closed -> resolving(", ripaddr.toString(), ")");
+        m_log.debug("APICLI", "<", id, "> closed -> resolving(",
+                    ripaddr.toString(), ")");
         ret = m_arp.discover(ripaddr);
         if (ret == Status::Ok) {
           c.resolving();
@@ -199,7 +201,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
         addr = m_ip4to.defaultRouterAddress();
       }
       if (!arp::lookup(m_log, m_dev.name(), addr, rhwaddr)) {
-        m_log.error("APICLI", "hardware translation missing for ",
+        m_log.error("APICLI", "<", id, "> hardware translation missing for ",
                     addr.toString());
         ret = Status::HardwareTranslationMissing;
         break;
@@ -208,7 +210,8 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       /*
        * Connect the client.
        */
-      m_log.debug("APICLI", "closed -> connecting(", ripaddr.toString(), ")");
+      m_log.debug("APICLI", "<", id, "> closed -> connecting(",
+                  ripaddr.toString(), ")");
       ret = m_tcp.connect(id, rhwaddr, ripaddr, rport);
       if (ret == Status::Ok) {
         c.connecting();
@@ -221,7 +224,8 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       if (m_arp.has(ripaddr)) {
         ethernet::Address rhwaddr;
         m_arp.query(ripaddr, rhwaddr);
-        m_log.debug("APICLI", "closed -> connecting(", ripaddr.toString(), ")");
+        m_log.debug("APICLI", "<", id, "> closed -> connecting(",
+                    ripaddr.toString(), ")");
         ret = m_tcp.connect(id, rhwaddr, ripaddr, rport);
         if (ret == Status::Ok) {
           c.connecting();
@@ -238,7 +242,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
       break;
     }
     case Connection::State::Connected: {
-      m_log.debug("APICLI", "connected");
+      m_log.debug("APICLI", "<", id, "> connected");
       ret = Status::Ok;
       break;
     }
@@ -253,7 +257,7 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
 Status
 Client::abort(const ID id)
 {
-  m_log.debug("APICLI", "aborting connection ", id);
+  m_log.debug("APICLI", "<", id, "> aborting");
   /*
    * Check if connection ID is valid.
    */
@@ -279,7 +283,7 @@ Client::abort(const ID id)
 Status
 Client::close(const ID id)
 {
-  m_log.debug("APICLI", "closing connection ", id);
+  m_log.debug("APICLI", "<", id, "> closing");
   /*
    * Check if connection ID is valid.
    */
@@ -322,8 +326,8 @@ Client::isClosed(const ID id) const
 }
 
 Status
-Client::get(const ID id, stack::ipv4::Address& ripaddr,
-            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+Client::get(const ID id, stack::ipv4::Address& laddr, stack::tcpv4::Port& lport,
+            stack::ipv4::Address& raddr, stack::tcpv4::Port& rport) const
 {
   /*
    * Check if connection ID is valid.
@@ -334,7 +338,7 @@ Client::get(const ID id, stack::ipv4::Address& ripaddr,
   /*
    * Get the info.
    */
-  return m_tcp.get(id, ripaddr, lport, rport);
+  return m_tcp.get(id, laddr, lport, raddr, rport);
 }
 
 Status
@@ -423,7 +427,7 @@ void
 Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
-  m_log.debug("APICLI", "connection ", c.id(), " connected");
+  m_log.debug("APICLI", "<", c.id(), "> connected");
   d.connected();
   c.setCookie(m_delegate.onConnected(c.id(), nullptr, ts));
   c.setOptions(d.options());
@@ -433,30 +437,60 @@ void
 Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
-  m_log.debug("APICLI", "connection aborted, closing");
+  /*
+   * Close the connection.
+   */
+  m_log.debug("APICLI", "<", c.id(), "> aborted, closing");
   d.close();
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
+  /*
+   * Grab and erase the cookie.
+   */
+  auto cookie = c.cookie();
   c.setCookie(nullptr);
+  /*
+   * Call the delegate.
+   */
+  m_delegate.onClosed(c.id(), cookie, ts);
 }
 
 void
 Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
-  m_log.debug("APICLI", "connection timed out, closing");
+  /*
+   * Close the connection.
+   */
+  m_log.debug("APICLI", "<", c.id(), "> connection timed out, closing");
   d.close();
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
+  /*
+   * Grab and erase the cookie.
+   */
+  auto cookie = c.cookie();
   c.setCookie(nullptr);
+  /*
+   * Call the delegate.
+   */
+  m_delegate.onClosed(c.id(), cookie, ts);
 }
 
 void
 Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
 {
   Connection& d = m_cns[c.id()];
-  m_log.debug("APICLI", "connection closed");
+  /*
+   * Close the connection.
+   */
+  m_log.debug("APICLI", "<", c.id(), "> closed");
   d.close();
-  m_delegate.onClosed(c.id(), c.cookie(), ts);
+  /*
+   * Grab and erase the cookie.
+   */
+  auto cookie = c.cookie();
   c.setCookie(nullptr);
+  /*
+   * Call the delegate.
+   */
+  m_delegate.onClosed(c.id(), cookie, ts);
 }
 
 void

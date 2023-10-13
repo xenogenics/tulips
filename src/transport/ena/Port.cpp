@@ -1,7 +1,8 @@
-#include "rte_errno.h"
 #include <tulips/stack/Utils.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/Port.h>
+#include <tulips/transport/ena/RedirectionTable.h>
+#include <cerrno>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -10,18 +11,7 @@
 #include <stdexcept>
 #include <dpdk/rte_ethdev.h>
 #include <net/ethernet.h>
-
-namespace {
-
-static inline uint64_t
-log2(const uint64_t x)
-{
-  uint64_t y;
-  asm("\tbsr %1, %0\n" : "=r"(y) : "r"(x));
-  return y;
-}
-
-}
+#include <rte_errno.h>
 
 namespace tulips::transport::ena {
 
@@ -34,12 +24,10 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   , m_address()
   , m_mtu()
   , m_ethconf()
-  , m_hlen(0)
-  , m_hkey(nullptr)
+  , m_reta()
   , m_rxpools()
   , m_txpools()
   , m_free()
-  , m_retasz(0)
   , m_admin()
   , m_raw()
 {
@@ -112,10 +100,15 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   auto nrxq = RTE_MIN(width, dev_info.max_rx_queues);
   auto nqus = RTE_MIN(nrxq, ntxq);
   /*
-   * Get the descriptor count.
+   * Get the TX descriptor count.
    */
   m_ntxds = RTE_MAX(txw, dev_info.tx_desc_lim.nb_min);
+  m_ntxds = RTE_MIN(txw, dev_info.tx_desc_lim.nb_max);
+  /*
+   * Get the RX descriptor count.
+   */
   m_nrxds = RTE_MAX(rxw, dev_info.rx_desc_lim.nb_min);
+  m_nrxds = RTE_MIN(rxw, dev_info.rx_desc_lim.nb_max);
   /*
    * Print some device information.
    */
@@ -123,9 +116,10 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   log.debug("ENA", "name: ", rte_dev_name(dev_info.device));
   log.debug("ENA", "hardware address: ", m_address.toString());
   log.debug("ENA", "MTU: ", m_mtu);
-  log.debug("ENA", "queues: ", nqus);
-  log.debug("ENA", "TX descriptors: ", m_ntxds);
-  log.debug("ENA", "RX descriptors: ", m_nrxds);
+  log.debug("ENA", "TX queues: ", nqus, "/", dev_info.max_tx_queues);
+  log.debug("ENA", "RX queues: ", nqus, "/", dev_info.max_rx_queues);
+  log.debug("ENA", "TX buffers: ", m_ntxds, "/", dev_info.tx_desc_lim.nb_max);
+  log.debug("ENA", "RX buffers: ", m_nrxds, "/", dev_info.rx_desc_lim.nb_max);
   log.debug("ENA", "buffer length: ", buflen);
   /*
    * Configure the device.
@@ -147,6 +141,26 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
    */
   setupReceiveSideScaling(dev_info);
   /*
+   * Reset the statistics of the port.
+   */
+  ret = rte_eth_stats_reset(m_portid);
+  if (ret != 0) {
+    switch (ret) {
+      case -ENODEV: {
+        m_log.debug("ENA", "reset stats failed: invalid port (", m_portid, ")");
+        break;
+      }
+      case -ENOTSUP: {
+        m_log.debug("ENA", "reset stats failed: not supported");
+        break;
+      }
+      default: {
+        m_log.debug("ENA", "reset stats failed: ", ret);
+        break;
+      }
+    }
+  }
+  /*
    * Allocate the admin device.
    */
   m_admin = next();
@@ -154,6 +168,10 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
 
 Port::~Port()
 {
+  /*
+   * Deallocate the admin device.
+   */
+  m_admin.reset();
   /*
    * Stop the device.
    */
@@ -204,9 +222,8 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(m_log, m_portid, qid, m_ntxds, m_nrxds, m_retasz,
-                              m_hlen, m_hkey, m_address, m_mtu, txpool, ip, dr,
-                              nm);
+  auto* dev = new ena::Device(m_log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
+                              m_address, m_mtu, txpool, ip, dr, nm);
   /*
    * Add the device queue to the raw processor.
    */
@@ -339,36 +356,19 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
   /*
    * Get the RSS configuration.
    */
-  m_hlen = dev_info.hash_key_size;
-  m_hkey = new uint8_t[m_hlen];
-  struct rte_eth_rss_conf rss_conf = { .rss_key = m_hkey };
+  auto hlen = dev_info.hash_key_size;
+  auto hkey = new uint8_t[hlen];
+  struct rte_eth_rss_conf rss_conf = { .rss_key = hkey };
   auto ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
   if (ret != 0) {
+    delete[] hkey;
     throw std::runtime_error("Failed to get the RSS hashing configuration");
   }
   /*
-   * Print the RSS configuration.
+   * Allocate the redirection table.
    */
-  m_retasz = dev_info.reta_size;
-  size_t retasz_log2 = log2(m_retasz);
-  m_log.debug("ENA", "hash key length: ", size_t(rss_conf.rss_key_len));
-#if 0
-  m_log.debug("ENA", "hash key: ", oss.str());
-#endif
-  m_log.debug("ENA", "reta size log2: ", retasz_log2);
-  /*
-   * Reset the RETA to point all entries to the 0th queue.
-   */
-  size_t count = 1 << (retasz_log2 < 6 ? retasz_log2 : retasz_log2 - 6);
-  struct rte_eth_rss_reta_entry64 reta[count];
-  for (size_t i = 0; i < count; i += 1) {
-    reta[i].mask = uint64_t(-1);
-    memset(reta[i].reta, 0, sizeof(reta[i].reta));
-  }
-  ret = rte_eth_dev_rss_reta_update(m_portid, reta, dev_info.reta_size);
-  if (ret != 0) {
-    throw std::runtime_error("Failed to reset the RETA to the 0th queue");
-  }
+  auto size = dev_info.reta_size;
+  m_reta = RedirectionTable::allocate(m_portid, size, hlen, hkey);
 }
 
 }

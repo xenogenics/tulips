@@ -107,8 +107,8 @@ public:
   Status send(const Connection::ID id, const uint32_t len,
               const uint8_t* const data, uint32_t& off);
 
-  Status get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
-             Port& rport) const;
+  Status get(const Connection::ID id, ipv4::Address& laddr, Port& lport,
+             ipv4::Address& raddr, Port& rport) const;
 
   void* cookie(const Connection::ID id) const;
 

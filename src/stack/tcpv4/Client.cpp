@@ -104,20 +104,24 @@ Processor::abort(const Connection::ID id)
   /*
    * Check the connection's state.
    */
-  if (c.m_state == Connection::OPEN) {
-    c.m_state = Connection::CLOSED;
-    return Status::Ok;
+  if (c.m_state == Connection::CLOSED) {
+    return Status::InvalidConnection;
   }
   /*
-   * Notify the handler and return.
-   */
-  m_handler.onAborted(c, system::Clock::read());
-  /*
-   * Send the RST message.
+   * Send the RST message. It MUST be done BEFORE calling the handler as the
+   * connection's state is updated in sendAbort();
    */
   uint8_t* outdata = c.m_sdat;
   OUTTCP->flags = 0;
-  return sendAbort(c);
+  auto ret = sendAbort(c);
+  /*
+   * Notify the handler.
+   */
+  m_handler.onAborted(c, system::Clock::read());
+  /*
+   * Done.
+   */
+  return ret;
 }
 
 Status
@@ -147,7 +151,7 @@ Processor::close(const Connection::ID id)
    * If we are already busy, return OK.
    */
   if (c.hasOutstandingSegments()) {
-    m_log.debug("TCP4", "connection close");
+    m_log.debug("TCP4", "connection ", id, " close");
     c.m_state = Connection::CLOSE;
     return Status::Ok;
   }
@@ -228,10 +232,23 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
     return ret;
   }
   /*
-   * Add the filter to the device.
+   * Grab a local port.
    */
   Port lport = findLocalPort();
-  ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
+  /*
+   * Add the filter to the device. Retry a few times as some devices rely on
+   * RSS hash tables that are prone to collisions.
+   */
+  for (auto i = 0; i < 1024; i += 1) {
+    ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
+    if (ret == Status::Ok) {
+      break;
+    }
+    lport = findLocalPort();
+  }
+  /*
+   * Make sure we are now listening to the port.
+   */
   if (ret != Status::Ok) {
     m_log.error("TCP4", "registering client-side filter failed");
     m_ipv4to.release(outdata);
@@ -313,7 +330,13 @@ Processor::send(const Connection::ID id, const uint32_t len,
   if (id >= m_nconn) {
     return Status::InvalidConnection;
   }
+  /*
+   * Get the connection.
+   */
   Connection& c = m_conns[id];
+  /*
+   * Check the connection state.
+   */
   if (c.m_state != Connection::ESTABLISHED) {
     return Status::NotConnected;
   }
@@ -367,7 +390,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
    * Send immediately if Nagle's algorithm has been disabled.
    */
   if (HAS_NODELAY(c)) {
-    m_log.trace("TCP", "sending ", slen, "B from client");
+    m_log.trace("TCP", "sending ", slen, "B from client ", id);
     return sendNoDelay(c, off == len ? Flag::PSH : 0);
   }
   /*
@@ -377,8 +400,8 @@ Processor::send(const Connection::ID id, const uint32_t len,
 }
 
 Status
-Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
-               Port& rport) const
+Processor::get(const Connection::ID id, ipv4::Address& laddr, Port& lport,
+               ipv4::Address& raddr, Port& rport) const
 {
   /*
    * Check if the connection is valid.
@@ -399,8 +422,9 @@ Processor::get(const Connection::ID id, ipv4::Address& ripaddr, Port& lport,
   /*
    * Get the connection info.
    */
-  ripaddr = c.m_ripaddr;
+  laddr = m_ipv4to.hostAddress();
   lport = ntohs(c.m_lport);
+  raddr = c.m_ripaddr;
   rport = ntohs(c.m_rport);
   return Status::Ok;
 }

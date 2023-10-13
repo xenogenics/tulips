@@ -50,7 +50,7 @@ Processor::sendNoDelay(Connection& e, const uint8_t flag)
 Status
 Processor::sendAbort(Connection& e)
 {
-  m_log.debug("TCP4", "connection RST");
+  m_log.debug("TCP4", "<", e.id(), "> send RST");
   /*
    * Update the TCP headers.
    */
@@ -130,14 +130,14 @@ Processor::sendClose(Connection& e)
    * this is the responsibility of the caller.
    */
   if (!e.hasAvailableSegments()) {
-    m_log.error("TCP4", "close() called without available segments");
+    m_log.error("TCP4", "<", e.id(), "> close() without available segments");
     return Status::NoMoreResources;
   }
   /*
    * Send a FIN/ACK message. TCP does not require to send an ACK with FIN,
    * but Linux seems pretty bent on wanting one. So we play nice.
    */
-  m_log.debug("TCP4", "connection FIN wait #1");
+  m_log.debug("TCP4", "<", e.id(), "> FIN wait #1");
   e.m_state = Connection::FIN_WAIT_1;
   Segment& seg = e.nextAvailableSegment();
   seg.set(1, e.m_snd_nxt, e.m_sdat);
@@ -239,8 +239,8 @@ Processor::send(Connection& e)
   /*
    * Print the flow information.
    */
-  m_log.trace("FLOW", "<x ", getFlags(*OUTTCP), " len:0 seq:", e.m_snd_nxt,
-              " ack:", e.m_rcv_nxt);
+  m_log.trace("FLOW", "<", e.id(), "> <x ", getFlags(*OUTTCP),
+              " len:0 seq:", e.m_snd_nxt, " ack:", e.m_rcv_nxt);
   /*
    * Update IP and Ethernet attributes
    */
@@ -265,7 +265,7 @@ Processor::rexmit(Connection& e)
      * In the SYN_RCVD state, we should retransmit our SYNACK.
      */
     case Connection::SYN_RCVD: {
-      m_log.debug("TCP4", "retransmit SYNACK");
+      m_log.debug("TCP4", "<", e.id(), "> retransmit SYNACK");
       const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
       return send(e, len, e.segment());
     }
@@ -273,7 +273,7 @@ Processor::rexmit(Connection& e)
      * In the SYN_SENT state, we retransmit out SYN.
      */
     case Connection::SYN_SENT: {
-      m_log.debug("TCP4", "retransmit SYN");
+      m_log.debug("TCP4", "<", e.id(), "> retransmit SYN");
       const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
       return send(e, len, e.segment());
     }
@@ -281,7 +281,7 @@ Processor::rexmit(Connection& e)
      * In the ESTABLISHED state, we resend the oldest segment.
      */
     case Connection::ESTABLISHED: {
-      m_log.debug("TCP4", "retransmit PSH");
+      m_log.debug("TCP4", "<", e.id(), "> retransmit PSH");
       const auto len = e.segment().m_len + HEADER_LEN;
       return send(e, len, e.segment());
     }
@@ -291,7 +291,7 @@ Processor::rexmit(Connection& e)
     case Connection::FIN_WAIT_1:
     case Connection::CLOSING:
     case Connection::LAST_ACK: {
-      m_log.debug("TCP4", "retransmit FINACK");
+      m_log.debug("TCP4", "<", e.id(), "> retransmit FINACK");
       return send(e, HEADER_LEN, e.segment());
     }
     /*
@@ -349,8 +349,9 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   /*
    * Print the flow information.
    */
-  m_log.trace("FLOW", (rexmit ? "<+ " : "<- "), getFlags(*OUTTCP), " len:", len,
-              " seq:", s.m_seq, " ack:", e.m_rcv_nxt, " seg:", e.id(s),
+  m_log.trace("FLOW", "<", e.id(), (rexmit ? "> <+ " : "> <- "),
+              getFlags(*OUTTCP), " len:", len, " seq:", s.m_seq,
+              " ack:", e.m_rcv_nxt, " seg:", e.id(s),
               " lvl:", e.freeSegments());
   /*
    * Update the connection and segment state.

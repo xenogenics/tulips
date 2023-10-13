@@ -80,11 +80,12 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data,
     return Status::ProtocolError;
   }
   /*
-   * Check if the packet is destined for our IP address.
+   * Check if the packet is for us.
    */
   if (INIP->destipaddr != m_hostAddress) {
     ++m_stats.drop;
-    m_log.error("IP4", "unknown destination address");
+    m_log.error("IP4", INIP->destipaddr.toString(), " <> ",
+                m_hostAddress.toString(), " (proto: ", int(INIP->proto), ")");
     return Status::ProtocolError;
   }
   /*

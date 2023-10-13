@@ -149,6 +149,9 @@ Context::abortOrClose(const Action r, const uint32_t alen, uint8_t* const sdata,
       state = State::Shutdown;
       return flush(alen, sdata, slen);
     }
+    /*
+     * Abort if the shutdown failed.
+     */
     log.error("SSL", "SSL_shutdown error, aborting connection");
     return Action::Abort;
   }
@@ -179,13 +182,6 @@ Context::flush(uint32_t alen, uint8_t* const sdata, uint32_t& slen)
   BIO_read(bout, sdata, (int)rlen);
   slen = rlen;
   return Action::Continue;
-}
-
-void
-Context::saveKeys(std::string_view prefix)
-{
-  auto spath = std::string(prefix) + "_" + std::to_string(id) + ".keys";
-  keyfd = ::open(spath.c_str(), O_CREAT | O_RDWR);
 }
 
 }

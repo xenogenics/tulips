@@ -109,19 +109,19 @@ struct Context
      */
     int ret = BIO_write(bin, data, (int)len);
     if (ret != (int)len) {
-      log.error("SSL", "Failed to write ", len, "B in BIO");
+      log.error("SSL", "<", id, "> failed to write ", len, "B in BIO");
       return Action::Abort;
     }
     /*
      * Show the buffer level.
      */
     auto acc = pendingWrite();
-    log.trace("SSL", "new data: ", len, "B, (", acc, "/", BUFLEN, ")");
+    log.trace("SSL", "<", id, "> ", len, "B, (", acc, "/", BUFLEN, ")");
     /*
      * Only accept Ready state.
      */
     if (state != State::Ready && state != State::Shutdown) {
-      log.error("SSL", "Received data in unexpected state");
+      log.error("SSL", "<", id, "> received data in unexpected state");
       return Action::Abort;
     }
     /*
@@ -131,7 +131,7 @@ struct Context
       auto bl0 = pendingWrite();
       ret = SSL_read(ssl, rdbf, BUFLEN);
       auto bl1 = pendingWrite();
-      log.trace("SSL", "SSL_read: ", ret, " (", bl0, " -> ", bl1, ")");
+      log.trace("SSL", "<", id, "> read: ", ret, ", ", bl0, " -> ", bl1);
       /*
        * Handle error conditions.
        */
@@ -147,7 +147,8 @@ struct Context
            * Break if the shutdown completed.
            */
           if (ret == 1) {
-            log.debug("SSL", "SSL_shutdown completed");
+            log.debug("SSL", "<", id, "> shutdown completed");
+            state = State::Closed;
             return Action::Close;
           }
           /*
@@ -160,7 +161,7 @@ struct Context
           /*
            * Abort otherwise.
            */
-          log.error("SSL", "SSL_shutdown failed (", ret, ", ", err, ")");
+          log.error("SSL", "<", id, "> shutdown failed: ", ret, ", ", err);
           return Action::Abort;
         }
         /*
@@ -175,8 +176,8 @@ struct Context
         else {
           auto m = errorToString(err);
           auto b = pendingWrite();
-          log.error("SSL", "SSL_read error: ", m, " (", ret, ", ", err, ", ",
-                    sht, ") ", b, "B");
+          log.error("SSL", "<", id, "> read error: ", m, " (", ret, ", ", err,
+                    ", ", sht, ") ", b, "B");
           return Action::Abort;
         }
       }
@@ -208,14 +209,14 @@ struct Context
      */
     int ret = BIO_write(bin, data, (int)len);
     if (ret != (int)len) {
-      log.error("SSL", "Failed to write ", len, "B in BIO");
+      log.error("SSL", "<", id, "> failed to write ", len, "B in BIO");
       return Action::Abort;
     }
     /*
      * Show the buffer level.
      */
     auto avl = pendingWrite();
-    log.trace("SSL", "new data: ", len, "B, (", avl, "/", BUFLEN, ")");
+    log.trace("SSL", "<", id, "> ", len, "B, (", avl, "/", BUFLEN, ")");
     /*
      * Check the connection's state.
      */
@@ -224,14 +225,14 @@ struct Context
        * Closed is not a valid state.
        */
       case State::Open: {
-        log.error("SSL", "Received data on OPEN");
+        log.error("SSL", "<", id, "> received data on OPEN");
         return Action::Abort;
       }
       /*
        * Closed is not a valid state.
        */
       case State::Closed: {
-        log.error("SSL", "Received data on CLOSED");
+        log.error("SSL", "<", id, "> received data on CLOSED");
         return Action::Abort;
       }
       /*
@@ -241,11 +242,11 @@ struct Context
         ret = SSL_connect(ssl);
         switch (ret) {
           case 0: {
-            log.error("SSL", "SSL_connect error, controlled shutdown");
+            log.error("SSL", "<", id, "> connect error, controlled shutdown");
             return Action::Abort;
           }
           case 1: {
-            log.debug("SSL", "SSL_connect successful");
+            log.debug("SSL", "<", id, "> connect successful");
             state = State::Connected;
             return flush(alen, sdata, slen);
           }
@@ -254,7 +255,7 @@ struct Context
             if (err == SSL_ERROR_WANT_READ) {
               return flush(alen, sdata, slen);
             }
-            log.error("SSL", "SSL_connect error: ", errorToString(err));
+            log.error("SSL", "<", id, "> connect error: ", errorToString(err));
             return Action::Abort;
           }
         }
@@ -270,11 +271,11 @@ struct Context
         switch (ret) {
           case 0: {
             auto err = SSL_get_error(ssl, ret);
-            log.error("SSL", "SSL_accept error: ", errorToString(err));
+            log.error("SSL", "<", id, "> accept error: ", errorToString(err));
             return Action::Abort;
           }
           case 1: {
-            log.debug("SSL", "SSL_accept successful");
+            log.debug("SSL", "<", id, "> accept successful");
             state = State::Ready;
             return flush(alen, sdata, slen);
           }
@@ -283,7 +284,7 @@ struct Context
             if (err == SSL_ERROR_WANT_READ) {
               return flush(alen, sdata, slen);
             }
-            log.error("SSL", "SSL_accept error: ", errorToString(err));
+            log.error("SSL", "<", id, "> accept error: ", errorToString(err));
             return Action::Abort;
           }
         }
@@ -303,7 +304,7 @@ struct Context
           auto bl0 = pendingWrite();
           ret = SSL_read(ssl, rdbf, BUFLEN);
           auto bl1 = pendingWrite();
-          log.trace("SSL", "SSL_read: ", ret, " (", bl0, " -> ", bl1, ")");
+          log.trace("SSL", "<", id, "> read: ", ret, ", ", bl0, " -> ", bl1);
           /*
            * Handle error conditions.
            */
@@ -319,7 +320,8 @@ struct Context
                * Break if the shutdown completed.
                */
               if (ret == 1) {
-                log.debug("SSL", "SSL_shutdown completed");
+                log.debug("SSL", "<", id, "> shutdown completed");
+                state = State::Closed;
                 return Action::Close;
               }
               /*
@@ -332,7 +334,7 @@ struct Context
               /*
                * Abort otherwise.
                */
-              log.error("SSL", "SSL_shutdown failed (", ret, ", ", err, ")");
+              log.error("SSL", "<", id, "> shutdown failed: ", ret, ", ", err);
               return Action::Abort;
             }
             /*
@@ -347,8 +349,8 @@ struct Context
             else {
               auto m = errorToString(err);
               auto b = pendingWrite();
-              log.error("SSL", "SSL_read error: ", m, " (", ret, ", ", err,
-                        ", ", sht, ") ", b, "B");
+              log.error("SSL", "<", id, "> read error: ", m, " (", ret, ", ",
+                        err, ", ", sht, ") ", b, "B");
               return Action::Abort;
             }
           }
@@ -384,14 +386,14 @@ struct Context
           if (wrs <= 0) {
             auto err = SSL_get_error(ssl, wrs);
             auto m = errorToString(err);
-            log.error("SSL", "SSL_write error: ", m);
+            log.error("SSL", "<", id, "> write error: ", m);
             return Action::Abort;
           }
           /*
            * Handle partial data.
            */
           if (wrs != (int)rlen) {
-            log.error("SSL", "Partial SSL_write: ", wrs, "/", len);
+            log.error("SSL", "<", id, "> partial write: ", wrs, "/", len);
             return Action::Abort;
           }
           /*
@@ -430,11 +432,6 @@ struct Context
    * Flush any data pending in the write channel.
    */
   Action flush(const uint32_t alen, uint8_t* const sdata, uint32_t& slen);
-
-  /**
-   * Save the keys into a file.
-   */
-  void saveKeys(std::string_view prefix);
 
   system::Logger& log;
   api::interface::Client::ID id;

@@ -6,6 +6,7 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/AbstractionLayer.h>
+#include <tulips/transport/ena/RedirectionTable.h>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
@@ -57,8 +58,7 @@ private:
   using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
-         const uint16_t ntxbs, const uint16_t nrxbs, const size_t htsz,
-         const size_t hlen, const uint8_t* const hkey,
+         const uint16_t ntxbs, const uint16_t nrxbs, RedirectionTable& reta,
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
          struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
          stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
@@ -71,11 +71,8 @@ private:
   uint16_t m_queueid;
   uint16_t m_ntxbs;
   uint16_t m_nrxbs;
-  size_t m_htsz;
-  size_t m_hlen;
-  const uint8_t* m_hkey;
+  RedirectionTable& m_reta;
   struct rte_mempool* m_txpool;
-  struct rte_eth_rss_reta_entry64* m_reta;
   system::CircularBuffer::Ref m_buffer;
   uint8_t* m_packet;
   std::vector<struct rte_mbuf*> m_free;

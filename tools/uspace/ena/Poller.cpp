@@ -1,6 +1,7 @@
 #include <tulips/api/Client.h>
 #include <tulips/ssl/Client.h>
 #include <tulips/ssl/Protocol.h>
+#include <tulips/stack/IPv4.h>
 #include <tulips/transport/Device.h>
 #include <iostream>
 #include <linenoise/linenoise.h>
@@ -210,7 +211,8 @@ Poller::run()
         break;
       }
       case Action::Info: {
-        m_status = m_client->get(m_id, m_ripaddr, m_lport, m_rport);
+        stack::ipv4::Address laddr;
+        m_status = m_client->get(m_id, laddr, m_lport, m_ripaddr, m_rport);
         m_action = Action::None;
         pthread_cond_signal(&m_cond);
         break;

@@ -227,14 +227,15 @@ public:
    * Get information about a connection.
    *
    * @param id the connection's handle.
-   * @param ripaddr the connection's remote IP address.
+   * @param laddr the connection's local IP address.
    * @param lport the connection's local port.
+   * @param raddr the connection's remote IP address.
    * @param rport the connection's remote port.
    *
    * @return the status of the operation.
    */
-  virtual Status get(const ID id, stack::ipv4::Address& ripaddr,
-                     stack::tcpv4::Port& lport,
+  virtual Status get(const ID id, stack::ipv4::Address& laddr,
+                     stack::tcpv4::Port& lport, stack::ipv4::Address& raddr,
                      stack::tcpv4::Port& rport) const = 0;
 
   /**

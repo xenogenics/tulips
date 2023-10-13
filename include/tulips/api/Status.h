@@ -15,6 +15,7 @@ enum class Status
   HardwareError,
   NoMoreResources,
   HardwareLinkLost,
+  ResourceBusy,
   /*
    * Data errors
    */

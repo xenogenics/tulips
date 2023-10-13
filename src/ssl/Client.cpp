@@ -171,18 +171,19 @@ Client::close(const ID id)
    */
   switch (ret) {
     case 0: {
-      m_log.debug("SSLCLI", "SSL shutdown sent");
+      m_log.debug("SSLCLI", "<", id, "> shutdown sent");
       flush(id, cookie);
       return Status::OperationInProgress;
     }
     case 1: {
-      m_log.debug("SSLCLI", "shutdown completed");
+      m_log.debug("SSLCLI", "<", id, "> shutdown completed");
+      c.state = Context::State::Closed;
       return m_client.close(id);
     }
     default: {
       auto err = SSL_get_error(c.ssl, ret);
       auto error = ssl::errorToString(err);
-      m_log.error("SSLCLI", "SSL_shutdown error: ", error);
+      m_log.error("SSLCLI", "<", id, "> SSL_shutdown error: ", error);
       return Status::ProtocolError;
     }
   }
@@ -252,7 +253,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         case ApplicationLayerProtocol::HTTP_1_1: {
           static uint8_t name[] = "\x08http/1.1";
           if (SSL_set_alpn_protos(c.ssl, name, 9)) {
-            m_log.error("SSLCLI", "failed to set ALPN for HTTP/1.1");
+            m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H1");
             return Status::ProtocolError;
           };
           break;
@@ -260,7 +261,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
         case ApplicationLayerProtocol::HTTP_2: {
           static uint8_t name[] = "\x02h2";
           if (SSL_set_alpn_protos(c.ssl, name, 3)) {
-            m_log.error("SSLCLI", "failed to set ALPN for HTTP/2");
+            m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H2");
             return Status::ProtocolError;
           };
           break;
@@ -270,7 +271,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
        * Connect.
        */
       if (SSL_connect(c.ssl) != -1) {
-        m_log.error("SSLCLI", "connect error");
+        m_log.error("SSLCLI", "<", id, "> connect error");
         return Status::ProtocolError;
       }
       /*
@@ -279,7 +280,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       auto err = SSL_get_error(c.ssl, -1);
       if (err != SSL_ERROR_WANT_READ) {
         auto error = ssl::errorToString(err);
-        m_log.error("SSLCLI", "connect error: ", error);
+        m_log.error("SSLCLI", "<", id, "> connect error: ", error);
         return Status::ProtocolError;
       }
       /*
@@ -343,10 +344,10 @@ Client::isClosed(const ID id) const
 }
 
 Status
-Client::get(const ID id, stack::ipv4::Address& ripaddr,
-            stack::tcpv4::Port& lport, stack::tcpv4::Port& rport) const
+Client::get(const ID id, stack::ipv4::Address& laddr, stack::tcpv4::Port& lport,
+            stack::ipv4::Address& raddr, stack::tcpv4::Port& rport) const
 {
-  return m_client.get(id, ripaddr, lport, rport);
+  return m_client.get(id, laddr, lport, raddr, rport);
 }
 
 Status
@@ -371,7 +372,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
    * Check if the connection is in the right state.
    */
   if (c.state != Context::State::Ready) {
-    return Status::InvalidConnection;
+    return Status::NotConnected;
   }
   /*
    * Check if we can write anything.
@@ -389,14 +390,14 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   if (ret <= 0) {
     auto err = SSL_get_error(c.ssl, ret);
     auto m = errorToString(err);
-    m_log.error("SSL", "SSL_write error: ", m);
+    m_log.error("SSL", "<", id, "> SSL_write error: ", m);
     return Status::ProtocolError;
   }
   /*
    * Handle partial data.
    */
   if (ret != (int)len) {
-    m_log.error("SSL", "Partial SSL_write: ", ret, "/", len);
+    m_log.error("SSL", "<", id, "> partial SSL_write: ", ret, "/", len);
     return Status::IncompleteData;
   }
   /*
@@ -423,13 +424,16 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
    * If we need to save keys, open the key file.
    */
   if (m_savekeys) {
-    stack::ipv4::Address ip;
+    std::string path;
+    stack::ipv4::Address laddr, raddr;
     stack::tcpv4::Port lport, rport;
-    m_client.get(id, ip, lport, rport);
-    auto path = ip.toString();
-    path.append("_");
+    m_client.get(id, laddr, lport, raddr, rport);
+    path.append(laddr.toString());
+    path.append(":");
     path.append(std::to_string(lport));
     path.append("_");
+    path.append(raddr.toString());
+    path.append(":");
     path.append(std::to_string(rport));
     path.append(".keys");
     keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
