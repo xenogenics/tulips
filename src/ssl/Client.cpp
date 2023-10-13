@@ -17,9 +17,9 @@ keylogCallback(const SSL* ssl, const char* line)
 {
   void* d = SSL_get_app_data(ssl);
   auto* c = reinterpret_cast<tulips::ssl::Connection*>(d);
-  if (c->m_keyfd != -1) {
-    ::write(c->m_keyfd, line, strlen(line));
-    ::write(c->m_keyfd, "\n", 1);
+  if (c->keyFileDescriptor() != -1) {
+    ::write(c->keyFileDescriptor(), line, strlen(line));
+    ::write(c->keyFileDescriptor(), "\n", 1);
   }
 }
 
@@ -137,8 +137,8 @@ Client::abort(const ID id)
   /*
    * Check if the connection is in the right state.
    */
-  if (c.m_state != Connection::State::Ready &&
-      c.m_state != Connection::State::Shutdown) {
+  if (c.state() != Connection::State::Ready &&
+      c.state() != Connection::State::Shutdown) {
     return Status::NotConnected;
   }
   /*
@@ -161,42 +161,18 @@ Client::close(const ID id)
    */
   auto& c = m_cns[id];
   /*
-   * Check if the connection is in the right state.
+   * Shutdown the connection.
    */
-  if (c.m_state != Connection::State::Ready &&
-      c.m_state != Connection::State::Shutdown) {
-    return Status::NotConnected;
-  }
-  if (c.m_state == Connection::State::Shutdown) {
-    return Status::OperationInProgress;
-  }
-  /*
-   * Mark the state as shut down.
-   */
-  c.m_state = Connection::State::Shutdown;
-  /*
-   * Call SSL_shutdown, repeat if necessary.
-   */
-  int ret = SSL_shutdown(c.m_ssl);
-  /*
-   * Go through the shutdown state machine.
-   */
-  switch (ret) {
-    case 0: {
-      m_log.debug("SSLCLI", "<", id, "> shutdown sent");
+  switch (auto ret = c.shutdown(m_log, id)) {
+    case Status::OperationInProgress: {
       flush(id);
       return Status::OperationInProgress;
     }
-    case 1: {
-      m_log.debug("SSLCLI", "<", id, "> shutdown completed");
-      c.m_state = Connection::State::Closed;
+    case Status::OperationCompleted: {
       return m_client.close(id);
     }
     default: {
-      auto err = SSL_get_error(c.m_ssl, ret);
-      auto error = ssl::errorToString(err);
-      m_log.error("SSLCLI", "<", id, "> SSL_shutdown error: ", error);
-      return Status::ProtocolError;
+      return ret;
     }
   }
 }
@@ -230,7 +206,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
   /*
    * Perform the handshake.
    */
-  switch (c.m_state) {
+  switch (c.state()) {
     /*
      * Connection is closed.
      */
@@ -251,63 +227,26 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       std::optional<std::string> hostname;
       m_client.getHostName(id, hostname);
       /*
-       * Set the host name for SNI-enabled servers.
+       * Get the client's application layer protocol.
        */
-      if (hostname.has_value()) {
-        SSL_set_tlsext_host_name(c.m_ssl, hostname.value().c_str());
-      }
+      auto alp = m_client.applicationLayerProtocol(id);
       /*
-       * Apply the application layer protocol.
+       * Start the handshake.
        */
-      switch (m_client.applicationLayerProtocol(id)) {
-        case ApplicationLayerProtocol::None: {
-          break;
-        }
-        case ApplicationLayerProtocol::HTTP_1_1: {
-          static uint8_t name[] = "\x08http/1.1";
-          if (SSL_set_alpn_protos(c.m_ssl, name, 9)) {
-            m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H1");
-            return Status::ProtocolError;
-          };
-          break;
-        }
-        case ApplicationLayerProtocol::HTTP_2: {
-          static uint8_t name[] = "\x02h2";
-          if (SSL_set_alpn_protos(c.m_ssl, name, 3)) {
-            m_log.error("SSLCLI", "<", id, "> failed to set ALPN for H2");
-            return Status::ProtocolError;
-          };
-          break;
-        }
-      }
-      /*
-       * Connect.
-       */
-      if (SSL_connect(c.m_ssl) != -1) {
-        m_log.error("SSLCLI", "<", id, "> connect error");
-        return Status::ProtocolError;
-      }
-      /*
-       * Check the error.
-       */
-      auto err = SSL_get_error(c.m_ssl, -1);
-      if (err != SSL_ERROR_WANT_READ) {
-        auto error = ssl::errorToString(err);
-        m_log.error("SSLCLI", "<", id, "> connect error: ", error);
-        return Status::ProtocolError;
-      }
+      auto ret = c.connect(m_log, id, hostname, alp);
       /*
        * Flush any pending data.
        */
-      Status res = flush(id);
-      if (res != Status::Ok) {
-        return res;
+      if (ret == Status::OperationInProgress) {
+        Status res = flush(id);
+        if (res != Status::Ok) {
+          return res;
+        }
       }
       /*
-       * Update the state and return.
+       * Done.
        */
-      c.m_state = Connection::State::Connecting;
-      return Status::OperationInProgress;
+      return ret;
     }
     /*
      * Connection is connecting.
@@ -316,18 +255,20 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       return Status::OperationInProgress;
     }
     /*
+     * Connection is connected.
+     *
+     * NOTE(xrg): the ordering below is important.
+     */
+    case Connection::State::Connected: {
+      c.setReady();
+      c.setCookie(m_delegate.onConnected(id, c.cookie(), c.timestamp()));
+      return Status::Ok;
+    }
+    /*
      * Connection is accepting.
      */
     case Connection::State::Accepting: {
       return Status::ProtocolError;
-    }
-    /*
-     * Connection is connected.
-     */
-    case Connection::State::Connected: {
-      c.m_state = Connection::State::Ready;
-      c.m_cookie = m_delegate.onConnected(c.m_id, c.m_cookie, c.m_ts);
-      return Status::Ok;
     }
     /*
      * Connection is ready.
@@ -384,41 +325,16 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
     return Status::InvalidArgument;
   }
   /*
-   * Check if the connection is in the right state.
-   */
-  if (c.m_state != Connection::State::Ready) {
-    return Status::NotConnected;
-  }
-  /*
-   * Check if we can write anything.
-   */
-  if (c.m_blocked) {
-    return Status::OperationInProgress;
-  }
-  /*
    * Write the data.
    */
-  auto ret = SSL_write(c.m_ssl, data, (int)len);
-  /*
-   * Handle the errors.
-   */
-  if (ret <= 0) {
-    auto err = SSL_get_error(c.m_ssl, ret);
-    auto m = errorToString(err);
-    m_log.error("SSL", "<", id, "> SSL_write error: ", m);
-    return Status::ProtocolError;
+  auto ret = c.write(m_log, id, len, data);
+  if (ret != Status::Ok) {
+    return ret;
   }
   /*
-   * Handle partial data.
+   * Update the offset to the data length as the BIO never fails.
    */
-  if (ret != (int)len) {
-    m_log.error("SSL", "<", id, "> partial SSL_write: ", ret, "/", len);
-    return Status::IncompleteData;
-  }
-  /*
-   * Update the offset.
-   */
-  off = ret;
+  off = len;
   /*
    * Flush the data.
    */
@@ -475,13 +391,13 @@ Client::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
   /*
    * Return if the handshake was not done.
    */
-  if (c.m_state != Connection::State::Ready) {
+  if (c.state() != Connection::State::Ready) {
     return Action::Continue;
   }
   /*
    * Notify the delegate.
    */
-  return m_delegate.onAcked(id, c.m_cookie, ts);
+  return m_delegate.onAcked(id, c.cookie(), ts);
 }
 
 Action
@@ -538,7 +454,7 @@ Client::onClosed(ID const& id, [[maybe_unused]] void* const cookie,
    * Grab the connection.
    */
   auto& c = m_cns[id];
-  auto* d = c.m_cookie;
+  auto* d = c.cookie();
   /*
    * Close the connection.
    */
@@ -567,15 +483,15 @@ Client::flush(const ID id)
    * Send the pending data.
    */
   uint32_t rem = 0;
-  Status res = m_client.send(id, len, ssl::bio::readAt(c.m_bout), rem);
+  Status res = m_client.send(id, len, c.readAt(), rem);
   if (res != Status::Ok) {
-    c.m_blocked = res == Status::OperationInProgress;
+    c.setBlocked(res == Status::OperationInProgress);
     return res;
   }
   /*
    * Skip the processed data and return.
    */
-  ssl::bio::skip(c.m_bout, rem);
+  c.consume(rem);
   return Status::Ok;
 }
 

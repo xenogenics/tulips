@@ -92,41 +92,19 @@ Server::close(const ID id)
    */
   auto& c = m_cns[id];
   /*
-   * Check if the connection is in the right state.
+   * Shutdown the connection.
    */
-  if (c.m_state != Connection::State::Ready &&
-      c.m_state != Connection::State::Shutdown) {
-    return Status::NotConnected;
-  }
-  if (c.m_state == Connection::State::Shutdown) {
-    return Status::OperationInProgress;
-  }
-  /*
-   * Mark the state as shut down.
-   */
-  c.m_state = Connection::State::Shutdown;
-  /*
-   * Call SSL_shutdown, repeat if necessary.
-   */
-  int ret = SSL_shutdown(c.m_ssl);
-  /*
-   * Go through the shutdown state machine.
-   */
-  switch (ret) {
-    case 0: {
-      m_log.debug("SSLSRV", "SSL shutdown sent");
+  switch (auto ret = c.shutdown(m_log, id)) {
+
+    case Status::OperationInProgress: {
       flush(id);
       return Status::OperationInProgress;
     }
-    case 1: {
-      m_log.debug("SSLSRV", "shutdown completed");
+    case Status::OperationCompleted: {
       return m_server->close(id);
     }
     default: {
-      auto err = SSL_get_error(c.m_ssl, ret);
-      auto error = ssl::errorToString(err);
-      m_log.error("SSLSRV", "SSL_shutdown error: ", error);
-      return Status::ProtocolError;
+      return ret;
     }
   }
 }
@@ -152,22 +130,16 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
    */
   Connection& c = m_cns[id];
   /*
-   * Check if the connection is in the right state.
+   * Write the data.
    */
-  if (c.m_state != Connection::State::Ready) {
-    return Status::NotConnected;
+  auto ret = c.write(m_log, id, len, data);
+  if (ret != Status::Ok) {
+    return ret;
   }
   /*
-   * Check if we can write anything.
+   * Update the offset to the data length as the BIO never fails.
    */
-  if (c.m_blocked) {
-    return Status::OperationInProgress;
-  }
-  /*
-   * Write the data. With BIO mem, the write will always succeed.
-   */
-  off = 0;
-  off += SSL_write(c.m_ssl, data, (int)len);
+  off = len;
   /*
    * Flush the data.
    */
@@ -178,8 +150,7 @@ void*
 Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* ssl = AS_SSL(m_ssl);
-  m_cns[id].open(ssl, id, cookie, ts, -1);
-  m_cns[id].m_state = Connection::State::Accepting;
+  m_cns[id].accept(ssl, id, cookie, ts, -1);
   return nullptr;
 }
 
@@ -194,13 +165,13 @@ Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
   /*
    * Return if the handshake was not done.
    */
-  if (c.m_state != Connection::State::Ready) {
+  if (c.state() != Connection::State::Ready) {
     return Action::Continue;
   }
   /*
    * Notify the delegate.
    */
-  return m_delegate.onAcked(id, c.m_cookie, ts);
+  return m_delegate.onAcked(id, c.cookie(), ts);
 }
 
 Action
@@ -243,26 +214,10 @@ Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
    * Grab the connection.
    */
   auto& c = m_cns[id];
-  auto pre = c.m_state;
   /*
    * Write the data in the input BIO.
    */
-  auto res =
-    c.onNewData(m_log, id, m_delegate, data, len, ts, alen, sdata, slen);
-  auto post = c.m_state;
-  /*
-   * Check for the ready state transition.
-   *
-   * FIXME(xrg): we will run into issues here if the delegate sends data while
-   * at the same time the SSL connection needs to flush back data.
-   */
-  if (pre == Connection::State::Accepting && post == Connection::State::Ready) {
-    c.m_cookie = m_delegate.onConnected(c.m_id, c.m_cookie, ts);
-  }
-  /*
-   * Done.
-   */
-  return res;
+  return c.onNewData(m_log, id, m_delegate, data, len, ts, alen, sdata, slen);
 }
 
 void
@@ -273,7 +228,7 @@ Server::onClosed(ID const& id, [[maybe_unused]] void* const cookie,
    * Grab the connection.
    */
   auto& c = m_cns[id];
-  auto* d = c.m_cookie;
+  auto* d = c.cookie();
   /*
    * Close the connection.
    */
@@ -302,15 +257,15 @@ Server::flush(const ID id)
    * Send the pending data.
    */
   uint32_t rem = 0;
-  Status res = m_server->send(id, len, ssl::bio::readAt(c.m_bout), rem);
+  Status res = m_server->send(id, len, c.readAt(), rem);
   if (res != Status::Ok) {
-    c.m_blocked = res == Status::OperationInProgress;
+    c.setBlocked(res == Status::OperationInProgress);
     return res;
   }
   /*
    * Skip the processed data and return.
    */
-  ssl::bio::skip(c.m_bout, rem);
+  c.consume(rem);
   return Status::Ok;
 }
 

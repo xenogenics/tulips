@@ -79,24 +79,16 @@ void
 Connection::open(SSL_CTX* ctx, const ID id, void* const cookie,
                  const system::Clock::Value ts, const int keyfd)
 {
-  /*
-   * Update the state.
-   */
-  m_id = id;
-  m_cookie = cookie;
-  m_ts = ts;
-  m_keyfd = keyfd;
-  m_bin = bio::allocate(BUFLEN);
-  m_bout = bio::allocate(BUFLEN);
-  m_ssl = SSL_new(ctx);
+  initialize(ctx, id, cookie, ts, keyfd);
   m_state = State::Open;
-  m_blocked = false;
-  m_rdbf = new uint8_t[BUFLEN];
-  /*
-   * Update the SSL state.
-   */
-  SSL_set_bio(m_ssl, m_bin, m_bout);
-  SSL_set_app_data(m_ssl, this);
+}
+
+void
+Connection::accept(SSL_CTX* ctx, const ID id, void* const cookie,
+                   const system::Clock::Value ts, const int keyfd)
+{
+  initialize(ctx, id, cookie, ts, keyfd);
+  m_state = State::Accepting;
 }
 
 void
@@ -131,6 +123,105 @@ Connection::close()
   m_blocked = false;
 }
 
+Status
+Connection::connect(system::Logger& log, ID const& id,
+                    std::optional<std::string> const& hostname, const ALP alp)
+{
+  /*
+   * Set the host name for SNI-enabled servers.
+   */
+  if (hostname.has_value()) {
+    SSL_set_tlsext_host_name(m_ssl, hostname.value().c_str());
+  }
+  /*
+   * Apply the application layer protocol.
+   */
+  switch (alp) {
+    case ALP::None: {
+      break;
+    }
+    case ALP::HTTP_1_1: {
+      static uint8_t name[] = "\x08http/1.1";
+      if (SSL_set_alpn_protos(m_ssl, name, 9)) {
+        log.error("SSL", "<", id, "> failed to set ALPN for H1");
+        return Status::ProtocolError;
+      };
+      break;
+    }
+    case ALP::HTTP_2: {
+      static uint8_t name[] = "\x02h2";
+      if (SSL_set_alpn_protos(m_ssl, name, 3)) {
+        log.error("SSL", "<", id, "> failed to set ALPN for H2");
+        return Status::ProtocolError;
+      };
+      break;
+    }
+  }
+  /*
+   * Connect.
+   */
+  if (SSL_connect(m_ssl) != -1) {
+    log.error("SSL", "<", id, "> connect error");
+    return Status::ProtocolError;
+  }
+  /*
+   * Check the error.
+   */
+  auto err = SSL_get_error(m_ssl, -1);
+  if (err != SSL_ERROR_WANT_READ) {
+    auto error = ssl::errorToString(err);
+    log.error("SSL", "<", id, "> connect error: ", error);
+    return Status::ProtocolError;
+  }
+  /*
+   * Update the state and return.
+   */
+  m_state = Connection::State::Connecting;
+  return Status::OperationInProgress;
+}
+
+Status
+Connection::shutdown(system::Logger& log, ID const& id)
+{
+  /*
+   * Check if the connection is in the right state.
+   */
+  if (m_state != State::Ready && m_state != State::Shutdown) {
+    return Status::NotConnected;
+  }
+  if (m_state == State::Shutdown) {
+    return Status::OperationInProgress;
+  }
+  /*
+   * Mark the state as shut down.
+   */
+  m_state = Connection::State::Shutdown;
+  /*
+   * Call SSL_shutdown, repeat if necessary.
+   */
+  int ret = SSL_shutdown(m_ssl);
+  /*
+   * Go through the shutdown state machine.
+   */
+  switch (ret) {
+    case 0: {
+      log.debug("SSL", "<", id, "> shutdown sent");
+      return Status::OperationInProgress;
+    }
+    case 1: {
+      log.debug("SSL", "<", id, "> shutdown completed");
+      m_state = Connection::State::Closed;
+      return Status::OperationCompleted;
+    }
+    default: {
+      auto err = SSL_get_error(m_ssl, ret);
+      auto error = ssl::errorToString(err);
+      log.error("SSL", "<", id, "> SSL_shutdown error: ", error);
+      return Status::ProtocolError;
+    }
+  }
+}
+
 Action
 Connection::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
                     const system::Clock::Value ts, const uint32_t alen,
@@ -152,6 +243,15 @@ Connection::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
   uint8_t out[alen];
   uint32_t rlen = 0;
   Action act = delegate.onAcked(id, m_cookie, ts, alen, out, rlen);
+  /*
+   * Bail out if the connection is not longer ready.
+   */
+  if (m_state != State::Ready) {
+    return Action::Continue;
+  }
+  /*
+   * Process the action.
+   */
   if (act != Action::Continue) {
     return abortOrClose(log, act, alen, sdata, slen);
   }
@@ -168,11 +268,11 @@ Connection::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
     return Action::Continue;
   }
   /*
-   * Write the data.
-   *
-   * NOTE(xrg): with BIO_mem, the write always succeeds if len > 0.
+   * Write the data and abort in case of failure.
    */
-  SSL_write(m_ssl, out, (int)rlen);
+  if (write(log, id, rlen, out) != Status::Ok) {
+    return Action::Abort;
+  }
   /*
    * Flush the data.
    */
@@ -355,8 +455,10 @@ Connection::onNewData(system::Logger& log, ID const& id,
         }
         case 1: {
           log.debug("SSL", "<", id, "> accept successful");
+          auto ret = flush(log, alen, sdata, slen);
           m_state = State::Ready;
-          return flush(log, alen, sdata, slen);
+          m_cookie = delegate.onConnected(id, m_cookie, ts);
+          return ret;
         }
         default: {
           auto err = SSL_get_error(m_ssl, ret);
@@ -436,49 +538,39 @@ Connection::onNewData(system::Logger& log, ID const& id,
         /*
          * Notify the delegate.
          */
-        uint32_t rlen = 0;
-        uint32_t wlen = alen - acc;
-        auto act =
-          delegate.onNewData(id, m_cookie, m_rdbf, ret, ts, wlen, out, rlen);
+        uint32_t r = 0;
+        uint32_t w = alen - acc;
+        auto act = delegate.onNewData(id, m_cookie, m_rdbf, ret, ts, w, out, r);
+        /*
+         * Bail out if the connection is not longer ready.
+         */
+        if (m_state != State::Ready) {
+          return Action::Continue;
+        }
+        /*
+         * Handle close or abort action.
+         */
         if (act != Action::Continue) {
           return abortOrClose(log, act, alen, sdata, slen);
         }
         /*
          * Cap the written amount.
          */
-        if (rlen + acc > alen) {
-          rlen = alen - acc;
+        if (r + acc > alen) {
+          r = alen - acc;
         }
         /*
          * Skip writting if there is no payload.
          */
-        if (rlen == 0) {
+        if (r == 0) {
           continue;
         }
         /*
-         * Write the data.
+         * Write the data and abort in case of failure.
          */
-        auto wrs = SSL_write(m_ssl, out, (int)rlen);
-        /*
-         * Handle the errors.
-         */
-        if (wrs <= 0) {
-          auto err = SSL_get_error(m_ssl, wrs);
-          auto m = errorToString(err);
-          log.error("SSL", "<", id, "> write error: ", m);
+        if (write(log, id, r, out) != Status::Ok) {
           return Action::Abort;
         }
-        /*
-         * Handle partial data.
-         */
-        if (wrs != (int)rlen) {
-          log.error("SSL", "<", id, "> partial write: ", wrs, "/", len);
-          return Action::Abort;
-        }
-        /*
-         * Update the accumulator.
-         */
-        acc += rlen;
       } while (ret > 0 && m_state != State::Closed);
       /*
        * Flush the output.
@@ -489,6 +581,55 @@ Connection::onNewData(system::Logger& log, ID const& id,
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
   return Action::Continue;
 #endif
+}
+
+Status
+Connection::write(system::Logger& log, ID const& id, const uint32_t len,
+                  const uint8_t* const data)
+{
+
+  /*
+   * Skip if the length is 0.
+   */
+  if (len == 0) {
+    return Status::InvalidArgument;
+  }
+  /*
+   * Check if the connection is in the right state.
+   */
+  if (m_state != Connection::State::Ready) {
+    return Status::NotConnected;
+  }
+  /*
+   * Check if we can write anything.
+   */
+  if (m_blocked) {
+    return Status::OperationInProgress;
+  }
+  /*
+   * Write the data.
+   */
+  auto ret = SSL_write(m_ssl, data, (int)len);
+  /*
+   * Handle the errors.
+   */
+  if (ret <= 0) {
+    auto err = SSL_get_error(m_ssl, ret);
+    auto m = errorToString(err);
+    log.error("SSL", "<", id, "> SSL_write error: ", m);
+    return Status::ProtocolError;
+  }
+  /*
+   * Handle partial data.
+   */
+  if (ret != (int)len) {
+    log.error("SSL", "<", id, "> partial SSL_write: ", ret, "/", len);
+    return Status::IncompleteData;
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Action
@@ -564,6 +705,29 @@ Connection::flush(system::Logger& log, const uint32_t alen,
   BIO_read(m_bout, sdata, (int)rlen);
   slen = rlen;
   return Action::Continue;
+}
+
+void
+Connection::initialize(SSL_CTX* ctx, const ID id, void* const cookie,
+                       const system::Clock::Value ts, const int keyfd)
+{
+  /*
+   * Update the state.
+   */
+  m_id = id;
+  m_cookie = cookie;
+  m_ts = ts;
+  m_keyfd = keyfd;
+  m_bin = bio::allocate(BUFLEN);
+  m_bout = bio::allocate(BUFLEN);
+  m_ssl = SSL_new(ctx);
+  m_blocked = false;
+  m_rdbf = new uint8_t[BUFLEN];
+  /*
+   * Update the SSL state.
+   */
+  SSL_set_bio(m_ssl, m_bin, m_bout);
+  SSL_set_app_data(m_ssl, this);
 }
 
 }
