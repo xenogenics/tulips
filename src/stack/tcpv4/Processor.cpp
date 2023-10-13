@@ -828,6 +828,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             auto* const buffer = e.m_sdat + HEADER_LEN + e.m_slen;
             auto action = m_handler.onAcked(e, ts, alen, buffer, rlen);
             /*
+             * Bail out if the connection was aborted.
+             */
+            if (e.m_state == Connection::State::CLOSED) {
+              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+              break;
+            }
+            /*
              * Process the action.
              */
             switch (action) {
@@ -861,6 +868,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              * Notify the handler.
              */
             auto action = m_handler.onAcked(e, ts);
+            /*
+             * Bail out if the connection was aborted.
+             */
+            if (e.m_state == Connection::State::CLOSED) {
+              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+              break;
+            }
             /*
              * Process the action.
              */
@@ -931,6 +945,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
                                               e.m_sdat + HEADER_LEN + e.m_slen,
                                               rlen);
             /*
+             * Bail out if the connection was aborted.
+             */
+            if (e.m_state == Connection::State::CLOSED) {
+              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+              break;
+            }
+            /*
              * Execute the action.
              */
             switch (action) {
@@ -969,6 +990,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              * Call the handler.
              */
             auto action = m_handler.onNewData(e, dataptr, datalen, ts);
+            /*
+             * Bail out if the connection was aborted.
+             */
+            if (e.m_state == Connection::State::CLOSED) {
+              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+              break;
+            }
             /*
              * Execute the action.
              */
