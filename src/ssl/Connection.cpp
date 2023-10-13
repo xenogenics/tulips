@@ -269,7 +269,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
     if (act != Action::Continue) {
       return act;
     }
-  } while (ret > 0);
+  } while (ret > 0 && m_state != State::Closed);
   /*
    * Continue processing.
    */
@@ -479,7 +479,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
          * Update the accumulator.
          */
         acc += rlen;
-      } while (ret > 0);
+      } while (ret > 0 && m_state != State::Closed);
       /*
        * Flush the output.
        */
