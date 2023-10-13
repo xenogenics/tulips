@@ -2,6 +2,7 @@
 
 #include <tulips/api/Interface.h>
 #include <tulips/api/Server.h>
+#include <tulips/ssl/Connection.h>
 #include <tulips/ssl/Protocol.h>
 
 namespace tulips::ssl {
@@ -95,12 +96,16 @@ public:
   void onClosed(ID const& id, void* const cookie, const Timestamp ts) override;
 
 private:
-  Status flush(const ID id, void* const cookie);
+  using Connections = std::vector<Connection>;
+
+  Status flush(const ID id);
 
   api::interface::Server::Delegate& m_delegate;
   system::Logger& m_log;
   std::unique_ptr<api::Server> m_server;
-  void* m_context;
+  size_t m_nconn;
+  void* m_ssl;
+  Connections m_cns;
 };
 
 }
