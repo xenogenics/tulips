@@ -1,4 +1,4 @@
-#include <tulips/ssl/Context.h>
+#include <tulips/ssl/Connection.h>
 #include <tulips/ssl/Server.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -11,8 +11,9 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
   : m_delegate(delegate)
   , m_log(log)
   , m_server(std::make_unique<api::Server>(log, *this, device, nconn))
+  , m_nconn(nconn)
   , m_ssl(nullptr)
-  , m_contexts()
+  , m_cns()
 {
   int err = 0;
   m_log.debug("SSLSRV", "protocol: ", ssl::toString(type));
@@ -67,9 +68,9 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
     throw std::runtime_error("SSL_CTX_set_cipher_list failed");
   }
   /*
-   * Resize the contexts.
+   * Resize the connections.
    */
-  m_contexts.resize(nconn);
+  m_cns.resize(nconn);
 }
 
 Server::~Server()
@@ -81,23 +82,29 @@ Status
 Server::close(const ID id)
 {
   /*
-   * Grab the context.
+   * Check if connection ID is valid.
    */
-  auto& c = m_contexts[id];
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Grab the connection.
+   */
+  auto& c = m_cns[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.m_state != Context::State::Ready &&
-      c.m_state != Context::State::Shutdown) {
+  if (c.m_state != Connection::State::Ready &&
+      c.m_state != Connection::State::Shutdown) {
     return Status::NotConnected;
   }
-  if (c.m_state == Context::State::Shutdown) {
+  if (c.m_state == Connection::State::Shutdown) {
     return Status::OperationInProgress;
   }
   /*
    * Mark the state as shut down.
    */
-  c.m_state = Context::State::Shutdown;
+  c.m_state = Connection::State::Shutdown;
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
@@ -135,13 +142,19 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {
   /*
-   * Grab the context.
+   * Check if connection ID is valid.
    */
-  Context& c = m_contexts[id];
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Grab the connection.
+   */
+  Connection& c = m_cns[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.m_state != Context::State::Ready) {
+  if (c.m_state != Connection::State::Ready) {
     return Status::NotConnected;
   }
   /*
@@ -165,8 +178,8 @@ void*
 Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* ssl = AS_SSL(m_ssl);
-  m_contexts[id].open(ssl, id, cookie, ts, -1);
-  m_contexts[id].m_state = Context::State::Accepting;
+  m_cns[id].open(ssl, id, cookie, ts, -1);
+  m_cns[id].m_state = Connection::State::Accepting;
   return nullptr;
 }
 
@@ -175,13 +188,13 @@ Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
                 const Timestamp ts)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Return if the handshake was not done.
    */
-  if (c.m_state != Context::State::Ready) {
+  if (c.m_state != Connection::State::Ready) {
     return Action::Continue;
   }
   /*
@@ -196,9 +209,9 @@ Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
                 uint32_t& slen)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * If the BIO has data pending, flush it.
    */
@@ -211,9 +224,9 @@ Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
                   const Timestamp ts)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Process the incoming data.
    */
@@ -227,9 +240,9 @@ Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
                   uint32_t& slen)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   auto pre = c.m_state;
   /*
    * Write the data in the input BIO.
@@ -241,9 +254,9 @@ Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
    * Check for the ready state transition.
    *
    * FIXME(xrg): we will run into issues here if the delegate sends data while
-   * at the same time the SSL context needs to flush back data.
+   * at the same time the SSL connection needs to flush back data.
    */
-  if (pre == Context::State::Accepting && post == Context::State::Ready) {
+  if (pre == Connection::State::Accepting && post == Connection::State::Ready) {
     c.m_cookie = m_delegate.onConnected(c.m_id, c.m_cookie, ts);
   }
   /*
@@ -257,12 +270,12 @@ Server::onClosed(ID const& id, [[maybe_unused]] void* const cookie,
                  const Timestamp ts)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   auto* d = c.m_cookie;
   /*
-   * Close the context.
+   * Close the connection.
    */
   c.close();
   /*
@@ -275,9 +288,9 @@ Status
 Server::flush(const ID id)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Check if there is any pending data.
    */

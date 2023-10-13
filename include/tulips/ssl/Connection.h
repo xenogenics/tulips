@@ -1,8 +1,8 @@
 #pragma once
 
-#include "BIO.h"
 #include <tulips/api/Action.h>
 #include <tulips/api/Interface.h>
+#include <tulips/ssl/BIO.h>
 #include <tulips/ssl/Protocol.h>
 #include <tulips/system/Clock.h>
 #include <tulips/system/Logger.h>
@@ -22,10 +22,10 @@ const SSL_METHOD* getMethod(const Protocol type, const bool srv, long& flags);
 std::string errorToString(const int err);
 
 /*
- * SSL context.
+ * SSL connection.
  */
 
-struct Context
+struct Connection
 {
   static constexpr const size_t BUFLEN = 32768;
 
@@ -44,13 +44,13 @@ struct Context
   };
 
   /**
-   * Open the context.
+   * Open the connection.
    */
   void open(SSL_CTX* const ctx, const ID id, void* const cookie,
             const system::Clock::Value ts, const int keyfd);
 
   /**
-   * Close the context.
+   * Close the connection.
    */
   void close();
 

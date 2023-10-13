@@ -1,5 +1,5 @@
 #include <tulips/ssl/Client.h>
-#include <tulips/ssl/Context.h>
+#include <tulips/ssl/Connection.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
 #include <cstdint>
@@ -15,11 +15,11 @@ namespace {
 void
 keylogCallback(const SSL* ssl, const char* line)
 {
-  void* appdata = SSL_get_app_data(ssl);
-  auto* context = reinterpret_cast<tulips::ssl::Context*>(appdata);
-  if (context->m_keyfd != -1) {
-    ::write(context->m_keyfd, line, strlen(line));
-    ::write(context->m_keyfd, "\n", 1);
+  void* d = SSL_get_app_data(ssl);
+  auto* c = reinterpret_cast<tulips::ssl::Connection*>(d);
+  if (c->m_keyfd != -1) {
+    ::write(c->m_keyfd, line, strlen(line));
+    ::write(c->m_keyfd, "\n", 1);
   }
 }
 
@@ -34,8 +34,9 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
   , m_log(log)
   , m_client(log, *this, device, nconn)
   , m_ssl(nullptr)
+  , m_nconn(nconn)
   , m_savekeys(save_keys)
-  , m_contexts()
+  , m_cns()
 {
   m_log.debug("SSLCLI", "protocol: ", ssl::toString(type));
   /*
@@ -46,7 +47,7 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
   SSL_load_error_strings();
   ERR_load_crypto_strings();
   /*
-   * Create the SSL context.
+   * Create the SSL connection.
    */
   long flags = 0;
   m_ssl = SSL_CTX_new(ssl::getMethod(type, false, flags));
@@ -64,9 +65,9 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
     throw std::runtime_error("SSL_CTX_set_cipher_list failed");
   }
   /*
-   * Resize the contexts.
+   * Resize the connections.
    */
-  m_contexts.resize(nconn);
+  m_cns.resize(nconn);
 }
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
@@ -101,9 +102,6 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
   if (SSL_CTX_check_private_key(AS_SSL(m_ssl)) != 1) {
     throw std::runtime_error("SSL_CTX_check_private_key failed");
   }
-  /*
-   * Resize the contexts.
-   */
 }
 
 Client::~Client()
@@ -127,14 +125,20 @@ Status
 Client::abort(const ID id)
 {
   /*
-   * Grab the context.
+   * Check if connection ID is valid.
    */
-  auto& c = m_contexts[id];
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Grab the connection.
+   */
+  auto& c = m_cns[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.m_state != Context::State::Ready &&
-      c.m_state != Context::State::Shutdown) {
+  if (c.m_state != Connection::State::Ready &&
+      c.m_state != Connection::State::Shutdown) {
     return Status::NotConnected;
   }
   /*
@@ -147,23 +151,29 @@ Status
 Client::close(const ID id)
 {
   /*
-   * Grab the context.
+   * Check if connection ID is valid.
    */
-  auto& c = m_contexts[id];
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Grab the connection.
+   */
+  auto& c = m_cns[id];
   /*
    * Check if the connection is in the right state.
    */
-  if (c.m_state != Context::State::Ready &&
-      c.m_state != Context::State::Shutdown) {
+  if (c.m_state != Connection::State::Ready &&
+      c.m_state != Connection::State::Shutdown) {
     return Status::NotConnected;
   }
-  if (c.m_state == Context::State::Shutdown) {
+  if (c.m_state == Connection::State::Shutdown) {
     return Status::OperationInProgress;
   }
   /*
    * Mark the state as shut down.
    */
-  c.m_state = Context::State::Shutdown;
+  c.m_state = Connection::State::Shutdown;
   /*
    * Call SSL_shutdown, repeat if necessary.
    */
@@ -179,7 +189,7 @@ Client::close(const ID id)
     }
     case 1: {
       m_log.debug("SSLCLI", "<", id, "> shutdown completed");
-      c.m_state = Context::State::Closed;
+      c.m_state = Connection::State::Closed;
       return m_client.close(id);
     }
     default: {
@@ -207,15 +217,24 @@ Status
 Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
                 const stack::tcpv4::Port rport)
 {
-  auto& c = m_contexts[id];
+  /*
+   * Check if connection ID is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Grab the connection.
+   */
+  auto& c = m_cns[id];
   /*
    * Perform the handshake.
    */
   switch (c.m_state) {
     /*
-     * Context is closed.
+     * Connection is closed.
      */
-    case Context::State::Closed: {
+    case Connection::State::Closed: {
       Status res = m_client.connect(id, ripaddr, rport);
       if (res != Status::Ok) {
         return res;
@@ -225,7 +244,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
     /*
      * Start the SSL handshake.
      */
-    case Context::State::Open: {
+    case Connection::State::Open: {
       /*
        * Get the client's host name.
        */
@@ -287,39 +306,39 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
       /*
        * Update the state and return.
        */
-      c.m_state = Context::State::Connecting;
+      c.m_state = Connection::State::Connecting;
       return Status::OperationInProgress;
     }
     /*
-     * Context is connecting.
+     * Connection is connecting.
      */
-    case Context::State::Connecting: {
+    case Connection::State::Connecting: {
       return Status::OperationInProgress;
     }
     /*
-     * Context is accepting.
+     * Connection is accepting.
      */
-    case Context::State::Accepting: {
+    case Connection::State::Accepting: {
       return Status::ProtocolError;
     }
     /*
-     * Context is connected.
+     * Connection is connected.
      */
-    case Context::State::Connected: {
-      c.m_state = Context::State::Ready;
+    case Connection::State::Connected: {
+      c.m_state = Connection::State::Ready;
       c.m_cookie = m_delegate.onConnected(c.m_id, c.m_cookie, c.m_ts);
       return Status::Ok;
     }
     /*
-     * Context is ready.
+     * Connection is ready.
      */
-    case Context::State::Ready: {
+    case Connection::State::Ready: {
       return Status::Ok;
     }
     /*
-     * Context is being shut down.
+     * Connection is being shut down.
      */
-    case Context::State::Shutdown: {
+    case Connection::State::Shutdown: {
       return Status::InvalidArgument;
     }
   }
@@ -349,19 +368,25 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
              uint32_t& off)
 {
   /*
+   * Check if connection ID is valid.
+   */
+  if (id >= m_nconn) {
+    return Status::InvalidConnection;
+  }
+  /*
+   * Grab the connection.
+   */
+  auto& c = m_cns[id];
+  /*
    * Skip if the length is 0.
    */
   if (len == 0) {
     return Status::InvalidArgument;
   }
   /*
-   * Grab the context.
-   */
-  auto& c = m_contexts[id];
-  /*
    * Check if the connection is in the right state.
    */
-  if (c.m_state != Context::State::Ready) {
+  if (c.m_state != Connection::State::Ready) {
     return Status::NotConnected;
   }
   /*
@@ -429,10 +454,10 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
     keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   }
   /*
-   * Open the context.
+   * Open the connection.
    */
   auto* ssl = AS_SSL(m_ssl);
-  m_contexts[id].open(ssl, id, cookie, ts, keyfd);
+  m_cns[id].open(ssl, id, cookie, ts, keyfd);
   /*
    * Done.
    */
@@ -444,13 +469,13 @@ Client::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
                 const Timestamp ts)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Return if the handshake was not done.
    */
-  if (c.m_state != Context::State::Ready) {
+  if (c.m_state != Connection::State::Ready) {
     return Action::Continue;
   }
   /*
@@ -465,9 +490,9 @@ Client::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
                 uint32_t& slen)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * If the BIO has data pending, flush it.
    */
@@ -480,9 +505,9 @@ Client::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
                   const Timestamp ts)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Decrypt the incoming data.
    */
@@ -496,9 +521,9 @@ Client::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
                   uint32_t& slen)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Write the data in the input BIO.
    */
@@ -510,12 +535,12 @@ Client::onClosed(ID const& id, [[maybe_unused]] void* const cookie,
                  const Timestamp ts)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   auto* d = c.m_cookie;
   /*
-   * Close the context.
+   * Close the connection.
    */
   c.close();
   /*
@@ -528,9 +553,9 @@ Status
 Client::flush(const ID id)
 {
   /*
-   * Grab the context.
+   * Grab the connection.
    */
-  auto& c = m_contexts[id];
+  auto& c = m_cns[id];
   /*
    * Check if there is any pending data.
    */

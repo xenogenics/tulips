@@ -1,4 +1,4 @@
-#include <tulips/ssl/Context.h>
+#include <tulips/ssl/Connection.h>
 #include <tulips/ssl/Protocol.h>
 #include <limits>
 #include <fcntl.h>
@@ -72,12 +72,12 @@ errorToString(const int err)
 }
 
 /*
- * SSL context.
+ * SSL connection.
  */
 
 void
-Context::open(SSL_CTX* ctx, const ID id, void* const cookie,
-              const system::Clock::Value ts, const int keyfd)
+Connection::open(SSL_CTX* ctx, const ID id, void* const cookie,
+                 const system::Clock::Value ts, const int keyfd)
 {
   /*
    * Update the state.
@@ -100,7 +100,7 @@ Context::open(SSL_CTX* ctx, const ID id, void* const cookie,
 }
 
 void
-Context::close()
+Connection::close()
 {
   /*
    * Close the key file.
@@ -132,9 +132,9 @@ Context::close()
 }
 
 Action
-Context::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
-                 const system::Clock::Value ts, const uint32_t alen,
-                 uint8_t* const sdata, uint32_t& slen)
+Connection::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
+                    const system::Clock::Value ts, const uint32_t alen,
+                    uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Reset the blocked state.
@@ -180,10 +180,10 @@ Context::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
 }
 
 Action
-Context::onNewData(system::Logger& log, ID const& id,
-                   api::interface::Delegate<ID>& delegate,
-                   const uint8_t* const data, const uint32_t len,
-                   const system::Clock::Value ts)
+Connection::onNewData(system::Logger& log, ID const& id,
+                      api::interface::Delegate<ID>& delegate,
+                      const uint8_t* const data, const uint32_t len,
+                      const system::Clock::Value ts)
 {
   /*
    * Write the data in the input BIO.
@@ -246,7 +246,7 @@ Context::onNewData(system::Logger& log, ID const& id,
         return Action::Abort;
       }
       /*
-       * Check if the context needs more data.
+       * Check if the connection needs more data.
        */
       if (err == SSL_ERROR_WANT_READ) {
         break;
@@ -277,11 +277,11 @@ Context::onNewData(system::Logger& log, ID const& id,
 }
 
 Action
-Context::onNewData(system::Logger& log, ID const& id,
-                   api::interface::Delegate<ID>& delegate,
-                   const uint8_t* const data, const uint32_t len,
-                   const system::Clock::Value ts, const uint32_t alen,
-                   uint8_t* const sdata, uint32_t& slen)
+Connection::onNewData(system::Logger& log, ID const& id,
+                      api::interface::Delegate<ID>& delegate,
+                      const uint8_t* const data, const uint32_t len,
+                      const system::Clock::Value ts, const uint32_t alen,
+                      uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Write the data in the input BIO.
@@ -417,7 +417,7 @@ Context::onNewData(system::Logger& log, ID const& id,
             return Action::Abort;
           }
           /*
-           * Check if the context needs more data.
+           * Check if the connection needs more data.
            */
           if (err == SSL_ERROR_WANT_READ) {
             break;
@@ -492,8 +492,9 @@ Context::onNewData(system::Logger& log, ID const& id,
 }
 
 Action
-Context::abortOrClose(system::Logger& log, const Action r, const uint32_t alen,
-                      uint8_t* const sdata, uint32_t& slen)
+Connection::abortOrClose(system::Logger& log, const Action r,
+                         const uint32_t alen, uint8_t* const sdata,
+                         uint32_t& slen)
 {
   /*
    * Process an abort request.
@@ -542,8 +543,8 @@ Context::abortOrClose(system::Logger& log, const Action r, const uint32_t alen,
 }
 
 Action
-Context::flush(system::Logger& log, const uint32_t alen, uint8_t* const sdata,
-               uint32_t& slen)
+Connection::flush(system::Logger& log, const uint32_t alen,
+                  uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Check and send any data in the BIO buffer.
