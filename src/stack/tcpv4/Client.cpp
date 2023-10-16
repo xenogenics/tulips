@@ -232,13 +232,14 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   /*
    * Grab a local port.
    */
+  auto const& lip = m_ipv4to.hostAddress();
   Port lport = findLocalPort();
   /*
    * Add the filter to the device. Retry a few times as some devices rely on
    * RSS hash tables that are prone to collisions.
    */
   for (auto i = 0; i < 1024; i += 1) {
-    ret = m_device.listen(ipv4::Protocol::TCP, lport, ripaddr, rport);
+    ret = m_device.listen(ipv4::Protocol::TCP, lip, lport, ripaddr, rport);
     if (ret == Status::Ok) {
       break;
     }

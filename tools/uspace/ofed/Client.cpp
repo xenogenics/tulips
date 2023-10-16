@@ -1,3 +1,4 @@
+#include "tulips/stack/IPv4.h"
 #include <tulips/system/Utils.h>
 #include <cstring>
 #include <map>
@@ -74,6 +75,12 @@ try {
   TCLAP::CmdLine cmdL("TULIPS connector", ' ', "1.0");
   TCLAP::ValueArg<std::string> iffA("I", "interface", "Network interface",
                                     false, "", "INTERFACE", cmdL);
+  TCLAP::ValueArg<std::string> ip4A("i", "ip", "Local IP address", false, "",
+                                    "IPv4", cmdL);
+  TCLAP::ValueArg<std::string> dr4A("r", "route", "Default route", false, "",
+                                    "IPv4", cmdL);
+  TCLAP::ValueArg<std::string> nm4A("n", "netmask", "Netmask", false, "",
+                                    "IPv4", cmdL);
   TCLAP::SwitchArg pcpA("P", "pcap", "Capture packets", cmdL);
   cmdL.parse(argc, argv);
   /*
@@ -85,7 +92,9 @@ try {
   /*
    * Commands.
    */
-  ofed::State state(pcpA.isSet());
+  ofed::State state(stack::ipv4::Address(ip4A.getValue()),
+                    stack::ipv4::Address(dr4A.getValue()),
+                    stack::ipv4::Address(nm4A.getValue()), pcpA.isSet());
   basic::populate(state.commands);
   ofed::connection::populate(state.commands);
   /*

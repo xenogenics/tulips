@@ -201,8 +201,7 @@ Port::run()
 }
 
 Device::Ref
-Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-           stack::ipv4::Address const& nm)
+Port::next()
 {
   /*
    * Return if there is no more queue available.
@@ -223,7 +222,7 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
    * Allocate the new device.
    */
   auto* dev = new ena::Device(m_log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
-                              m_address, m_mtu, txpool, ip, dr, nm);
+                              m_address, m_mtu, txpool);
   /*
    * Add the device queue to the raw processor.
    */

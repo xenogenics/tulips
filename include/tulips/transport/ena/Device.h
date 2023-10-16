@@ -24,17 +24,13 @@ public:
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
-  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+  Status listen(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override;
 
-  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+  void unlisten(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override;
 
@@ -60,8 +56,7 @@ private:
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
          const uint16_t ntxbs, const uint16_t nrxbs, RedirectionTable& reta,
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
-         struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
+         struct rte_mempool* const txpool);
 
   system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
 
@@ -83,9 +78,6 @@ private:
 
 protected:
   stack::ethernet::Address m_address;
-  stack::ipv4::Address m_ip;
-  stack::ipv4::Address m_dr;
-  stack::ipv4::Address m_nm;
   uint32_t m_mtu;
 };
 

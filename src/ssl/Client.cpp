@@ -29,10 +29,12 @@ namespace tulips::ssl {
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const Protocol type,
-               const size_t nconn, const bool save_keys)
+               const bool save_keys, const size_t nconn,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+               stack::ipv4::Address const& nm)
   : m_delegate(delegate)
   , m_log(log)
-  , m_client(log, *this, device, nconn)
+  , m_client(log, *this, device, nconn, ip, gw, nm)
   , m_ssl(nullptr)
   , m_nconn(nconn)
   , m_savekeys(save_keys)
@@ -72,8 +74,10 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
                transport::Device& device, const Protocol type,
-               std::string_view cert, std::string_view key, const size_t nconn)
-  : Client(log, delegate, device, type, nconn, true)
+               std::string_view cert, std::string_view key, const size_t nconn,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+               stack::ipv4::Address const& nm)
+  : Client(log, delegate, device, type, true, nconn, ip, gw, nm)
 {
   int err = 0;
   /*

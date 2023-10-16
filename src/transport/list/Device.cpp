@@ -9,15 +9,10 @@
 namespace tulips::transport::list {
 
 Device::Device(system::Logger& log, stack::ethernet::Address const& address,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-               stack::ipv4::Address const& nm, const uint32_t mtu, List& rf,
-               List& wf)
+               const uint32_t mtu, List& rf, List& wf)
   : transport::Device(log, "list")
   , m_packets()
   , m_address(address)
-  , m_ip(ip)
-  , m_dr(dr)
-  , m_nm(nm)
   , m_mtu(mtu)
   , m_read(rf)
   , m_write(wf)

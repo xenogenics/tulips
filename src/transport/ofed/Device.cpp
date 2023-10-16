@@ -33,9 +33,6 @@ Device::Device(system::Logger& log, const uint16_t nbuf)
   , m_port(0)
   , m_context(nullptr)
   , m_address()
-  , m_ip()
-  , m_dr()
-  , m_nm()
   , m_hwmtu(0)
   , m_mtu(0)
   , m_buflen(0)
@@ -76,9 +73,6 @@ Device::Device(system::Logger& log, std::string_view ifn, const uint16_t nbuf)
   , m_port(0)
   , m_context(nullptr)
   , m_address()
-  , m_ip()
-  , m_dr()
-  , m_nm()
   , m_hwmtu(0)
   , m_mtu(0)
   , m_buflen(0)
@@ -160,15 +154,6 @@ Device::construct(std::string_view ifn, UNUSED const uint16_t nbuf)
   m_mtu = m_hwmtu;
   m_buflen = m_hwmtu + stack::ethernet::HEADER_LEN;
   m_log.debug("OFED", "send buffer length: ", m_buflen);
-  /*
-   * Get L3 addresses.
-   */
-  if (!utils::getInterfaceInformation(m_log, ifn, m_ip, m_nm, m_dr)) {
-    throw std::runtime_error("Cannot read device's L3 addresses");
-  }
-  m_log.debug("OFED", "ip address: ", m_ip.toString());
-  m_log.debug("OFED", "netmask: ", m_nm.toString());
-  m_log.debug("OFED", "router address: ", m_dr.toString());
   /*
    * Open the device.
    */
@@ -406,7 +391,8 @@ Device::~Device()
 }
 
 Status
-Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+Device::listen(const stack::ipv4::Protocol proto,
+               stack::ipv4::Address const& laddr, const uint16_t lport,
                UNUSED stack::ipv4::Address const& raddr,
                UNUSED const uint16_t rport)
 {
@@ -450,7 +436,7 @@ Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
   //
   flow.l3.type = IBV_FLOW_SPEC_IPV4;
   flow.l3.size = sizeof(struct ibv_flow_spec_ipv4);
-  memcpy(&flow.l3.val.dst_ip, m_ip.data(), 4);
+  memcpy(&flow.l3.val.dst_ip, laddr.data(), 4);
   memset(&flow.l3.mask.dst_ip, 0xFF, 4);
   //
   flow.l4.type = IBV_FLOW_SPEC_TCP;
@@ -474,7 +460,8 @@ Device::listen(const stack::ipv4::Protocol proto, const uint16_t lport,
 }
 
 void
-Device::unlisten(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
+Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
+                 UNUSED stack::ipv4::Address const& laddr, const uint16_t lport,
                  UNUSED stack::ipv4::Address const& raddr,
                  UNUSED const uint16_t rport)
 {

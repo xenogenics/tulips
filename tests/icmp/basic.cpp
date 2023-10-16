@@ -36,10 +36,8 @@ TEST(ICMP_Basic, RequestResponse)
   ipv4::Address server_ip4(10, 1, 0, 2);
   ipv4::Address bcast(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  list::Device client(logger, client_adr, client_ip4, bcast, nmask, 128,
-                      server_fifo, client_fifo);
-  list::Device server(logger, server_adr, server_ip4, bcast, nmask, 128,
-                      client_fifo, server_fifo);
+  list::Device client(logger, client_adr, 128, server_fifo, client_fifo);
+  list::Device server(logger, server_adr, 128, client_fifo, server_fifo);
   /*
    * Build the pcap device
    */

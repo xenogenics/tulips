@@ -54,21 +54,6 @@ public:
   virtual stack::ethernet::Address const& address() const = 0;
 
   /**
-   * @return the device's IP address.
-   */
-  virtual stack::ipv4::Address const& ip() const = 0;
-
-  /**
-   * @return the device's default gateway.
-   */
-  virtual stack::ipv4::Address const& gateway() const = 0;
-
-  /**
-   * @return the device's netmask.
-   */
-  virtual stack::ipv4::Address const& netmask() const = 0;
-
-  /**
    * @return the device's MTU.
    */
   virtual uint32_t mtu() const = 0;
@@ -76,27 +61,31 @@ public:
   /**
    * Listen to a particular (simplified) flow signature.
    *
+   * @param laddr the local IP address.
    * @param proto the IPv4 protocol.
    * @param lport the local L4 port.
    *
    * @return the status of the operation.
    */
-  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport)
+  Status listen(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport)
   {
-    return listen(proto, lport, stack::ipv4::Address::ANY, 0);
+    return listen(proto, laddr, lport, stack::ipv4::Address::ANY, 0);
   }
 
   /**
    * Listen to a particular flow signature.
    *
    * @param proto the IPv4 protocol.
+   * @param laddr the local IP address.
    * @param lport the local L4 port.
    * @param raddr the remote IP address.
    * @param rport the remote L4 port.
    *
    * @return the status of the operation.
    */
-  virtual Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+  virtual Status listen(const stack::ipv4::Protocol proto,
+                        stack::ipv4::Address const& laddr, const uint16_t lport,
                         stack::ipv4::Address const& raddr,
                         const uint16_t rport) = 0;
 
@@ -104,24 +93,26 @@ public:
    * Stop listening to a particular (simplified) flow signature.
    *
    * @param proto the IPv4 protocol.
+   * @param laddr the local IP address.
    * @param lport the local L4 port.
-   * @param raddr the remote IP address.
-   * @param rport the remote L4 port.
    */
-  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport)
+  void unlisten(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport)
   {
-    return unlisten(proto, lport, stack::ipv4::Address::ANY, 0);
+    return unlisten(proto, laddr, lport, stack::ipv4::Address::ANY, 0);
   }
 
   /**
    * Ask the device to stop listening to a particular flow signature.
    *
    * @param proto the IPv4 protocol.
+   * @param laddr the local IP address.
    * @param lport the local L4 port.
    * @param raddr the remote IP address.
    * @param rport the remote L4 port.
    */
-  virtual void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+  virtual void unlisten(const stack::ipv4::Protocol proto,
+                        stack::ipv4::Address const& laddr, const uint16_t lport,
                         stack::ipv4::Address const& raddr,
                         const uint16_t rport) = 0;
 

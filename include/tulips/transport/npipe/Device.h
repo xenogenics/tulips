@@ -18,13 +18,8 @@ public:
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
   Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
@@ -33,6 +28,7 @@ public:
   }
 
   void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override

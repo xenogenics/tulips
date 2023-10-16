@@ -115,19 +115,17 @@ public:
 protected:
   void SetUp() override
   {
-    ipv4::Address bcast(10, 1, 0, 254);
+    ipv4::Address route(10, 1, 0, 254);
     ipv4::Address nmask(255, 255, 255, 0);
     std::string tname(
       ::testing::UnitTest::GetInstance()->current_test_info()->name());
     /*
      * Build the devices.
      */
-    m_client_ldev =
-      new transport::list::Device(m_logger, m_client_adr, m_client_ip4, bcast,
-                                  nmask, 1514, m_server_list, m_client_list);
-    m_server_ldev =
-      new transport::list::Device(m_logger, m_server_adr, m_server_ip4, bcast,
-                                  nmask, 1514, m_client_list, m_server_list);
+    m_client_ldev = new transport::list::Device(m_logger, m_client_adr, 1514,
+                                                m_server_list, m_client_list);
+    m_server_ldev = new transport::list::Device(m_logger, m_server_adr, 1514,
+                                                m_client_list, m_server_list);
     /*
      * Build the pcap device
      */
@@ -140,14 +138,15 @@ protected:
     /*
      * Create the clients.
      */
-    m_client1 =
-      new api::Client(m_logger, m_client_delegate1, *m_client_pcap, 1);
-    m_client2 =
-      new api::Client(m_logger, m_client_delegate2, *m_client_pcap, 1);
+    m_client1 = new api::Client(m_logger, m_client_delegate1, *m_client_pcap, 1,
+                                m_client_ip4, route, nmask);
+    m_client2 = new api::Client(m_logger, m_client_delegate2, *m_client_pcap, 1,
+                                m_client_ip4, route, nmask);
     /*
      * Create the server.
      */
-    m_server = new api::Server(m_logger, m_server_delegate, *m_server_pcap, 2);
+    m_server = new api::Server(m_logger, m_server_delegate, *m_server_pcap, 2,
+                               m_server_ip4, route, nmask);
     /*
      * Server listens.
      */

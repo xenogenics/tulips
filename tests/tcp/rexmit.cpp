@@ -193,7 +193,7 @@ class TCP_Rexmit : public ::testing::Test
 {
 public:
   TCP_Rexmit()
-    : m_logger(system::Logger::Level::Trace)
+    : m_log(system::Logger::Level::Trace)
     , m_cli_fifo()
     , m_srv_fifo()
     , m_cli_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
@@ -228,27 +228,25 @@ protected:
     /*
      * Build the devices.
      */
-    m_client = new list::Device(m_logger, m_cli_adr, m_cli_ip4, m_bcast,
-                                m_nmask, 128, m_srv_fifo, m_cli_fifo);
-    m_server = new list::Device(m_logger, m_srv_adr, m_srv_ip4, m_bcast,
-                                m_nmask, 128, m_cli_fifo, m_srv_fifo);
+    m_client = new list::Device(m_log, m_cli_adr, 128, m_srv_fifo, m_cli_fifo);
+    m_server = new list::Device(m_log, m_srv_adr, 128, m_cli_fifo, m_srv_fifo);
     /*
      * Build the pcap device
      */
     std::string cli_n = "tcp_rexmit.client." + tname;
     std::string srv_n = "tcp_rexmit.server." + tname;
-    m_cli_pcap = new transport::pcap::Device(m_logger, *m_client, cli_n);
-    m_srv_pcap = new transport::pcap::Device(m_logger, *m_server, srv_n);
+    m_cli_pcap = new transport::pcap::Device(m_log, *m_client, cli_n);
+    m_srv_pcap = new transport::pcap::Device(m_log, *m_server, srv_n);
     /*
      * Client stack
      */
     m_cli_evt = new Client(cli_n + ".log");
     m_cli_eth_prod =
-      new ethernet::Producer(m_logger, *m_cli_pcap, m_cli_pcap->address());
-    m_cli_ip4_prod = new ipv4::Producer(m_logger, *m_cli_eth_prod, m_cli_ip4);
-    m_cli_eth_proc = new ethernet::Processor(m_logger, m_cli_pcap->address());
-    m_cli_ip4_proc = new ipv4::Processor(m_logger, m_cli_ip4);
-    m_cli_tcp = new tcpv4::Processor(m_logger, *m_cli_pcap, *m_cli_eth_prod,
+      new ethernet::Producer(m_log, *m_cli_pcap, m_cli_pcap->address());
+    m_cli_ip4_prod = new ipv4::Producer(m_log, *m_cli_eth_prod, m_cli_ip4);
+    m_cli_eth_proc = new ethernet::Processor(m_log, m_cli_pcap->address());
+    m_cli_ip4_proc = new ipv4::Processor(m_log, m_cli_ip4);
+    m_cli_tcp = new tcpv4::Processor(m_log, *m_cli_pcap, *m_cli_eth_prod,
                                      *m_cli_ip4_prod, *m_cli_evt, 1);
     /*
      * Client processor binding
@@ -266,11 +264,11 @@ protected:
      */
     m_srv_evt = new Server(srv_n + ".log");
     m_srv_eth_prod =
-      new ethernet::Producer(m_logger, *m_srv_pcap, m_srv_pcap->address());
-    m_srv_ip4_prod = new ipv4::Producer(m_logger, *m_srv_eth_prod, m_srv_ip4);
-    m_srv_eth_proc = new ethernet::Processor(m_logger, m_srv_pcap->address());
-    m_srv_ip4_proc = new ipv4::Processor(m_logger, m_srv_ip4);
-    m_srv_tcp = new tcpv4::Processor(m_logger, *m_srv_pcap, *m_srv_eth_prod,
+      new ethernet::Producer(m_log, *m_srv_pcap, m_srv_pcap->address());
+    m_srv_ip4_prod = new ipv4::Producer(m_log, *m_srv_eth_prod, m_srv_ip4);
+    m_srv_eth_proc = new ethernet::Processor(m_log, m_srv_pcap->address());
+    m_srv_ip4_proc = new ipv4::Processor(m_log, m_srv_ip4);
+    m_srv_tcp = new tcpv4::Processor(m_log, *m_srv_pcap, *m_srv_eth_prod,
                                      *m_srv_ip4_prod, *m_srv_evt, 1);
     /*
      * Server processor binding
@@ -321,7 +319,7 @@ protected:
     delete m_server;
   }
 
-  system::ConsoleLogger m_logger;
+  system::ConsoleLogger m_log;
   list::Device::List m_cli_fifo;
   list::Device::List m_srv_fifo;
   ethernet::Address m_cli_adr;

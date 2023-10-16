@@ -3,13 +3,15 @@
 
 namespace tulips::tools::uspace::ofed {
 
-Poller::Poller(system::Logger& log, const bool pcap)
+Poller::Poller(system::Logger& log, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
+               const bool pcap)
   : m_capture(pcap)
   , m_ofed(log, 128)
   , m_pcap(pcap ? new transport::pcap::Device(log, m_ofed, "packets") : nullptr)
   , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_ofed)
   , m_delegate()
-  , m_client(log, m_delegate, *m_device, 32)
+  , m_client(log, m_delegate, *m_device, 32, ip, dr, nm)
   , m_run(true)
   , m_thread()
   , m_mutex()
@@ -26,13 +28,15 @@ Poller::Poller(system::Logger& log, const bool pcap)
   pthread_cond_init(&m_cond, nullptr);
 }
 
-Poller::Poller(system::Logger& log, std::string_view dev, const bool pcap)
+Poller::Poller(system::Logger& log, std::string_view dev,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+               stack::ipv4::Address const& nm, const bool pcap)
   : m_capture(pcap)
   , m_ofed(log, dev, 128)
   , m_pcap(pcap ? new transport::pcap::Device(log, m_ofed, dev) : nullptr)
   , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_ofed)
   , m_delegate()
-  , m_client(log, m_delegate, *m_device, 32)
+  , m_client(log, m_delegate, *m_device, 32, ip, dr, nm)
   , m_run(true)
   , m_thread()
   , m_mutex()

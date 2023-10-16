@@ -21,33 +21,20 @@ public:
     return m_devices.front()->address();
   }
 
-  stack::ipv4::Address const& ip() const override
-  {
-    return m_devices.front()->ip();
-  }
-
-  stack::ipv4::Address const& gateway() const override
-  {
-    return m_devices.front()->gateway();
-  }
-
-  stack::ipv4::Address const& netmask() const override
-  {
-    return m_devices.front()->netmask();
-  }
-
-  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+  Status listen(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override
   {
-    return m_devices.front()->listen(proto, lport, raddr, rport);
+    return m_devices.front()->listen(proto, laddr, lport, raddr, rport);
   }
 
-  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+  void unlisten(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override
   {
-    m_devices.front()->unlisten(proto, lport, raddr, rport);
+    m_devices.front()->unlisten(proto, laddr, lport, raddr, rport);
   }
 
   Status poll(Processor& proc) override;

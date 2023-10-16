@@ -55,7 +55,8 @@ Processor::Processor(system::Logger& log, transport::Device& device,
 void
 Processor::listen(const Port lport)
 {
-  if (m_device.listen(ipv4::Protocol::TCP, lport) == Status::Ok) {
+  auto const& lip = m_ipv4to.hostAddress();
+  if (m_device.listen(ipv4::Protocol::TCP, lip, lport) == Status::Ok) {
     m_listenports.insert(htons(lport));
   }
 }
@@ -63,7 +64,7 @@ Processor::listen(const Port lport)
 void
 Processor::unlisten(const Port port)
 {
-  m_device.unlisten(ipv4::Protocol::TCP, port);
+  m_device.unlisten(ipv4::Protocol::TCP, m_ipv4to.hostAddress(), port);
   m_listenports.erase(htons(port));
 }
 
@@ -429,7 +430,7 @@ Processor::close(Connection& e)
   /*
    * Unlisten the connection's local port.
    */
-  m_device.unlisten(ipv4::Protocol::TCP, e.m_lport);
+  m_device.unlisten(ipv4::Protocol::TCP, m_ipv4to.hostAddress(), e.m_lport);
   m_index.erase(std::hash<Connection>()(e));
   /*
    * Clear the segments.

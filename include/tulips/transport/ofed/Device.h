@@ -26,12 +26,6 @@ public:
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
   uint32_t mtu() const override { return m_mtu; }
 
   uint8_t receiveBufferLengthLog2() const override { return 11; }
@@ -41,11 +35,13 @@ public:
     return m_nbuf - m_pending;
   }
 
-  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+  Status listen(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override;
 
-  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+  void unlisten(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override;
 
@@ -71,9 +67,6 @@ private:
   int m_port;
   ibv_context* m_context;
   stack::ethernet::Address m_address;
-  stack::ipv4::Address m_ip;
-  stack::ipv4::Address m_dr;
-  stack::ipv4::Address m_nm;
   uint32_t m_hwmtu;
   uint32_t m_mtu;
   size_t m_buflen;

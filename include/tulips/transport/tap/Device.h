@@ -14,20 +14,13 @@ namespace tulips::transport::tap {
 class Device : public transport::Device
 {
 public:
-  Device(system::Logger& log, std::string_view devname,
-         stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
-         stack::ipv4::Address const& dr);
+  Device(system::Logger& log, std::string_view devname);
   ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
   Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
@@ -37,13 +30,14 @@ public:
   }
 
   void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
   {}
 
   Status prepare(uint8_t*& buf) override;
-  Status commit(const uint32_t len, uint8_t* const buf,
+  Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
 
   Status poll(Processor& proc) override;
@@ -59,9 +53,6 @@ public:
 
 protected:
   stack::ethernet::Address m_address;
-  stack::ipv4::Address m_ip;
-  stack::ipv4::Address m_dr;
-  stack::ipv4::Address m_nm;
   int m_fd;
   uint32_t m_mtu;
   std::list<uint8_t*> m_buffers;

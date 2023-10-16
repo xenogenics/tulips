@@ -7,11 +7,13 @@ namespace tulips::ssl {
 
 Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
                transport::Device& device, const ssl::Protocol type,
-               std::string_view cert, std::string_view key, const size_t nconn)
+               std::string_view cert, std::string_view key, const size_t n,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+               stack::ipv4::Address const& nm)
   : m_delegate(delegate)
   , m_log(log)
-  , m_server(std::make_unique<api::Server>(log, *this, device, nconn))
-  , m_nconn(nconn)
+  , m_server(std::make_unique<api::Server>(log, *this, device, n, ip, gw, nm))
+  , m_nconn(n)
   , m_ssl(nullptr)
   , m_cns()
 {
@@ -70,7 +72,7 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
   /*
    * Resize the connections.
    */
-  m_cns.resize(nconn);
+  m_cns.resize(n);
 }
 
 Server::~Server()

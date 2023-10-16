@@ -11,8 +11,12 @@ namespace tulips::tools::uspace::ofed {
 class Poller
 {
 public:
-  Poller(system::Logger& log, const bool pcap);
-  Poller(system::Logger& log, std::string_view dev, const bool pcap);
+  Poller(system::Logger& log, stack::ipv4::Address const& ip,
+         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
+         const bool pcap);
+  Poller(system::Logger& log, std::string_view dev,
+         stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+         stack::ipv4::Address const& nm, const bool pcap);
   ~Poller();
 
   Status connect(stack::ipv4::Address const& ripaddr,

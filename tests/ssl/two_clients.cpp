@@ -233,19 +233,17 @@ public:
 protected:
   void SetUp() override
   {
-    ipv4::Address bcast(10, 1, 0, 254);
+    ipv4::Address route(10, 1, 0, 254);
     ipv4::Address nmask(255, 255, 255, 0);
     std::string tname(
       ::testing::UnitTest::GetInstance()->current_test_info()->name());
     /*
      * Build the devices.
      */
-    m_client_ldev =
-      new transport::list::Device(m_logger, m_client_adr, m_client_ip4, bcast,
-                                  nmask, 9014, m_server_list, m_client_list);
-    m_server_ldev =
-      new transport::list::Device(m_logger, m_server_adr, m_server_ip4, bcast,
-                                  nmask, 9014, m_client_list, m_server_list);
+    m_client_ldev = new transport::list::Device(m_logger, m_client_adr, 9014,
+                                                m_server_list, m_client_list);
+    m_server_ldev = new transport::list::Device(m_logger, m_server_adr, 9014,
+                                                m_client_list, m_server_list);
     /*
      * Build the pcap device
      */
@@ -265,12 +263,14 @@ protected:
      * Create the client.
      */
     m_client = new ssl::Client(m_logger, m_client_delegate, *m_client_pcap,
-                               tulips::ssl::Protocol::TLS, cert, key, 2);
+                               tulips::ssl::Protocol::TLS, cert, key, 2,
+                               m_client_ip4, route, nmask);
     /*
      * Create the server.
      */
     m_server = new ssl::Server(m_logger, m_server_delegate, *m_server_pcap,
-                               tulips::ssl::Protocol::TLS, cert, key, 2);
+                               tulips::ssl::Protocol::TLS, cert, key, 2,
+                               m_server_ip4, route, nmask);
     /*
      * Server listens.
      */
