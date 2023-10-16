@@ -103,12 +103,12 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
    * Get the TX descriptor count.
    */
   m_ntxds = RTE_MAX(txw, dev_info.tx_desc_lim.nb_min);
-  m_ntxds = RTE_MIN(txw, dev_info.tx_desc_lim.nb_max);
+  m_ntxds = RTE_MIN(m_ntxds, dev_info.tx_desc_lim.nb_max);
   /*
    * Get the RX descriptor count.
    */
   m_nrxds = RTE_MAX(rxw, dev_info.rx_desc_lim.nb_min);
-  m_nrxds = RTE_MIN(rxw, dev_info.rx_desc_lim.nb_max);
+  m_nrxds = RTE_MIN(m_nrxds, dev_info.rx_desc_lim.nb_max);
   /*
    * Print some device information.
    */
