@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tulips/stack/IPv4.h"
 #include <tulips/api/Defaults.h>
+#include <tulips/stack/IPv4.h>
 #include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/Device.h>
@@ -54,10 +54,8 @@ private:
 
   void run();
 
-  const bool m_capture;
-  transport::Device::Ref m_dev;
-  transport::pcap::Device* m_pcap;
-  transport::Device* m_device;
+  std::string m_name;
+  transport::Device::Ref m_device;
   api::defaults::ClientDelegate m_delegate;
   std::unique_ptr<api::interface::Client> m_client;
   volatile bool m_run;

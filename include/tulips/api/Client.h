@@ -33,6 +33,19 @@ public:
   using interface::Client::Timestamp;
 
   /*
+   * Allocator.
+   */
+
+  static Ref allocate(system::Logger& log, Delegate& dlg,
+                      transport::Device& device, const size_t nconn,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& gw,
+                      stack::ipv4::Address const& nm)
+  {
+    return std::make_unique<Client>(log, dlg, device, nconn, ip, gw, nm);
+  }
+
+  /*
    * Constructor and destructor.
    */
 

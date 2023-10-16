@@ -14,15 +14,42 @@ namespace tulips::transport::ofed {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Constants.
+   */
+
   static constexpr size_t EVENT_CLEANUP_THRESHOLD = 16;
   static constexpr size_t INLINE_DATA_THRESHOLD = 256;
 
   static constexpr int POST_RECV_THRESHOLD = 32;
   static constexpr uint32_t RECV_BUFLEN = 2 * 1024;
 
+  /*
+   * Allocators.
+   */
+
+  static Ref allocate(system::Logger& log, const uint16_t nbuf)
+  {
+    return std::make_unique<Device>(log, nbuf);
+  }
+
+  static Ref allocate(system::Logger& log, std::string_view ifn,
+                      const uint16_t nbuf)
+  {
+    return std::make_unique<Device>(log, ifn, nbuf);
+  }
+
+  /*
+   * Constructors and destructor.
+   */
+
   Device(system::Logger& log, const uint16_t nbuf);
   Device(system::Logger& log, std::string_view ifn, const uint16_t nbuf);
   ~Device() override;
+
+  /*
+   * Device interface.
+   */
 
   stack::ethernet::Address const& address() const override { return m_address; }
 

@@ -1,6 +1,6 @@
 #include "Debug.h"
-#include "tulips/stack/TCPv4.h"
 #include <tulips/stack/IPv4.h>
+#include <tulips/stack/TCPv4.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
@@ -232,14 +232,14 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   /*
    * Grab a local port.
    */
-  auto const& lip = m_ipv4to.hostAddress();
+  auto const& lipaddr = m_ipv4to.hostAddress();
   Port lport = findLocalPort();
   /*
    * Add the filter to the device. Retry a few times as some devices rely on
    * RSS hash tables that are prone to collisions.
    */
   for (auto i = 0; i < 1024; i += 1) {
-    ret = m_device.listen(ipv4::Protocol::TCP, lip, lport, ripaddr, rport);
+    ret = m_device.listen(ipv4::Protocol::TCP, lipaddr, lport, ripaddr, rport);
     if (ret == Status::Ok) {
       break;
     }

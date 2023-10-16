@@ -9,15 +9,27 @@ namespace tulips::transport::bond {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Allocator.
+   */
+
   static Ref allocate(system::Logger& log,
                       std::vector<transport::Device::Ref> devices,
                       std::string_view name)
   {
-    return Ref(new Device(log, std::move(devices), name));
+    return std::make_unique<Device>(log, std::move(devices), name);
   }
+
+  /*
+   * Constructor.
+   */
 
   Device(system::Logger& log, std::vector<transport::Device::Ref> devices,
          std::string_view name);
+
+  /*
+   * Device interface.
+   */
 
   std::string_view name() const override { return m_devices.front()->name(); }
 

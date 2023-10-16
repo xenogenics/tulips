@@ -17,12 +17,10 @@ namespace tulips::tools::uspace::ena::poller {
 Poller::Poller(system::Logger& log, transport::Device::Ref dev,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
                stack::ipv4::Address const& nm, const bool pcap, const bool ssl)
-  : m_capture(pcap)
-  , m_dev(std::move(dev))
-  , m_pcap(pcap ? new transport::pcap::Device(log, *m_dev, m_dev->name())
-                : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap
-                  : (transport::Device*)m_dev.get())
+  : m_name(dev->name())
+  , m_device(pcap
+               ? transport::pcap::Device::allocate(log, std::move(dev), m_name)
+               : std::move(dev))
   , m_delegate()
   , m_client()
   , m_run(true)
@@ -64,12 +62,6 @@ Poller::~Poller()
   pthread_join(m_thread, nullptr);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
-  /*
-   * Clean-up devices.
-   */
-  if (m_capture) {
-    delete m_pcap;
-  }
 }
 
 Status

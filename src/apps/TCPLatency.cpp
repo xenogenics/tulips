@@ -68,17 +68,13 @@ public:
 };
 
 int
-run(Options const& options, transport::Device& base_device)
+run(Options const& options, transport::Device::Ref dev)
 {
+  Device::Ref device;
   /*
    * Create the console logger.
    */
-  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
-  /*
-   * Create an PCAP device
-   */
-  transport::pcap::Device* pcap_device = nullptr;
-  Device* device = &base_device;
+  auto log = system::ConsoleLogger(system::Logger::Level::Trace);
   /*
    * Signal handler
    */
@@ -98,8 +94,9 @@ run(Options const& options, transport::Device& base_device)
    * Check if we should wrap the device in a PCAP device.
    */
   if (options.dumpPackets()) {
-    pcap_device = new transport::pcap::Device(logger, base_device, "client");
-    device = pcap_device;
+    device = transport::pcap::Device::allocate(log, std::move(dev), "client");
+  } else {
+    device = std::move(dev);
   }
   /*
    * Define the client delegate.
@@ -110,12 +107,12 @@ run(Options const& options, transport::Device& base_device)
    */
   api::interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(logger, delegate, *device, 1,
+    client = new tulips::ssl::Client(log, delegate, *device, 1,
                                      options.source(), options.route(),
                                      options.mask(), tulips::ssl::Protocol::TLS,
                                      options.sslCert(), options.sslKey());
   } else {
-    client = new tulips::api::Client(logger, delegate, *device, 1,
+    client = new tulips::api::Client(log, delegate, *device, 1,
                                      options.source(), options.route(),
                                      options.mask());
   }
@@ -291,11 +288,8 @@ run(Options const& options, transport::Device& base_device)
     }
   }
   /*
-   * Delete the PCAP device.
+   * Done.
    */
-  if (options.dumpPackets()) {
-    delete pcap_device;
-  }
   return 0;
 }
 
@@ -365,17 +359,13 @@ private:
 };
 
 int
-run(Options const& options, transport::Device& base_device)
+run(Options const& options, transport::Device::Ref dev)
 {
+  Device::Ref device;
   /*
    * Create the console logger.
    */
-  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
-  /*
-   * Create an PCAP device
-   */
-  transport::pcap::Device* pcap_device = nullptr;
-  Device* device = &base_device;
+  auto log = system::ConsoleLogger(system::Logger::Level::Trace);
   /*
    * Signal handler
    */
@@ -396,8 +386,9 @@ run(Options const& options, transport::Device& base_device)
    * Check if we should wrap the device in a PCAP device.
    */
   if (options.dumpPackets()) {
-    pcap_device = new transport::pcap::Device(logger, base_device, "server");
-    device = pcap_device;
+    device = transport::pcap::Device::allocate(log, std::move(dev), "server");
+  } else {
+    device = std::move(dev);
   }
   /*
    * Initialize the server
@@ -405,11 +396,11 @@ run(Options const& options, transport::Device& base_device)
   api::interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
-      logger, delegate, *device, options.connections(), options.source(),
+      log, delegate, *device, options.connections(), options.source(),
       options.route(), options.mask(), tulips::ssl::Protocol::TLS,
       options.sslCert(), options.sslKey());
   } else {
-    server = new tulips::api::Server(logger, delegate, *device,
+    server = new tulips::api::Server(log, delegate, *device,
                                      options.connections(), options.source(),
                                      options.route(), options.mask());
   }
@@ -508,12 +499,8 @@ run(Options const& options, transport::Device& base_device)
     }
   }
   /*
-   * Clean-up.
+   * Done.
    */
-  delete server;
-  if (options.dumpPackets()) {
-    delete pcap_device;
-  }
   return 0;
 }
 

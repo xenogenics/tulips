@@ -48,10 +48,7 @@ private:
 
   void run();
 
-  const bool m_capture;
-  transport::ofed::Device m_ofed;
-  transport::pcap::Device* m_pcap;
-  transport::Device* m_device;
+  transport::Device::Ref m_device;
   api::defaults::ClientDelegate m_delegate;
   api::Client m_client;
   volatile bool m_run;

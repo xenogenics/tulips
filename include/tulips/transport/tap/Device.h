@@ -14,8 +14,25 @@ namespace tulips::transport::tap {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Allocator.
+   */
+
+  static Ref allocate(system::Logger& log, std::string_view name)
+  {
+    return std::make_unique<Device>(log, name);
+  }
+
+  /*
+   * Constructor and destructor.
+   */
+
   Device(system::Logger& log, std::string_view devname);
   ~Device() override;
+
+  /*
+   * Device interface.
+   */
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
@@ -39,6 +56,7 @@ public:
   Status prepare(uint8_t*& buf) override;
   Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;
+  Status release(uint8_t* const buf) override;
 
   Status poll(Processor& proc) override;
   Status wait(Processor& proc, const uint64_t ns) override;
@@ -50,6 +68,11 @@ public:
   uint8_t receiveBufferLengthLog2() const override { return 11; }
 
   uint16_t receiveBuffersAvailable() const override { return 32; }
+
+  bool identify([[maybe_unused]] const uint8_t* const buf) const override
+  {
+    return true;
+  }
 
 protected:
   stack::ethernet::Address m_address;

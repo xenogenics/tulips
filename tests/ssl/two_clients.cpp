@@ -93,20 +93,18 @@ class SSL_TwoClients : public ::testing::Test
 {
 public:
   SSL_TwoClients()
-    : m_logger(system::Logger::Level::Trace)
-    , m_client_list()
-    , m_server_list()
-    , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
-    , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
-    , m_client_ip4(10, 1, 0, 1)
-    , m_server_ip4(10, 1, 0, 2)
-    , m_client_ldev(nullptr)
-    , m_server_ldev(nullptr)
-    , m_client_pcap(nullptr)
-    , m_server_pcap(nullptr)
-    , m_client_delegate()
+    : m_log(system::Logger::Level::Trace)
+    , m_clst()
+    , m_slst()
+    , m_cadr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
+    , m_sadr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
+    , m_cip4(10, 1, 0, 1)
+    , m_sip4(10, 1, 0, 2)
+    , m_cdev(nullptr)
+    , m_sdev(nullptr)
+    , m_cdlg()
     , m_client(nullptr)
-    , m_server_delegate()
+    , m_sdlg()
     , m_server(nullptr)
   {}
 
@@ -117,27 +115,27 @@ public:
      * Client tries to connect, establish a connection.
      */
     ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, port));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
     /*
      * Client tries to connect, go through SSL handshake.
      */
     ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, port));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
     /*
      * We are connected.
      */
     ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, port));
-    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   }
 
   void abortClient(const api::Client::ID& id)
@@ -146,13 +144,13 @@ public:
      * Client tries to close.
      */
     ASSERT_EQ(Status::Ok, m_client->abort(id));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
     /*
      * We are closed.
      */
     ASSERT_EQ(Status::NotConnected, m_client->close(id));
-    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   }
 
   void disconnectClient(const api::Client::ID& id)
@@ -161,11 +159,11 @@ public:
      * Client tries to close.
      */
     ASSERT_EQ(Status::OperationInProgress, m_client->close(id));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
     /*
      * Advance the timers because of TIME WAIT.
      */
@@ -174,8 +172,8 @@ public:
      * We are closed.
      */
     ASSERT_EQ(Status::NotConnected, m_client->close(id));
-    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   }
 
   void connect1stClient(ipv4::Address const& dst_ip, const int port,
@@ -186,8 +184,8 @@ public:
      * Client tries to connect, go through ARP.
      */
     ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, port));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
     /*
      * Connect the client.
      */
@@ -207,18 +205,18 @@ public:
   void disconnectClientFromServer(const api::Server::ID id)
   {
     ASSERT_EQ(Status::OperationInProgress, m_server->close(id));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
     ASSERT_EQ(Status::OperationInProgress, m_server->close(id));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+    ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
     expireTimeWait();
     ASSERT_TRUE(m_server->isClosed(id));
-    ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-    ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+    ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+    ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   }
 
   void expireTimeWait()
@@ -240,19 +238,19 @@ protected:
     /*
      * Build the devices.
      */
-    m_client_ldev = new transport::list::Device(m_logger, m_client_adr, 9014,
-                                                m_server_list, m_client_list);
-    m_server_ldev = new transport::list::Device(m_logger, m_server_adr, 9014,
-                                                m_client_list, m_server_list);
+    auto clst =
+      transport::list::Device::allocate(m_log, m_cadr, 9014, m_slst, m_clst);
+    auto slst =
+      transport::list::Device::allocate(m_log, m_sadr, 9014, m_clst, m_slst);
     /*
      * Build the pcap device
      */
     std::string pcap_client = "api_2clients.client." + tname;
     std::string pcap_server = "api_2clients.server." + tname;
-    m_client_pcap =
-      new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
-    m_server_pcap =
-      new transport::pcap::Device(m_logger, *m_server_ldev, pcap_server);
+    m_cdev =
+      transport::pcap::Device::allocate(m_log, std::move(clst), pcap_client);
+    m_sdev =
+      transport::pcap::Device::allocate(m_log, std::move(slst), pcap_server);
     /*
      * Define the source root and the security files.
      */
@@ -262,55 +260,34 @@ protected:
     /*
      * Create the client.
      */
-    m_client = new ssl::Client(m_logger, m_client_delegate, *m_client_pcap, 2,
-                               m_client_ip4, route, nmask,
-                               tulips::ssl::Protocol::TLS, cert, key);
+    m_client = ssl::Client::allocate(m_log, m_cdlg, *m_cdev, 2, m_cip4, route,
+                                     nmask, tulips::ssl::Protocol::TLS, cert,
+                                     key);
     /*
      * Create the server.
      */
-    m_server = new ssl::Server(m_logger, m_server_delegate, *m_server_pcap, 2,
-                               m_server_ip4, route, nmask,
-                               tulips::ssl::Protocol::TLS, cert, key);
+    m_server = ssl::Server::allocate(m_log, m_sdlg, *m_sdev, 2, m_sip4, route,
+                                     nmask, tulips::ssl::Protocol::TLS, cert,
+                                     key);
     /*
      * Server listens.
      */
     m_server->listen(12345, nullptr);
   }
 
-  void TearDown() override
-  {
-    /*
-     * Delete client, server.
-     */
-    delete m_server;
-    delete m_client;
-    /*
-     * Delete the pcap wrappers;
-     */
-    delete m_client_pcap;
-    delete m_server_pcap;
-    /*
-     * Delete client and server.
-     */
-    delete m_client_ldev;
-    delete m_server_ldev;
-  }
-
-  system::ConsoleLogger m_logger;
-  transport::list::Device::List m_client_list;
-  transport::list::Device::List m_server_list;
-  ethernet::Address m_client_adr;
-  ethernet::Address m_server_adr;
-  ipv4::Address m_client_ip4;
-  ipv4::Address m_server_ip4;
-  transport::list::Device* m_client_ldev;
-  transport::list::Device* m_server_ldev;
-  transport::pcap::Device* m_client_pcap;
-  transport::pcap::Device* m_server_pcap;
-  ClientDelegate m_client_delegate;
-  ssl::Client* m_client;
-  ServerDelegate m_server_delegate;
-  ssl::Server* m_server;
+  system::ConsoleLogger m_log;
+  transport::list::Device::List m_clst;
+  transport::list::Device::List m_slst;
+  ethernet::Address m_cadr;
+  ethernet::Address m_sadr;
+  ipv4::Address m_cip4;
+  ipv4::Address m_sip4;
+  transport::pcap::Device::Ref m_cdev;
+  transport::pcap::Device::Ref m_sdev;
+  ClientDelegate m_cdlg;
+  ssl::Client::Ref m_client;
+  ServerDelegate m_sdlg;
+  ssl::Server::Ref m_server;
 };
 
 TEST_F(SSL_TwoClients, ConnectTwoAndAbort)
@@ -322,17 +299,17 @@ TEST_F(SSL_TwoClients, ConnectTwoAndAbort)
    */
   connect1stClient(dst_ip, 12345, id[0]);
   connect2ndClient(dst_ip, 12345, id[1]);
-  ASSERT_EQ(2, m_server_delegate.connections().size());
+  ASSERT_EQ(2, m_sdlg.connections().size());
   /*
    * Abort the first connection.
    */
   abortClient(id[0]);
-  ASSERT_EQ(1, m_server_delegate.connections().size());
+  ASSERT_EQ(1, m_sdlg.connections().size());
   /*
    * Abort the second connection.
    */
   abortClient(id[1]);
-  ASSERT_EQ(0, m_server_delegate.connections().size());
+  ASSERT_EQ(0, m_sdlg.connections().size());
 }
 
 TEST_F(SSL_TwoClients, ConnectTwoAndClose)
@@ -344,17 +321,17 @@ TEST_F(SSL_TwoClients, ConnectTwoAndClose)
    */
   connect1stClient(dst_ip, 12345, id[0]);
   connect2ndClient(dst_ip, 12345, id[1]);
-  ASSERT_EQ(2, m_server_delegate.connections().size());
+  ASSERT_EQ(2, m_sdlg.connections().size());
   /*
    * Disconnect the first connection.
    */
   disconnectClient(id[0]);
-  ASSERT_EQ(1, m_server_delegate.connections().size());
+  ASSERT_EQ(1, m_sdlg.connections().size());
   /*
    * Disconnect the second connection.
    */
   disconnectClient(id[1]);
-  ASSERT_EQ(0, m_server_delegate.connections().size());
+  ASSERT_EQ(0, m_sdlg.connections().size());
 }
 
 TEST_F(SSL_TwoClients, ConnectTwoAndCloseFromServer)
@@ -366,19 +343,19 @@ TEST_F(SSL_TwoClients, ConnectTwoAndCloseFromServer)
    */
   connect1stClient(dst_ip, 12345, id[0]);
   connect2ndClient(dst_ip, 12345, id[1]);
-  ASSERT_EQ(2, m_server_delegate.connections().size());
+  ASSERT_EQ(2, m_sdlg.connections().size());
   /*
    * Disconnect the first connection.
    */
-  tulips::api::Server::ID c0 = m_server_delegate.connections().front();
+  tulips::api::Server::ID c0 = m_sdlg.connections().front();
   disconnectClientFromServer(c0);
-  ASSERT_EQ(1, m_server_delegate.connections().size());
+  ASSERT_EQ(1, m_sdlg.connections().size());
   /*
    * Disconnect the second connection.
    */
-  tulips::api::Server::ID c1 = m_server_delegate.connections().front();
+  tulips::api::Server::ID c1 = m_sdlg.connections().front();
   disconnectClientFromServer(c1);
-  ASSERT_EQ(0, m_server_delegate.connections().size());
+  ASSERT_EQ(0, m_sdlg.connections().size());
 }
 
 TEST_F(SSL_TwoClients, ConnectSendAndClose)
@@ -396,15 +373,15 @@ TEST_F(SSL_TwoClients, ConnectSendAndClose)
   uint64_t data = 0xdeadbeef;
   ASSERT_EQ(Status::Ok, m_client->send(id, sizeof(data), (uint8_t*)&data, rem));
   ASSERT_EQ(sizeof(data), rem);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
   /*
    * Disconnect the client.
    */
   disconnectClient(id);
-  ASSERT_EQ(0, m_server_delegate.connections().size());
+  ASSERT_EQ(0, m_sdlg.connections().size());
 }
 
 TEST_F(SSL_TwoClients, ConnectSendReceiveAndClose)
@@ -414,7 +391,7 @@ TEST_F(SSL_TwoClients, ConnectSendReceiveAndClose)
   /*
    * Ask the server to send the data back.
    */
-  m_server_delegate.doSendBack(true);
+  m_sdlg.doSendBack(true);
   /*
    * Connect client.
    */
@@ -426,16 +403,16 @@ TEST_F(SSL_TwoClients, ConnectSendReceiveAndClose)
   uint64_t data = 0xdeadbeef;
   ASSERT_EQ(Status::Ok, m_client->send(id, sizeof(data), (uint8_t*)&data, rem));
   ASSERT_EQ(sizeof(data), rem);
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-  ASSERT_TRUE(m_client_delegate.dataReceived());
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
+  ASSERT_TRUE(m_cdlg.dataReceived());
   /*
    * Disconnect the client.
    */
   disconnectClient(id);
-  ASSERT_EQ(0, m_server_delegate.connections().size());
+  ASSERT_EQ(0, m_sdlg.connections().size());
 }

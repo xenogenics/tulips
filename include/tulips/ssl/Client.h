@@ -21,6 +21,34 @@ public:
   using api::interface::Client::Timestamp;
 
   /*
+   * Allocators.
+   */
+
+  static Ref allocate(system::Logger& log,
+                      api::interface::Client::Delegate& delegate,
+                      transport::Device& device, const size_t nconn,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& gw,
+                      stack::ipv4::Address const& nm, const Protocol type,
+                      const bool save_keys)
+  {
+    return std::make_unique<Client>(log, delegate, device, nconn, ip, gw, nm,
+                                    type, save_keys);
+  }
+
+  static Ref allocate(system::Logger& log,
+                      api::interface::Client::Delegate& delegate,
+                      transport::Device& device, const size_t nconn,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& gw,
+                      stack::ipv4::Address const& nm, const Protocol type,
+                      std::string_view cert, std::string_view key)
+  {
+    return std::make_unique<Client>(log, delegate, device, nconn, ip, gw, nm,
+                                    type, cert, key);
+  }
+
+  /*
    * Constructors and destructor.
    */
 
@@ -29,11 +57,13 @@ public:
          stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
          stack::ipv4::Address const& nm, const Protocol type,
          const bool save_keys);
+
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
          transport::Device& device, const size_t nconn,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
          stack::ipv4::Address const& nm, const Protocol type,
          std::string_view cert, std::string_view key);
+
   ~Client() override;
 
   /*

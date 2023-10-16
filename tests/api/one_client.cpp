@@ -61,20 +61,18 @@ class API_OneClient : public ::testing::Test
 {
 public:
   API_OneClient()
-    : m_logger(system::Logger::Level::Trace)
-    , m_client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
-    , m_server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
-    , m_client_ip4(10, 1, 0, 1)
-    , m_server_ip4(10, 1, 0, 2)
-    , m_client_list()
-    , m_server_list()
-    , m_client_ldev(nullptr)
-    , m_server_ldev(nullptr)
-    , m_client_pcap(nullptr)
-    , m_server_pcap(nullptr)
-    , m_client_delegate()
+    : m_log(system::Logger::Level::Trace)
+    , m_cadr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10)
+    , m_sadr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20)
+    , m_cip4(10, 1, 0, 1)
+    , m_sip4(10, 1, 0, 2)
+    , m_clst()
+    , m_slst()
+    , m_cdev(nullptr)
+    , m_sdev(nullptr)
+    , m_cdlg()
     , m_client(nullptr)
-    , m_server_delegate()
+    , m_sdlg()
     , m_server(nullptr)
   {}
 
@@ -88,65 +86,40 @@ protected:
     /*
      * Build the devices.
      */
-    m_client_ldev = new list::Device(m_logger, m_client_adr, 1514,
-                                     m_server_list, m_client_list);
-    m_server_ldev = new list::Device(m_logger, m_server_adr, 1514,
-                                     m_client_list, m_server_list);
+    auto cdev = list::Device::allocate(m_log, m_cadr, 1514, m_slst, m_clst);
+    auto sdev = list::Device::allocate(m_log, m_sadr, 1514, m_clst, m_slst);
     /*
      * Build the pcap device
      */
-    std::string pcap_client = "api_1client.client." + tname;
-    std::string pcap_server = "api_1client.server." + tname;
-    m_client_pcap =
-      new transport::pcap::Device(m_logger, *m_client_ldev, pcap_client);
-    m_server_pcap =
-      new transport::pcap::Device(m_logger, *m_server_ldev, pcap_server);
+    std::string cnam = "api_1client.client." + tname;
+    std::string snam = "api_1client.server." + tname;
+    m_cdev = transport::pcap::Device::allocate(m_log, std::move(cdev), cnam);
+    m_sdev = transport::pcap::Device::allocate(m_log, std::move(sdev), snam);
     /*
      * Create the client.
      */
-    m_client = new api::Client(m_logger, m_client_delegate, *m_client_pcap, 2,
-                               m_client_ip4, route, nmask);
+    m_client =
+      api::Client::allocate(m_log, m_cdlg, *m_cdev, 2, m_cip4, route, nmask);
     /*
      * Create the server.
      */
-    m_server = new api::Server(m_logger, m_server_delegate, *m_server_pcap, 2,
-                               m_server_ip4, route, nmask);
+    m_server =
+      api::Server::allocate(m_log, m_sdlg, *m_sdev, 2, m_sip4, route, nmask);
   }
 
-  void TearDown() override
-  {
-    /*
-     * Delete client, server.
-     */
-    delete m_server;
-    delete m_client;
-    /*
-     * Delete the pcap wrappers;
-     */
-    delete m_client_pcap;
-    delete m_server_pcap;
-    /*
-     * Delete client and server.
-     */
-    delete m_client_ldev;
-    delete m_server_ldev;
-  }
-
-  system::ConsoleLogger m_logger;
-  ethernet::Address m_client_adr;
-  ethernet::Address m_server_adr;
-  ipv4::Address m_client_ip4;
-  ipv4::Address m_server_ip4;
-  list::Device::List m_client_list;
-  list::Device::List m_server_list;
-  list::Device* m_client_ldev;
-  list::Device* m_server_ldev;
-  transport::pcap::Device* m_client_pcap;
-  transport::pcap::Device* m_server_pcap;
-  api::defaults::ClientDelegate m_client_delegate;
-  api::Client* m_client;
-  ServerDelegate m_server_delegate;
-  api::Server* m_server;
+  system::ConsoleLogger m_log;
+  ethernet::Address m_cadr;
+  ethernet::Address m_sadr;
+  ipv4::Address m_cip4;
+  ipv4::Address m_sip4;
+  list::Device::List m_clst;
+  list::Device::List m_slst;
+  transport::pcap::Device::Ref m_cdev;
+  transport::pcap::Device::Ref m_sdev;
+  api::defaults::ClientDelegate m_cdlg;
+  api::Client::Ref m_client;
+  ServerDelegate m_sdlg;
+  api::Server::Ref m_server;
 };
 
 TEST_F(API_OneClient, OpenClose)
@@ -172,28 +145,28 @@ TEST_F(API_OneClient, ListenConnectAndAbort)
   // Client tries to connect -- sends ARP request
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
   // Server responds to the ARP request
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client processes the reponse
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   // Client tries to connect -- sends SYN request
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
   // Server responds with SYN/ACK
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client responds with ACK -- TCPv4.cpp:584
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   // Server acknowledge the connection -- TCPv4.cpp:560
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client tries to connect
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
   // Client aborts -- sends RST
   ASSERT_EQ(Status::Ok, m_client->abort(id));
   // Server processes RST
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client closed
   ASSERT_TRUE(m_client->isClosed(id));
   // Client and server close the connections
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectAndClose)
@@ -207,27 +180,27 @@ TEST_F(API_OneClient, ListenConnectAndClose)
   // Client tries to connect -- sends ARP request
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
   // Server responds to the ARP request
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client processes the reponse
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   // Client tries to connect -- sends SYN request
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
   // Server responds with SYN/ACK
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client responds with ACK -- TCPv4.cpp:584
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   // Server acknowledge the connection -- TCPv4.cpp:560
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client tries to connect
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
   // Client closes -- sends FIN
   ASSERT_EQ(Status::Ok, m_client->close(id));
   // Server responds with FIN/ACK
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   // Client responds with ACK -- TCPv4.cpp:584
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   // Server acknowledge the disconnection
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   /*
    * Advance the timers because of TIME WAIT.
    */
@@ -241,8 +214,8 @@ TEST_F(API_OneClient, ListenConnectAndClose)
    */
   ASSERT_TRUE(m_client->isClosed(id));
   ASSERT_TRUE(m_server->isClosed(0));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
@@ -258,25 +231,25 @@ TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
    */
   ASSERT_EQ(Status::Ok, m_client->open(id));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   /*
    * Client is connected.
    */
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   /*
    * Server closes -- sends FIN
    */
   ASSERT_EQ(Status::Ok, m_server->close(0));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   /*
    * Advance the timers because of TIME WAIT.
    */
@@ -290,8 +263,8 @@ TEST_F(API_OneClient, ListenConnectAndCloseFromServer)
    */
   ASSERT_TRUE(m_client->isClosed(id));
   ASSERT_TRUE(m_server->isClosed(0));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ConnectCookie)
@@ -308,24 +281,24 @@ TEST_F(API_OneClient, ConnectCookie)
    */
   ASSERT_EQ(Status::Ok, m_client->open(id));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
   /*
    * Check if the cookie was found.
    */
-  ASSERT_TRUE(m_server_delegate.isListenCookieValid());
+  ASSERT_TRUE(m_sdlg.isListenCookieValid());
   /*
    * Abort the connection and clean-up.
    */
   ASSERT_EQ(Status::Ok, m_client->abort(id));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ConnectTwo)
@@ -342,37 +315,37 @@ TEST_F(API_OneClient, ConnectTwo)
    */
   ASSERT_EQ(Status::Ok, m_client->open(id1));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id1, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id1, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id1, dst_ip, 12345));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   /*
    * Connection client 2.
    */
   ASSERT_EQ(Status::Ok, m_client->open(id2));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id2, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id2, dst_ip, 12345));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   /*
    * Abort the connection and clean-up.
    */
   ASSERT_EQ(Status::Ok, m_client->abort(id1));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->abort(id2));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ConnectAndCloseTwo)
@@ -390,42 +363,42 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
   ASSERT_EQ(Status::Ok, m_client->open(id1));
   ASSERT_EQ(Status::OperationInProgress,
             m_client->connect(id1, dst_ip, 12345)); /* ARP REQ */
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   ASSERT_EQ(Status::OperationInProgress,
             m_client->connect(id1, dst_ip, 12345)); /* SYN REQ */
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id1, dst_ip, 12345));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   /*
    * Connection client 2.
    */
   ASSERT_EQ(Status::Ok, m_client->open(id2));
   ASSERT_EQ(Status::OperationInProgress,
             m_client->connect(id2, dst_ip, 12345)); /* SYN REQ */
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id2, dst_ip, 12345));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
   /*
    * Closing connection 1.
    */
   ASSERT_EQ(Status::Ok, m_client->close(id1));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   /*
    * Closing connection 2.
    */
   ASSERT_EQ(Status::Ok, m_client->close(id2));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   /*
    * Advance the timers because of TIME WAIT.
    */
@@ -444,8 +417,8 @@ TEST_F(API_OneClient, ConnectAndCloseTwo)
   /*
    * Clean-up.
    */
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
 }
 
 TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)
@@ -455,7 +428,7 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)
   /*
    * Server listens.
    */
-  m_server_delegate.abortOnReceive();
+  m_sdlg.abortOnReceive();
   m_server->listen(12345, nullptr);
   /*
    * Client opens a connection.
@@ -465,12 +438,12 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)
    * Client connects.
    */
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
   /*
    * Client sends and server aborts.
@@ -479,15 +452,15 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServer)
   uint64_t data = 0xdeadbeef;
   ASSERT_EQ(Status::Ok,
             m_client->send(id, sizeof(data), (const uint8_t*)&data, rem));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   /*
    * Client connections is closed.
    */
   ASSERT_TRUE(m_client->isClosed(id));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
 }
 
 TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
@@ -497,7 +470,7 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
   /*
    * Server listens.
    */
-  m_server_delegate.abortOnReceive();
+  m_sdlg.abortOnReceive();
   m_server->listen(12345, nullptr);
   /*
    * Client opens a connection.
@@ -507,17 +480,17 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
    * Client connects.
    */
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   ASSERT_EQ(Status::OperationInProgress, m_client->connect(id, dst_ip, 12345));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
   ASSERT_EQ(Status::Ok, m_client->connect(id, dst_ip, 12345));
   /*
    * Set the delayed ACK option.
    */
-  m_server->setOptions(m_server_delegate.id(), tcpv4::Connection::DELAYED_ACK);
+  m_server->setOptions(m_sdlg.id(), tcpv4::Connection::DELAYED_ACK);
   /*
    * Client sends and server aborts.
    */
@@ -525,12 +498,12 @@ TEST_F(API_OneClient, ListenConnectSendAndAbortFromServerWithDelayedACK)
   uint64_t data = 0xdeadbeef;
   ASSERT_EQ(Status::Ok,
             m_client->send(id, sizeof(data), (const uint8_t*)&data, rem));
-  ASSERT_EQ(Status::Ok, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::Ok, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::Ok, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::Ok, m_cdev->poll(*m_client));
   /*
    * Client connections is closed.
    */
   ASSERT_TRUE(m_client->isClosed(id));
-  ASSERT_EQ(Status::NoDataAvailable, m_server_pcap->poll(*m_server));
-  ASSERT_EQ(Status::NoDataAvailable, m_client_pcap->poll(*m_client));
+  ASSERT_EQ(Status::NoDataAvailable, m_sdev->poll(*m_server));
+  ASSERT_EQ(Status::NoDataAvailable, m_cdev->poll(*m_client));
 }

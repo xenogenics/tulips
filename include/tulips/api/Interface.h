@@ -122,6 +122,14 @@ struct Delegate
 class Client : public transport::Processor
 {
 public:
+  /**
+   * Default ID.
+   */
+  static constexpr stack::tcpv4::Connection::ID DEFAULT_ID = -1;
+
+  /**
+   * Application layer protocol.
+   */
   enum class ApplicationLayerProtocol : uint8_t
   {
     None = 0,
@@ -129,10 +137,20 @@ public:
     HTTP_2 = 2,
   };
 
+  /**
+   * Client ID alias.
+   */
   using ID = stack::tcpv4::Connection::ID;
+
+  /**
+   * Client delegate alias.
+   */
   using Delegate = interface::Delegate<ID>;
 
-  static constexpr ID DEFAULT_ID = -1;
+  /**
+   * Client reference alias.
+   */
+  using Ref = std::unique_ptr<Client>;
 
   /**
    * @return whether or not the client has live connections.
@@ -267,10 +285,25 @@ public:
 class Server : public transport::Processor
 {
 public:
+  /**
+   * Default ID.
+   */
+  static constexpr stack::tcpv4::Connection::ID DEFAULT_ID = -1;
+
+  /**
+   * Server ID alias.
+   */
   using ID = stack::tcpv4::Connection::ID;
+
+  /**
+   * Server delegate alias.
+   */
   using Delegate = interface::Delegate<ID>;
 
-  static constexpr ID DEFAULT_ID = -1;
+  /**
+   * Server reference alias.
+   */
+  using Ref = std::unique_ptr<Server>;
 
   /**
    * Instruct the server to listen to a particular TCP port.

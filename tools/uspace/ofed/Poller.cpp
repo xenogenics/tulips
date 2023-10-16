@@ -6,10 +6,10 @@ namespace tulips::tools::uspace::ofed {
 Poller::Poller(system::Logger& log, stack::ipv4::Address const& ip,
                stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
                const bool pcap)
-  : m_capture(pcap)
-  , m_ofed(log, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(log, m_ofed, "packets") : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_ofed)
+  : m_device(pcap
+               ? transport::ofed::Device::allocate(log, 128)
+               : transport::pcap::Device::allocate(
+                   log, transport::ofed::Device::allocate(log, 128), "packets"))
   , m_delegate()
   , m_client(log, m_delegate, *m_device, 32, ip, dr, nm)
   , m_run(true)
@@ -31,10 +31,10 @@ Poller::Poller(system::Logger& log, stack::ipv4::Address const& ip,
 Poller::Poller(system::Logger& log, std::string_view dev,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
                stack::ipv4::Address const& nm, const bool pcap)
-  : m_capture(pcap)
-  , m_ofed(log, dev, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(log, m_ofed, dev) : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_ofed)
+  : m_device(pcap ? transport::ofed::Device::allocate(log, dev, 128)
+                  : transport::pcap::Device::allocate(
+                      log, transport::ofed::Device::allocate(log, dev, 128),
+                      "packets"))
   , m_delegate()
   , m_client(log, m_delegate, *m_device, 32, ip, dr, nm)
   , m_run(true)
@@ -55,19 +55,10 @@ Poller::Poller(system::Logger& log, std::string_view dev,
 
 Poller::~Poller()
 {
-  /*
-   * Clean-up runtime variables.
-   */
   m_run = false;
   pthread_join(m_thread, nullptr);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
-  /*
-   * Clean-up devices.
-   */
-  if (m_capture) {
-    delete m_pcap;
-  }
 }
 
 Status

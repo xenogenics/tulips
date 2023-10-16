@@ -1,8 +1,8 @@
 #include "Debug.h"
-#include "tulips/stack/tcpv4/Connection.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/Utils.h>
+#include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
 #include <tulips/system/Compiler.h>

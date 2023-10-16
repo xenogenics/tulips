@@ -177,4 +177,13 @@ Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return Status::Ok;
 }
 
+Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  m_log.trace("TAP", "releasing buffer ", (void*)buf);
+  /*
+   * NOTE(xrg): the TAP device does not support out-of-order buffer release.
+   */
+  return Status::Ok;
+}
 }

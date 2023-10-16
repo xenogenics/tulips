@@ -46,6 +46,13 @@ public:
 
   using List = std::list<Packet*>;
 
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      const uint32_t mtu, List& rf, List& wf)
+  {
+    return std::make_unique<Device>(log, address, mtu, rf, wf);
+  }
+
   Device(system::Logger& log, stack::ethernet::Address const& address,
          const uint32_t mtu, List& rf, List& wf);
   ~Device() override;

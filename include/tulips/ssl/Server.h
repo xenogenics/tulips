@@ -12,22 +12,41 @@ class Server
   , public api::interface::Server::Delegate
 {
 public:
-  /**
+  /*
    * Type alias import.
    */
+
   using api::interface::Server::Timestamp;
 
-  /**
+  /*
+   * Allocator.
+   */
+
+  static Ref allocate(system::Logger& log,
+                      api::interface::Server::Delegate& delegate,
+                      transport::Device& device, const size_t nconn,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& gw,
+                      stack::ipv4::Address const& nm, const ssl::Protocol type,
+                      std::string_view cert, std::string_view key)
+  {
+    return std::make_unique<Server>(log, delegate, device, nconn, ip, gw, nm,
+                                    type, cert, key);
+  }
+
+  /*
    * Constructor and destructor.
    */
+
   Server(system::Logger& log, api::interface::Server::Delegate& delegate,
          transport::Device& device, const size_t nconn,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
          stack::ipv4::Address const& nm, const ssl::Protocol type,
          std::string_view cert, std::string_view key);
+
   ~Server() override;
 
-  /**
+  /*
    * Device interface.
    */
 
@@ -44,7 +63,7 @@ public:
     return m_server->sent(len, data);
   }
 
-  /**
+  /*
    * Server interface.
    */
 
@@ -75,7 +94,7 @@ public:
     m_server->unlisten(port);
   }
 
-  /**
+  /*
    * Server delegate.
    */
 

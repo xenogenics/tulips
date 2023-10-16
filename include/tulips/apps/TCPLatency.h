@@ -9,13 +9,13 @@ namespace tulips::apps::tcplatency {
 
 namespace Client {
 
-int run(Options const& options, transport::Device& base_device);
+int run(Options const& options, transport::Device::Ref dev);
 
 }
 
 namespace Server {
 
-int run(Options const& options, transport::Device& base_device);
+int run(Options const& options, transport::Device::Ref dev);
 
 }
 

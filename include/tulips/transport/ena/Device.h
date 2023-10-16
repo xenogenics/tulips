@@ -20,7 +20,15 @@ namespace tulips::transport::ena {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Destructor.
+   */
+
   ~Device() override;
+
+  /*
+   * Device interface.
+   */
 
   stack::ethernet::Address const& address() const override { return m_address; }
 

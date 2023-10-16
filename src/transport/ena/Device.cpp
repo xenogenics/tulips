@@ -32,7 +32,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
                const uint16_t queue_id, const uint16_t ntxbs,
                const uint16_t nrxbs, RedirectionTable& reta,
                stack::ethernet::Address const& address, const uint32_t mtu,
-               struct rte_mempool* const txpool, const bool bonded)
+               struct rte_mempool* const txpool, const bool bound)
   : transport::Device(log, "ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
@@ -40,7 +40,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_nrxbs(nrxbs)
   , m_reta(reta)
   , m_txpool(txpool)
-  , m_bound(bonded)
+  , m_bound(bound)
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
   , m_free()

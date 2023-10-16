@@ -12,9 +12,30 @@ namespace tulips::transport::npipe {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Allocator.
+   */
+
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& nm,
+                      stack::ipv4::Address const& dr)
+  {
+    return std::make_unique<Device>(log, address, ip, nm, dr);
+  }
+
+  /*
+   * Constructor.
+   */
+
   Device(system::Logger& log, stack::ethernet::Address const& address,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
          stack::ipv4::Address const& dr);
+
+  /*
+   * Device interface.
+   */
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
@@ -89,6 +110,16 @@ protected:
 class ClientDevice : public Device
 {
 public:
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& nm,
+                      stack::ipv4::Address const& dr, std::string_view rf,
+                      std::string_view wf)
+  {
+    return Ref(new ClientDevice(log, address, ip, nm, dr, rf, wf));
+  }
+
   ClientDevice(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr, std::string_view rf,
@@ -98,6 +129,16 @@ public:
 class ServerDevice : public Device
 {
 public:
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& nm,
+                      stack::ipv4::Address const& dr, std::string_view rf,
+                      std::string_view wf)
+  {
+    return Ref(new ServerDevice(log, address, ip, dr, nm, rf, wf));
+  }
+
   ServerDevice(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr, std::string_view rf,

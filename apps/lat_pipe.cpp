@@ -5,6 +5,7 @@
 #include <tclap/CmdLine.h>
 
 using namespace tulips;
+using namespace transport;
 using namespace apps::tcplatency;
 
 int
@@ -26,25 +27,24 @@ try {
   /*
    * Create the tunnel device.
    */
-  transport::npipe::Device* device;
+  Device::Ref device;
   if (opts.isSender()) {
-    device = new transport::npipe::ClientDevice(
+    device = transport::npipe::ClientDevice::allocate(
       logger, opts.linkAddress(), opts.source(), opts.mask(), opts.route(),
       "server.fifo", "client.fifo");
   } else {
-    device = new transport::npipe::ServerDevice(
+    device = transport::npipe::ServerDevice::allocate(
       logger, opts.linkAddress(), opts.source(), opts.mask(), opts.route(),
       "client.fifo", "server.fifo");
   }
   /*
    * Call the main function.
    */
-  int res = opts.isSender() ? Client::run(opts, *device)
-                            : Server::run(opts, *device);
+  int res = opts.isSender() ? Client::run(opts, std::move(device))
+                            : Server::run(opts, std::move(device));
   /*
-   * Clean-up and return.
+   * Done.
    */
-  delete device;
   return res;
 } catch (std::exception const& e) {
   std::cerr << e.what() << std::endl;
