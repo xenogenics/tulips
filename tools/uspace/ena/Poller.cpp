@@ -290,8 +290,9 @@ public:
     /*
      * Create a new poller.
      */
-    s.pollers.emplace_back(
-      new Poller(s.logger, s.port.next(), ip, dr, nm, s.with_pcap, s.with_ssl));
+    auto poller = new Poller(s.logger, s.port.next(false), ip, dr, nm,
+                             s.with_pcap, s.with_ssl);
+    s.pollers.emplace_back(poller);
     /*
      * Print the poller ID.
      */

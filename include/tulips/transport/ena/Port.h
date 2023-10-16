@@ -23,7 +23,7 @@ public:
 
   void run();
 
-  Device::Ref next();
+  Device::Ref next(const bool bonded);
 
 private:
   void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);

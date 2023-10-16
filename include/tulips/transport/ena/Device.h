@@ -58,7 +58,7 @@ private:
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
          const uint16_t ntxbs, const uint16_t nrxbs, RedirectionTable& reta,
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
-         struct rte_mempool* const txpool);
+         struct rte_mempool* const txpool, const bool bound);
 
   system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
 
@@ -70,6 +70,7 @@ private:
   uint16_t m_nrxbs;
   RedirectionTable& m_reta;
   struct rte_mempool* m_txpool;
+  bool m_bound;
   system::CircularBuffer::Ref m_buffer;
   uint8_t* m_packet;
   std::vector<struct rte_mbuf*> m_free;
