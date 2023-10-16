@@ -110,9 +110,10 @@ run(Options const& options, transport::Device& base_device)
    */
   api::interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(
-      logger, delegate, *device, tulips::ssl::Protocol::TLS, options.sslCert(),
-      options.sslKey(), 1, options.source(), options.route(), options.mask());
+    client = new tulips::ssl::Client(logger, delegate, *device, 1,
+                                     options.source(), options.route(),
+                                     options.mask(), tulips::ssl::Protocol::TLS,
+                                     options.sslCert(), options.sslKey());
   } else {
     client = new tulips::api::Client(logger, delegate, *device, 1,
                                      options.source(), options.route(),
@@ -404,9 +405,9 @@ run(Options const& options, transport::Device& base_device)
   api::interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
-      logger, delegate, *device, tulips::ssl::Protocol::TLS, options.sslCert(),
-      options.sslKey(), options.connections(), options.source(),
-      options.route(), options.mask());
+      logger, delegate, *device, options.connections(), options.source(),
+      options.route(), options.mask(), tulips::ssl::Protocol::TLS,
+      options.sslCert(), options.sslKey());
   } else {
     server = new tulips::api::Server(logger, delegate, *device,
                                      options.connections(), options.source(),

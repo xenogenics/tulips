@@ -6,10 +6,10 @@
 namespace tulips::ssl {
 
 Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
-               transport::Device& device, const ssl::Protocol type,
-               std::string_view cert, std::string_view key, const size_t n,
+               transport::Device& device, const size_t n,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-               stack::ipv4::Address const& nm)
+               stack::ipv4::Address const& nm, const ssl::Protocol type,
+               std::string_view cert, std::string_view key)
   : m_delegate(delegate)
   , m_log(log)
   , m_server(std::make_unique<api::Server>(log, *this, device, n, ip, gw, nm))

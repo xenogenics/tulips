@@ -25,14 +25,15 @@ public:
    */
 
   Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-         transport::Device& device, const Protocol type, const bool save_keys,
-         const size_t nconn, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& gw, stack::ipv4::Address const& nm);
-  Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-         transport::Device& device, const Protocol type, std::string_view cert,
-         std::string_view key, const size_t nconn,
+         transport::Device& device, const size_t nconn,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-         stack::ipv4::Address const& nm);
+         stack::ipv4::Address const& nm, const Protocol type,
+         const bool save_keys);
+  Client(system::Logger& log, api::interface::Client::Delegate& delegate,
+         transport::Device& device, const size_t nconn,
+         stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+         stack::ipv4::Address const& nm, const Protocol type,
+         std::string_view cert, std::string_view key);
   ~Client() override;
 
   /*

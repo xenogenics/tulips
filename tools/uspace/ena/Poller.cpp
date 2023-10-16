@@ -41,8 +41,8 @@ Poller::Poller(system::Logger& log, transport::Device::Ref dev,
    */
   if (ssl) {
     auto proto = ssl::Protocol::Auto;
-    m_client = std::make_unique<ssl::Client>(log, m_delegate, *m_device, proto,
-                                             32, false, ip, dr, nm);
+    m_client = std::make_unique<ssl::Client>(log, m_delegate, *m_device, 32, ip,
+                                             dr, nm, proto, false);
   } else {
     m_client =
       std::make_unique<api::Client>(log, m_delegate, *m_device, 32, ip, dr, nm);
