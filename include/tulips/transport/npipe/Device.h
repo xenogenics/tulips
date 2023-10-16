@@ -53,6 +53,11 @@ public:
 
   uint16_t receiveBuffersAvailable() const override { return 32; }
 
+  bool identify([[maybe_unused]] const uint8_t* const buf) const override
+  {
+    return true;
+  }
+
 protected:
   static constexpr uint32_t BUFLEN = DEFAULT_MTU + stack::ethernet::HEADER_LEN;
 

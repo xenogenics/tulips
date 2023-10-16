@@ -59,6 +59,11 @@ public:
     return m_device.receiveBuffersAvailable();
   }
 
+  bool identify(const uint8_t* const buf) const override
+  {
+    return m_device.identify(buf);
+  }
+
   Status prepare(uint8_t*& buf) override;
   Status commit(const uint16_t len, uint8_t* const buf,
                 const uint16_t mss = 0) override;

@@ -35,6 +35,14 @@ public:
     return m_nbuf - m_pending;
   }
 
+  bool identify([[maybe_unused]] const uint8_t* const buf) const override
+  {
+    /*
+     * NOTE(xrg): this MUST be implemented in case we want to enable bonding.
+     */
+    return true;
+  }
+
   Status listen(const stack::ipv4::Protocol proto,
                 stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,

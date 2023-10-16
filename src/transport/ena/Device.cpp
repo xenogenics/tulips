@@ -255,6 +255,13 @@ Device::wait(Processor& proc, const uint64_t ns)
   return Device::poll(proc);
 }
 
+bool
+Device::identify(const uint8_t* const buf) const
+{
+  const auto* mbuf = *reinterpret_cast<struct rte_mbuf* const*>(buf - 8);
+  return mbuf->pool == m_txpool;
+}
+
 Status
 Device::prepare(uint8_t*& buf)
 {

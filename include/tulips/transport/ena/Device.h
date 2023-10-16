@@ -50,6 +50,8 @@ public:
 
   uint16_t receiveBuffersAvailable() const override { return m_nrxbs; }
 
+  bool identify(const uint8_t* const buf) const override;
+
 private:
   using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 

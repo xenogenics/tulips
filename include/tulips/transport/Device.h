@@ -150,6 +150,15 @@ public:
   virtual uint16_t receiveBuffersAvailable() const = 0;
 
   /**
+   * Identify a send buffer.
+   *
+   * @param buf the send buffer to indentify.
+   *
+   * @return true if the buffer is owned by the device.
+   */
+  virtual bool identify(const uint8_t* const buf) const = 0;
+
+  /**
    * Give a hint to the device.
    *
    * @param h the hint to give.
@@ -163,4 +172,5 @@ protected:
 };
 
 }
+
 }

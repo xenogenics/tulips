@@ -87,6 +87,11 @@ public:
     return std::numeric_limits<uint16_t>::max();
   }
 
+  bool identify([[maybe_unused]] const uint8_t* const buf) const override
+  {
+    return true;
+  }
+
   Status drop();
 
 private:
