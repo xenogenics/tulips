@@ -9,6 +9,13 @@ namespace tulips::transport::bond {
 class Device : public transport::Device
 {
 public:
+  static Ref allocate(system::Logger& log,
+                      std::vector<transport::Device::Ref> devices,
+                      std::string_view name)
+  {
+    return Ref(new Device(log, std::move(devices), name));
+  }
+
   Device(system::Logger& log, std::vector<transport::Device::Ref> devices,
          std::string_view name);
 
@@ -39,6 +46,8 @@ public:
   {
     return m_devices.front()->receiveBufferLengthLog2();
   }
+
+  bool identify(const uint8_t* const buf) const override;
 
   uint16_t receiveBuffersAvailable() const override;
 

@@ -90,6 +90,23 @@ Device::receiveBuffersAvailable() const
   return count;
 }
 
+bool
+Device::identify(const uint8_t* const buf) const
+{
+  /*
+   * Scan the bound devices for a match.
+   */
+  for (auto const& device : m_devices) {
+    if (device->identify(buf)) {
+      return true;
+    }
+  }
+  /*
+   * Not found otherwise.
+   */
+  return false;
+}
+
 Status
 Device::prepare(uint8_t*& buf)
 {
