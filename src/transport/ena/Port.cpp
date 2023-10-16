@@ -163,7 +163,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Allocate the admin device.
    */
-  m_admin = next(false);
+  m_admin = next(m_log, false);
 }
 
 Port::~Port()
@@ -201,7 +201,7 @@ Port::run()
 }
 
 Device::Ref
-Port::next(const bool bound)
+Port::next(system::Logger& log, const bool bound)
 {
   /*
    * Return if there is no more queue available.
@@ -221,7 +221,7 @@ Port::next(const bool bound)
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(m_log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
+  auto* dev = new ena::Device(log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
                               m_address, m_mtu, txpool, bound);
   /*
    * Add the device queue to the raw processor.
