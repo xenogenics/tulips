@@ -51,19 +51,28 @@ Device::unlisten(const stack::ipv4::Protocol proto,
 Status
 Device::poll(Processor& proc)
 {
+  auto result = Status::NoDataAvailable;
   /*
    * Poll all the devices.
    */
   for (auto& device : m_devices) {
-    auto ret = device->poll(proc);
-    if (ret != Status::Ok && ret != Status::NoDataAvailable) {
-      return ret;
+    switch (auto status = device->poll(proc)) {
+      case Status::Ok: {
+        result = Status::Ok;
+        break;
+      }
+      case Status::NoDataAvailable: {
+        break;
+      }
+      default: {
+        return status;
+      }
     }
   }
   /*
    * Done.
    */
-  return Status::Ok;
+  return result;
 }
 
 Status
@@ -82,11 +91,17 @@ uint16_t
 Device::receiveBuffersAvailable() const
 {
   uint16_t count = std::numeric_limits<uint16_t>::max();
+  /*
+   * Compute the lowest amount of buffers among the devices.
+   */
   for (auto const& device : m_devices) {
     if (device->receiveBuffersAvailable() < count) {
       count = device->receiveBuffersAvailable();
     }
   }
+  /*
+   * Done.
+   */
   return count;
 }
 
