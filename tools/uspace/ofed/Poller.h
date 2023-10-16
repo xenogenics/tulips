@@ -1,6 +1,7 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/system/Logger.h>
+#include <tulips/transport/Device.h>
 #include <tulips/transport/ofed/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <string>
@@ -45,6 +46,13 @@ private:
     poller->run();
     return nullptr;
   }
+
+  static transport::Device::Ref makeDevice(system::Logger& log,
+                                           const bool pcap);
+
+  static transport::Device::Ref makeDevice(system::Logger& log,
+                                           std::string_view dev,
+                                           const bool pcap);
 
   void run();
 
