@@ -1,3 +1,4 @@
+add_subdirectory(bond)
 add_subdirectory(check)
 add_subdirectory(erase)
 add_subdirectory(list)

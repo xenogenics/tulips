@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tulips/api/Defaults.h>
+#include <tulips/stack/IPv4.h>
 #include <tulips/system/Logger.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/Device.h>
@@ -17,8 +18,9 @@ class Poller
 public:
   using Ref = std::unique_ptr<Poller>;
 
-  Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap,
-         const bool ssl);
+  Poller(system::Logger& log, transport::Device::Ref dev,
+         stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+         stack::ipv4::Address const& nm, const bool pcap, const bool ssl);
   Poller(Poller&&) = default;
   ~Poller();
 
@@ -52,10 +54,8 @@ private:
 
   void run();
 
-  const bool m_capture;
-  transport::Device::Ref m_dev;
-  transport::pcap::Device* m_pcap;
-  transport::Device* m_device;
+  std::string m_name;
+  transport::Device::Ref m_device;
   api::defaults::ClientDelegate m_delegate;
   std::unique_ptr<api::interface::Client> m_client;
   volatile bool m_run;
@@ -63,7 +63,7 @@ private:
   pthread_mutex_t m_mutex;
   pthread_cond_t m_cond;
   Action m_action;
-  stack::ipv4::Address m_ripaddr;
+  stack::ipv4::Address m_raddr;
   stack::tcpv4::Port m_lport;
   stack::tcpv4::Port m_rport;
   api::Client::ID m_id;

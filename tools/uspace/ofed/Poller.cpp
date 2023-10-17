@@ -3,13 +3,12 @@
 
 namespace tulips::tools::uspace::ofed {
 
-Poller::Poller(system::Logger& log, const bool pcap)
-  : m_capture(pcap)
-  , m_ofed(log, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(log, m_ofed, "packets") : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_ofed)
+Poller::Poller(system::Logger& log, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
+               const bool pcap)
+  : m_device(makeDevice(log, pcap))
   , m_delegate()
-  , m_client(log, m_delegate, *m_device, 32)
+  , m_client(log, m_delegate, *m_device, 32, ip, dr, nm)
   , m_run(true)
   , m_thread()
   , m_mutex()
@@ -26,13 +25,12 @@ Poller::Poller(system::Logger& log, const bool pcap)
   pthread_cond_init(&m_cond, nullptr);
 }
 
-Poller::Poller(system::Logger& log, std::string_view dev, const bool pcap)
-  : m_capture(pcap)
-  , m_ofed(log, dev, 128)
-  , m_pcap(pcap ? new transport::pcap::Device(log, m_ofed, dev) : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap : (transport::Device*)&m_ofed)
+Poller::Poller(system::Logger& log, std::string_view dev,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+               stack::ipv4::Address const& nm, const bool pcap)
+  : m_device(makeDevice(log, dev, pcap))
   , m_delegate()
-  , m_client(log, m_delegate, *m_device, 32)
+  , m_client(log, m_delegate, *m_device, 32, ip, dr, nm)
   , m_run(true)
   , m_thread()
   , m_mutex()
@@ -51,19 +49,10 @@ Poller::Poller(system::Logger& log, std::string_view dev, const bool pcap)
 
 Poller::~Poller()
 {
-  /*
-   * Clean-up runtime variables.
-   */
   m_run = false;
   pthread_join(m_thread, nullptr);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
-  /*
-   * Clean-up devices.
-   */
-  if (m_capture) {
-    delete m_pcap;
-  }
 }
 
 Status
@@ -156,6 +145,52 @@ Poller::write(const api::Client::ID id, std::string_view data)
    */
   pthread_mutex_unlock(&m_mutex);
   return result;
+}
+
+transport::Device::Ref
+Poller::makeDevice(system::Logger& log, const bool pcap)
+{
+  transport::Device::Ref device;
+  /*
+   * Build the OFED device.
+   */
+  auto ofed = transport::ofed::Device::allocate(log, 128);
+  auto name = std::string(ofed->name());
+  /*
+   * Initialize the device.
+   */
+  if (pcap) {
+    device = transport::pcap::Device::allocate(log, std::move(ofed), name);
+  } else {
+    device = std::move(ofed);
+  }
+  /*
+   * Done.
+   */
+  return device;
+}
+
+transport::Device::Ref
+Poller::makeDevice(system::Logger& log, std::string_view dev, const bool pcap)
+{
+  transport::Device::Ref device;
+  /*
+   * Build the OFED device.
+   */
+  auto ofed = transport::ofed::Device::allocate(log, dev, 128);
+  auto name = std::string(ofed->name());
+  /*
+   * Initialize the device.
+   */
+  if (pcap) {
+    device = transport::pcap::Device::allocate(log, std::move(ofed), name);
+  } else {
+    device = std::move(ofed);
+  }
+  /*
+   * Done.
+   */
+  return device;
 }
 
 void

@@ -14,14 +14,13 @@ namespace tulips::tools::uspace::ena::poller {
  * Poller.
  */
 
-Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap,
-               const bool ssl)
-  : m_capture(pcap)
-  , m_dev(std::move(dev))
-  , m_pcap(pcap ? new transport::pcap::Device(log, *m_dev, m_dev->name())
-                : nullptr)
-  , m_device(pcap ? (transport::Device*)m_pcap
-                  : (transport::Device*)m_dev.get())
+Poller::Poller(system::Logger& log, transport::Device::Ref dev,
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+               stack::ipv4::Address const& nm, const bool pcap, const bool ssl)
+  : m_name(dev->name())
+  , m_device(pcap
+               ? transport::pcap::Device::allocate(log, std::move(dev), m_name)
+               : std::move(dev))
   , m_delegate()
   , m_client()
   , m_run(true)
@@ -29,7 +28,7 @@ Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap,
   , m_mutex()
   , m_cond()
   , m_action(Action::None)
-  , m_ripaddr()
+  , m_raddr()
   , m_lport()
   , m_rport()
   , m_id()
@@ -40,10 +39,11 @@ Poller::Poller(system::Logger& log, transport::Device::Ref dev, const bool pcap,
    */
   if (ssl) {
     auto proto = ssl::Protocol::Auto;
-    m_client = std::make_unique<ssl::Client>(log, m_delegate, *m_device, proto,
-                                             32, false);
+    m_client = std::make_unique<ssl::Client>(log, m_delegate, *m_device, 32, ip,
+                                             dr, nm, proto, false);
   } else {
-    m_client = std::make_unique<api::Client>(log, m_delegate, *m_device, 32);
+    m_client =
+      std::make_unique<api::Client>(log, m_delegate, *m_device, 32, ip, dr, nm);
   }
   /*
    * Build the thread.
@@ -62,12 +62,6 @@ Poller::~Poller()
   pthread_join(m_thread, nullptr);
   pthread_cond_destroy(&m_cond);
   pthread_mutex_destroy(&m_mutex);
-  /*
-   * Clean-up devices.
-   */
-  if (m_capture) {
-    delete m_pcap;
-  }
 }
 
 Status
@@ -84,7 +78,7 @@ Poller::connect(stack::ipv4::Address const& ripaddr,
    * Connect the client.
    */
   if (result == Status::Ok) {
-    m_ripaddr = ripaddr;
+    m_raddr = ripaddr;
     m_rport = rport;
     m_id = id;
     do {
@@ -137,7 +131,7 @@ Poller::get(const api::Client::ID id, stack::ipv4::Address& ripaddr,
   m_id = id;
   pthread_cond_wait(&m_cond, &m_mutex);
   result = m_status;
-  ripaddr = m_ripaddr;
+  ripaddr = m_raddr;
   lport = m_lport;
   rport = m_rport;
   /*
@@ -187,7 +181,7 @@ Poller::run()
     pthread_mutex_lock(&m_mutex);
     switch (m_action) {
       case Action::Connect: {
-        m_status = m_client->connect(m_id, m_ripaddr, m_rport);
+        m_status = m_client->connect(m_id, m_raddr, m_rport);
         m_action = Action::None;
         pthread_cond_signal(&m_cond);
         break;
@@ -212,7 +206,7 @@ Poller::run()
       }
       case Action::Info: {
         stack::ipv4::Address laddr;
-        m_status = m_client->get(m_id, laddr, m_lport, m_ripaddr, m_rport);
+        m_status = m_client->get(m_id, laddr, m_lport, m_raddr, m_rport);
         m_action = Action::None;
         pthread_cond_signal(&m_cond);
         break;
@@ -288,8 +282,9 @@ public:
     /*
      * Create a new poller.
      */
-    s.pollers.emplace_back(
-      new Poller(s.logger, s.port.next(ip, dr, nm), s.with_pcap, s.with_ssl));
+    auto poller = new Poller(s.logger, s.port.next(s.logger, false), ip, dr, nm,
+                             s.with_pcap, s.with_ssl);
+    s.pollers.emplace_back(poller);
     /*
      * Print the poller ID.
      */

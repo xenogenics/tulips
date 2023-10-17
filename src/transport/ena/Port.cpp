@@ -103,12 +103,12 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
    * Get the TX descriptor count.
    */
   m_ntxds = RTE_MAX(txw, dev_info.tx_desc_lim.nb_min);
-  m_ntxds = RTE_MIN(txw, dev_info.tx_desc_lim.nb_max);
+  m_ntxds = RTE_MIN(m_ntxds, dev_info.tx_desc_lim.nb_max);
   /*
    * Get the RX descriptor count.
    */
   m_nrxds = RTE_MAX(rxw, dev_info.rx_desc_lim.nb_min);
-  m_nrxds = RTE_MIN(rxw, dev_info.rx_desc_lim.nb_max);
+  m_nrxds = RTE_MIN(m_nrxds, dev_info.rx_desc_lim.nb_max);
   /*
    * Print some device information.
    */
@@ -163,7 +163,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Allocate the admin device.
    */
-  m_admin = next();
+  m_admin = next(m_log, false);
 }
 
 Port::~Port()
@@ -201,8 +201,7 @@ Port::run()
 }
 
 Device::Ref
-Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-           stack::ipv4::Address const& nm)
+Port::next(system::Logger& log, const bool bound)
 {
   /*
    * Return if there is no more queue available.
@@ -222,12 +221,12 @@ Port::next(stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(m_log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
-                              m_address, m_mtu, txpool, ip, dr, nm);
+  auto* dev = new ena::Device(log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
+                              m_address, m_mtu, txpool, bound);
   /*
    * Add the device queue to the raw processor.
    */
-  if (qid > 0) {
+  if (qid > 0 && !bound) {
     m_raw.add(dev->internalBuffer());
   }
   /*

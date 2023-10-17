@@ -12,19 +12,35 @@ namespace tulips::transport::npipe {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Allocator.
+   */
+
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& nm,
+                      stack::ipv4::Address const& dr)
+  {
+    return std::make_unique<Device>(log, address, ip, nm, dr);
+  }
+
+  /*
+   * Constructor.
+   */
+
   Device(system::Logger& log, stack::ethernet::Address const& address,
          stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
          stack::ipv4::Address const& dr);
 
+  /*
+   * Device interface.
+   */
+
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
   Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
@@ -33,6 +49,7 @@ public:
   }
 
   void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
@@ -56,6 +73,11 @@ public:
   uint8_t receiveBufferLengthLog2() const override { return 11; }
 
   uint16_t receiveBuffersAvailable() const override { return 32; }
+
+  bool identify([[maybe_unused]] const uint8_t* const buf) const override
+  {
+    return true;
+  }
 
 protected:
   static constexpr uint32_t BUFLEN = DEFAULT_MTU + stack::ethernet::HEADER_LEN;
@@ -88,6 +110,16 @@ protected:
 class ClientDevice : public Device
 {
 public:
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& nm,
+                      stack::ipv4::Address const& dr, std::string_view rf,
+                      std::string_view wf)
+  {
+    return Ref(new ClientDevice(log, address, ip, nm, dr, rf, wf));
+  }
+
   ClientDevice(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr, std::string_view rf,
@@ -97,6 +129,16 @@ public:
 class ServerDevice : public Device
 {
 public:
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      stack::ipv4::Address const& ip,
+                      stack::ipv4::Address const& nm,
+                      stack::ipv4::Address const& dr, std::string_view rf,
+                      std::string_view wf)
+  {
+    return Ref(new ServerDevice(log, address, ip, dr, nm, rf, wf));
+  }
+
   ServerDevice(system::Logger& log, stack::ethernet::Address const& address,
                stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
                stack::ipv4::Address const& dr, std::string_view rf,

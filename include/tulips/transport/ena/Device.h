@@ -20,21 +20,25 @@ namespace tulips::transport::ena {
 class Device : public transport::Device
 {
 public:
+  /*
+   * Destructor.
+   */
+
   ~Device() override;
+
+  /*
+   * Device interface.
+   */
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
-  Status listen(const stack::ipv4::Protocol proto, const uint16_t lport,
+  Status listen(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override;
 
-  void unlisten(const stack::ipv4::Protocol proto, const uint16_t lport,
+  void unlisten(const stack::ipv4::Protocol proto,
+                stack::ipv4::Address const& laddr, const uint16_t lport,
                 stack::ipv4::Address const& raddr,
                 const uint16_t rport) override;
 
@@ -54,14 +58,15 @@ public:
 
   uint16_t receiveBuffersAvailable() const override { return m_nrxbs; }
 
+  bool identify(const uint8_t* const buf) const override;
+
 private:
   using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 
   Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
          const uint16_t ntxbs, const uint16_t nrxbs, RedirectionTable& reta,
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
-         struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm);
+         struct rte_mempool* const txpool, const bool bound);
 
   system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
 
@@ -73,6 +78,7 @@ private:
   uint16_t m_nrxbs;
   RedirectionTable& m_reta;
   struct rte_mempool* m_txpool;
+  bool m_bound;
   system::CircularBuffer::Ref m_buffer;
   uint8_t* m_packet;
   std::vector<struct rte_mbuf*> m_free;
@@ -83,9 +89,6 @@ private:
 
 protected:
   stack::ethernet::Address m_address;
-  stack::ipv4::Address m_ip;
-  stack::ipv4::Address m_dr;
-  stack::ipv4::Address m_nm;
   uint32_t m_mtu;
 };
 

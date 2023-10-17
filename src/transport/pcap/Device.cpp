@@ -25,10 +25,10 @@ writePacket(pcap_dumper_t* const dumper, const void* const data,
   pcap_dump((u_char*)dumper, &hdr, (const u_char*)data);
 }
 
-Device::Device(system::Logger& log, transport::Device& device,
+Device::Device(system::Logger& log, transport::Device::Ref device,
                std::string_view name)
   : transport::Device(log, "pcap")
-  , m_device(device)
+  , m_device(std::move(device))
   , m_pcap(nullptr)
   , m_pcap_dumper(nullptr)
   , m_proc(nullptr)
@@ -38,7 +38,7 @@ Device::Device(system::Logger& log, transport::Device& device,
    * length of the IP packet is wrong if the payload is larger than 64K. It will
    * lead to invalid packets in the resulting PCAP.
    */
-  uint32_t snaplen = m_device.mss() + stack::ethernet::HEADER_LEN;
+  uint32_t snaplen = m_device->mss() + stack::ethernet::HEADER_LEN;
   m_log.debug("PCAP", "snaplen is ", snaplen);
 #ifdef __OpenBSD__
   m_pcap = pcap_open_dead(DLT_EN10MB, snaplen);
@@ -61,26 +61,26 @@ Status
 Device::poll(Processor& proc)
 {
   m_proc = &proc;
-  return m_device.poll(*this);
+  return m_device->poll(*this);
 }
 
 Status
 Device::wait(Processor& proc, const uint64_t ns)
 {
   m_proc = &proc;
-  return m_device.wait(*this, ns);
+  return m_device->wait(*this, ns);
 }
 
 Status
 Device::prepare(uint8_t*& buf)
 {
-  return m_device.prepare(buf);
+  return m_device->prepare(buf);
 }
 
 Status
 Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
-  Status ret = m_device.commit(len, buf, mss);
+  Status ret = m_device->commit(len, buf, mss);
   if (ret == Status::Ok) {
     writePacket(m_pcap_dumper, buf, len, system::Clock::read());
   }
@@ -90,7 +90,7 @@ Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 Status
 Device::release(uint8_t* const buf)
 {
-  return m_device.release(buf);
+  return m_device->release(buf);
 }
 
 Status

@@ -32,8 +32,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
                const uint16_t queue_id, const uint16_t ntxbs,
                const uint16_t nrxbs, RedirectionTable& reta,
                stack::ethernet::Address const& address, const uint32_t mtu,
-               struct rte_mempool* const txpool, stack::ipv4::Address const& ip,
-               stack::ipv4::Address const& dr, stack::ipv4::Address const& nm)
+               struct rte_mempool* const txpool, const bool bound)
   : transport::Device(log, "ena_" + std::to_string(queue_id))
   , m_portid(port_id)
   , m_queueid(queue_id)
@@ -41,15 +40,13 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_nrxbs(nrxbs)
   , m_reta(reta)
   , m_txpool(txpool)
+  , m_bound(bound)
   , m_buffer(system::CircularBuffer::allocate(16384))
   , m_packet(new uint8_t[16384])
   , m_free()
   , m_sent()
   , m_laststats(0)
   , m_address(address)
-  , m_ip(ip)
-  , m_dr(dr)
-  , m_nm(nm)
   , m_mtu(mtu)
 {
   /*
@@ -73,9 +70,6 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   if (m_queueid > 0) {
     log.debug("ENA", "port id: ", port_id);
     log.debug("ENA", "queue id: ", queue_id);
-    log.debug("ENA", "ip address: ", m_ip.toString());
-    log.debug("ENA", "netmask: ", m_nm.toString());
-    log.debug("ENA", "router address: ", m_dr.toString());
   }
 }
 
@@ -130,17 +124,19 @@ Device::clearSentBuffers(Processor& proc)
 }
 
 Status
-Device::listen(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
+Device::listen(UNUSED const stack::ipv4::Protocol proto,
+               stack::ipv4::Address const& laddr, const uint16_t lport,
                stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  return m_reta.set(m_ip, lport, raddr, rport, m_queueid);
+  return m_reta.set(laddr, lport, raddr, rport, m_queueid);
 }
 
 void
-Device::unlisten(UNUSED const stack::ipv4::Protocol proto, const uint16_t lport,
+Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
+                 stack::ipv4::Address const& laddr, const uint16_t lport,
                  stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  m_reta.clear(m_ip, lport, raddr, rport, m_queueid);
+  m_reta.clear(laddr, lport, raddr, rport, m_queueid);
 }
 
 Status
@@ -258,6 +254,13 @@ Device::wait(Processor& proc, const uint64_t ns)
 {
   std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
   return Device::poll(proc);
+}
+
+bool
+Device::identify(const uint8_t* const buf) const
+{
+  const auto* mbuf = *reinterpret_cast<struct rte_mbuf* const*>(buf - 8);
+  return mbuf->pool == m_txpool;
 }
 
 Status

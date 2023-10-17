@@ -115,23 +115,23 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
   /*
    * Create the console logger.
    */
-  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  auto log = system::ConsoleLogger(system::Logger::Level::Trace);
   /*
    * Create an OFED device
    */
-  ofed::Device ofed_device(logger, ifn, 32);
-  transport::pcap::Device* pcap_device = nullptr;
-  Device* device = &ofed_device;
+  Device::Ref dev;
+  auto ofed = ofed::Device::allocate(log, ifn, 32);
   /*
    * Open the pcap device
    */
   if (pcap) {
     if (sender) {
-      pcap_device = new transport::pcap::Device(logger, ofed_device, "client");
+      dev = transport::pcap::Device::allocate(log, std::move(ofed), "client");
     } else {
-      pcap_device = new transport::pcap::Device(logger, ofed_device, "server");
+      dev = transport::pcap::Device::allocate(log, std::move(ofed), "server");
     }
-    device = pcap_device;
+  } else {
+    dev = std::move(ofed);
   }
   /*
    * Process the CPU ID.
@@ -143,8 +143,8 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
    * Processor
    */
   RawProcessor proc;
-  ethernet::Producer eth_prod(logger, *device, device->address());
-  ethernet::Processor eth_proc(logger, device->address());
+  ethernet::Producer eth_prod(log, *dev, dev->address());
+  ethernet::Processor eth_proc(log, dev->address());
   eth_prod.setType(sizeof(counter)).setDestinationAddress(dst);
   eth_proc.setRawProcessor(proc);
   proc.setEthernetProducer(eth_prod).setEthernetProcessor(eth_proc);
@@ -169,7 +169,7 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
         show_latency = false;
         std::cout << "Latency = " << proc.averageLatency() << "ns" << std::endl;
       }
-      wait ? device->wait(eth_proc, 1000000) : device->poll(eth_proc);
+      wait ? dev->wait(eth_proc, 1000000) : dev->poll(eth_proc);
       if (usdly != 0) {
         usleep(usdly);
       }
@@ -192,18 +192,15 @@ main_raw(const bool sender, const size_t ival, const bool pcap, const bool wait,
         show_latency = false;
         std::cout << "Latency = " << proc.averageLatency() << "ns" << std::endl;
       }
-      wait ? device->wait(eth_proc, 1000000) : device->poll(eth_proc);
+      wait ? dev->wait(eth_proc, 1000000) : dev->poll(eth_proc);
       if (usdly > 0) {
         usleep(usdly);
       }
     }
   }
   /*
-   * Delete the PCAP device.
+   * Done.
    */
-  if (pcap) {
-    delete pcap_device;
-  }
   return 0;
 }
 

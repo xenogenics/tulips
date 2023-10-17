@@ -23,9 +23,7 @@ public:
 
   void run();
 
-  Device::Ref next(stack::ipv4::Address const& ip,
-                   stack::ipv4::Address const& dr,
-                   stack::ipv4::Address const& nm);
+  Device::Ref next(system::Logger& log, const bool bonded);
 
 private:
   void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);
@@ -34,12 +32,6 @@ private:
                            const uint16_t nqus);
 
   void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info);
-
-  Device::Ref next()
-  {
-    return next(stack::ipv4::Address::ANY, stack::ipv4::Address::ANY,
-                stack::ipv4::Address::ANY);
-  }
 
   system::Logger& m_log;
   size_t m_ntxds;

@@ -46,21 +46,21 @@ public:
 
   using List = std::list<Packet*>;
 
+  static Ref allocate(system::Logger& log,
+                      stack::ethernet::Address const& address,
+                      const uint32_t mtu, List& rf, List& wf)
+  {
+    return std::make_unique<Device>(log, address, mtu, rf, wf);
+  }
+
   Device(system::Logger& log, stack::ethernet::Address const& address,
-         stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
-         stack::ipv4::Address const& nm, const uint32_t mtu, List& rf,
-         List& wf);
+         const uint32_t mtu, List& rf, List& wf);
   ~Device() override;
 
   stack::ethernet::Address const& address() const override { return m_address; }
 
-  stack::ipv4::Address const& ip() const override { return m_ip; }
-
-  stack::ipv4::Address const& gateway() const override { return m_dr; }
-
-  stack::ipv4::Address const& netmask() const override { return m_nm; }
-
   Status listen(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
@@ -69,6 +69,7 @@ public:
   }
 
   void unlisten(UNUSED const stack::ipv4::Protocol proto,
+                UNUSED stack::ipv4::Address const& laddr,
                 UNUSED const uint16_t lport,
                 UNUSED stack::ipv4::Address const& raddr,
                 UNUSED const uint16_t rport) override
@@ -93,6 +94,11 @@ public:
     return std::numeric_limits<uint16_t>::max();
   }
 
+  bool identify([[maybe_unused]] const uint8_t* const buf) const override
+  {
+    return true;
+  }
+
   Status drop();
 
 private:
@@ -102,9 +108,6 @@ protected:
   bool waitForInput(const uint64_t ns);
 
   stack::ethernet::Address m_address;
-  stack::ipv4::Address m_ip;
-  stack::ipv4::Address m_dr;
-  stack::ipv4::Address m_nm;
   uint32_t m_mtu;
   List& m_read;
   List& m_write;

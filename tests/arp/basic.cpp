@@ -96,36 +96,39 @@ TEST(ARP_Basic, RequestResponse)
    */
   auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
   /*
-   * Create the transport FIFOs
+   * Create the transport FIFOs.
    */
-  list::Device::List client_fifo;
-  list::Device::List server_fifo;
+  list::Device::List cfifo;
+  list::Device::List sfifo;
   /*
-   * Build the devices
+   * Define the stack parameters.
    */
   ethernet::Address client_adr(0x10, 0x0, 0x0, 0x0, 0x10, 0x10);
   ethernet::Address server_adr(0x10, 0x0, 0x0, 0x0, 0x20, 0x20);
   ipv4::Address client_ip4(10, 1, 0, 1);
   ipv4::Address server_ip4(10, 1, 0, 2);
-  ipv4::Address bcast(10, 1, 0, 254);
+  ipv4::Address route(10, 1, 0, 254);
   ipv4::Address nmask(255, 255, 255, 0);
-  list::Device client(logger, client_adr, client_ip4, bcast, nmask, 128,
-                      server_fifo, client_fifo);
-  list::Device server(logger, server_adr, server_ip4, bcast, nmask, 128,
-                      client_fifo, server_fifo);
+  /*
+   * Build the devices.
+   */
+  auto clst = list::Device::allocate(logger, client_adr, 128, sfifo, cfifo);
+  auto slst = list::Device::allocate(logger, server_adr, 128, cfifo, sfifo);
   /*
    * Build the pcap device
    */
-  transport::pcap::Device client_pcap(logger, client, "arp_client_" + tname);
-  transport::pcap::Device server_pcap(logger, server, "arp_server_" + tname);
+  auto cnam = "arp_client_" + tname;
+  auto cdev = transport::pcap::Device::allocate(logger, std::move(clst), cnam);
+  auto snam = "arp_server_" + tname;
+  auto sdev = transport::pcap::Device::allocate(logger, std::move(slst), snam);
   /*
    * Client stack
    */
-  ethernet::Producer client_eth_prod(logger, client_pcap, client.address());
+  ethernet::Producer client_eth_prod(logger, *cdev, cdev->address());
   ipv4::Producer client_ip4_prod(logger, client_eth_prod,
                                  ipv4::Address(10, 1, 0, 1));
   ipv4::Processor client_ip4_proc(logger, ipv4::Address(10, 1, 0, 1));
-  ethernet::Processor client_eth_proc(logger, client.address());
+  ethernet::Processor client_eth_proc(logger, cdev->address());
   arp::Processor client_arp(logger, client_eth_prod, client_ip4_prod);
   ClientProcessor client_proc;
   /*
@@ -139,10 +142,10 @@ TEST(ARP_Basic, RequestResponse)
   /*
    * Server stack
    */
-  ethernet::Producer server_eth_prod(logger, server_pcap, server.address());
+  ethernet::Producer server_eth_prod(logger, *sdev, sdev->address());
   ipv4::Producer server_ip4_prod(logger, server_eth_prod,
                                  ipv4::Address(10, 1, 0, 2));
-  ethernet::Processor server_eth_proc(logger, server.address());
+  ethernet::Processor server_eth_proc(logger, sdev->address());
   ipv4::Processor server_ip4_proc(logger, ipv4::Address(10, 1, 0, 2));
   arp::Processor server_arp(logger, server_eth_prod, server_ip4_prod);
   ServerProcessor server_proc;
@@ -160,8 +163,8 @@ TEST(ARP_Basic, RequestResponse)
    * Client sends the ARP discovery
    */
   client_arp.discover(ipv4::Address(10, 1, 0, 2));
-  ASSERT_EQ(Status::Ok, server_pcap.poll(server_eth_proc));
-  ASSERT_EQ(Status::Ok, client_pcap.poll(client_eth_proc));
+  ASSERT_EQ(Status::Ok, sdev->poll(server_eth_proc));
+  ASSERT_EQ(Status::Ok, cdev->poll(client_eth_proc));
   /*
    * Client sends payload to server
    */
@@ -173,14 +176,14 @@ TEST(ARP_Basic, RequestResponse)
   ASSERT_EQ(Status::Ok, client_ip4_prod.prepare(data));
   *(uint64_t*)data = 0xdeadbeefULL;
   ASSERT_EQ(Status::Ok, client_ip4_prod.commit(8, data));
-  ASSERT_EQ(Status::Ok, server_pcap.poll(server_eth_proc));
+  ASSERT_EQ(Status::Ok, sdev->poll(server_eth_proc));
   ASSERT_EQ(0xdeadbeefULL, server_proc.data());
-  ASSERT_EQ(Status::Ok, client_pcap.poll(client_eth_proc));
+  ASSERT_EQ(Status::Ok, cdev->poll(client_eth_proc));
   ASSERT_EQ(0xdeadc0de, client_proc.data());
   ASSERT_EQ(Status::Ok, client_ip4_prod.release(data));
   /*
    * Clean-up.
    */
-  ASSERT_EQ(Status::NoDataAvailable, client_pcap.poll(client_eth_proc));
-  ASSERT_EQ(Status::NoDataAvailable, server_pcap.poll(server_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, cdev->poll(client_eth_proc));
+  ASSERT_EQ(Status::NoDataAvailable, sdev->poll(server_eth_proc));
 }

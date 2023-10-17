@@ -4,9 +4,9 @@
 
 namespace tulips::transport::check {
 
-Device::Device(system::Logger& log, transport::Device& device)
+Device::Device(system::Logger& log, transport::Device::Ref device)
   : transport::Device(log, "check")
-  , m_device(device)
+  , m_device(std::move(device))
   , m_proc(nullptr)
   , m_buffer(nullptr)
 {}
@@ -15,14 +15,14 @@ Status
 Device::poll(Processor& proc)
 {
   m_proc = &proc;
-  return m_device.poll(*this);
+  return m_device->poll(*this);
 }
 
 Status
 Device::wait(Processor& proc, const uint64_t ns)
 {
   m_proc = &proc;
-  return m_device.wait(*this, ns);
+  return m_device->wait(*this, ns);
 }
 
 Status
@@ -44,7 +44,7 @@ Device::sent(const uint16_t len, uint8_t* const buf)
 Status
 Device::prepare(uint8_t*& buf)
 {
-  Status ret = m_device.prepare(buf);
+  Status ret = m_device->prepare(buf);
   m_buffer = buf;
   return ret;
 }
@@ -55,13 +55,13 @@ Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
   if (!check(m_buffer, len)) {
     throw std::runtime_error("Empty packet has been received !");
   }
-  return m_device.commit(len, buf, mss);
+  return m_device->commit(len, buf, mss);
 }
 
 Status
 Device::release(uint8_t* const buf)
 {
-  return m_device.release(buf);
+  return m_device->release(buf);
 }
 
 bool

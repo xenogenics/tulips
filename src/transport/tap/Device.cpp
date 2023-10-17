@@ -21,14 +21,9 @@
 
 namespace tulips::transport::tap {
 
-Device::Device(system::Logger& log, std::string_view devname,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& nm,
-               stack::ipv4::Address const& dr)
+Device::Device(system::Logger& log, std::string_view devname)
   : transport::Device(log, devname)
   , m_address()
-  , m_ip(ip)
-  , m_dr(dr)
-  , m_nm(nm)
   , m_fd(-1)
   , m_mtu(0)
   , m_buffers()
@@ -76,9 +71,6 @@ Device::Device(system::Logger& log, std::string_view devname,
    * Get the device information.
    */
   m_log.debug("TAP", "MAC address: ", m_address.toString());
-  m_log.debug("TAP", "IP address: ", m_ip.toString());
-  m_log.debug("TAP", "IP gateway: ", m_dr.toString());
-  m_log.debug("TAP", "IP netmask: ", m_nm.toString());
   m_log.debug("TAP", "MTU: ", m_mtu);
   /*
    * Create the buffers.
@@ -185,4 +177,13 @@ Device::commit(const uint32_t len, uint8_t* const buf, const uint16_t mss)
   return Status::Ok;
 }
 
+Status
+Device::release(UNUSED uint8_t* const buf)
+{
+  m_log.trace("TAP", "releasing buffer ", (void*)buf);
+  /*
+   * NOTE(xrg): the TAP device does not support out-of-order buffer release.
+   */
+  return Status::Ok;
+}
 }

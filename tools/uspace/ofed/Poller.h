@@ -1,6 +1,7 @@
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/system/Logger.h>
+#include <tulips/transport/Device.h>
 #include <tulips/transport/ofed/Device.h>
 #include <tulips/transport/pcap/Device.h>
 #include <string>
@@ -11,8 +12,12 @@ namespace tulips::tools::uspace::ofed {
 class Poller
 {
 public:
-  Poller(system::Logger& log, const bool pcap);
-  Poller(system::Logger& log, std::string_view dev, const bool pcap);
+  Poller(system::Logger& log, stack::ipv4::Address const& ip,
+         stack::ipv4::Address const& dr, stack::ipv4::Address const& nm,
+         const bool pcap);
+  Poller(system::Logger& log, std::string_view dev,
+         stack::ipv4::Address const& ip, stack::ipv4::Address const& dr,
+         stack::ipv4::Address const& nm, const bool pcap);
   ~Poller();
 
   Status connect(stack::ipv4::Address const& ripaddr,
@@ -42,12 +47,16 @@ private:
     return nullptr;
   }
 
+  static transport::Device::Ref makeDevice(system::Logger& log,
+                                           const bool pcap);
+
+  static transport::Device::Ref makeDevice(system::Logger& log,
+                                           std::string_view dev,
+                                           const bool pcap);
+
   void run();
 
-  const bool m_capture;
-  transport::ofed::Device m_ofed;
-  transport::pcap::Device* m_pcap;
-  transport::Device* m_device;
+  transport::Device::Ref m_device;
   api::defaults::ClientDelegate m_delegate;
   api::Client m_client;
   volatile bool m_run;

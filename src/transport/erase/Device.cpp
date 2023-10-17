@@ -4,26 +4,26 @@
 
 namespace tulips::transport::erase {
 
-Device::Device(system::Logger& log, transport::Device& device)
-  : transport::Device(log, "erase"), m_device(device)
+Device::Device(system::Logger& log, transport::Device::Ref device)
+  : transport::Device(log, "erase"), m_device(std::move(device))
 {}
 
 Status
 Device::poll(Processor& proc)
 {
-  return m_device.poll(proc);
+  return m_device->poll(proc);
 }
 
 Status
 Device::wait(Processor& proc, const uint64_t ns)
 {
-  return m_device.wait(proc, ns);
+  return m_device->wait(proc, ns);
 }
 
 Status
 Device::prepare(uint8_t*& buf)
 {
-  Status ret = m_device.prepare(buf);
+  Status ret = m_device->prepare(buf);
   if (ret == Status::Ok) {
     memset(buf, 0, mss());
   }
@@ -33,13 +33,13 @@ Device::prepare(uint8_t*& buf)
 Status
 Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
-  return m_device.commit(len, buf, mss);
+  return m_device->commit(len, buf, mss);
 }
 
 Status
 Device::release(uint8_t* const buf)
 {
-  return m_device.release(buf);
+  return m_device->release(buf);
 }
 
 }

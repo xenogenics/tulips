@@ -26,21 +26,20 @@ try {
   /*
    * Create an OFED device.
    */
-  ofed::Device* device = nullptr;
+  Device::Ref device;
   if (opts.hasInterface()) {
-    device = new ofed::Device(logger, opts.interface(), 1024);
+    device = ofed::Device::allocate(logger, opts.interface(), 1024);
   } else {
-    device = new ofed::Device(logger, 1024);
+    device = ofed::Device::allocate(logger, 1024);
   }
   /*
    * Call the main function.
    */
-  int res = opts.isSender() ? Client::run(opts, *device)
-                            : Server::run(opts, *device);
+  int res = opts.isSender() ? Client::run(opts, std::move(device))
+                            : Server::run(opts, std::move(device));
   /*
    * Clean-up.
    */
-  delete device;
   return res;
 } catch (std::exception const& e) {
   std::cerr << e.what() << std::endl;
