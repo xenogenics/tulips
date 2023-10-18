@@ -77,16 +77,16 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data,
     ++m_stats.drop;
     ++m_stats.frgerr;
     m_log.error("IP4", "IP fragment are not supported");
-    return Status::ProtocolError;
+    return Status::UnsupportedProtocol;
   }
   /*
    * Check if the packet is for us.
    */
   if (INIP->destipaddr != m_hostAddress) {
     ++m_stats.drop;
-    m_log.error("IP4", INIP->destipaddr.toString(), " <> ",
+    m_log.debug("IP4", INIP->destipaddr.toString(), " <> ",
                 m_hostAddress.toString(), " (proto: ", int(INIP->proto), ")");
-    return Status::ProtocolError;
+    return Status::Ok;
   }
   /*
    * Compute and check the IP header checksum.
@@ -147,6 +147,7 @@ Processor::process(UNUSED const uint16_t len, const uint8_t* const data,
     }
 #endif
     default: {
+      ++m_stats.drop;
       ret = Status::UnsupportedProtocol;
       break;
     }
