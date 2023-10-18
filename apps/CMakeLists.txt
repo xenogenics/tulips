@@ -24,11 +24,11 @@ if (LibIBVerbs_FOUND AND TULIPS_ENABLE_RAW)
   target_link_libraries(raw_ofed
     PRIVATE
     tulips_api_static
+    tulips_stack_static
+    tulips_system_static
     tulips_transport_ofed_static
     tulips_transport_pcap_static
     tulips_transport_stubs_static
-    tulips_stack_static
-    tulips_system_static
     PUBLIC
     ${LibIBVerbs_LINK_LIBRARIES}
     ${LibPCAP_LINK_LIBRARIES})

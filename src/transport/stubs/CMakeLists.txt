@@ -14,6 +14,7 @@ add_library(tulips_transport_stubs SHARED ${SOURCES})
 target_link_libraries(tulips_transport_stubs PRIVATE tulips_stack)
 
 add_library(tulips_transport_stubs_static STATIC ${SOURCES})
+target_link_libraries(tulips_transport_stubs_static PRIVATE tulips_stack_static)
 
 install(TARGETS
   tulips_transport_stubs

@@ -5,6 +5,7 @@ add_library(tulips_system SHARED ${SOURCES})
 target_link_libraries(tulips_system PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
 add_library(tulips_system_static STATIC ${SOURCES})
+target_link_libraries(tulips_system_static PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
 install(TARGETS
   tulips_system
