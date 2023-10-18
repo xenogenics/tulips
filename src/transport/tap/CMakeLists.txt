@@ -8,6 +8,10 @@ target_link_libraries(tulips_transport_tap
   tulips_transport_stubs)
 
 add_library(tulips_transport_tap_static STATIC ${SOURCES})
+target_link_libraries(tulips_transport_tap_static
+  PRIVATE
+  tulips_stack_static
+  tulips_transport_stubs_static)
 
 install(TARGETS
   tulips_transport_tap

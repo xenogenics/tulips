@@ -8,11 +8,20 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.h)
 add_library(tulips_transport_ena SHARED ${SOURCES})
 target_link_libraries(tulips_transport_ena
   PRIVATE
+  tulips_api
   tulips_stack
+  tulips_system
   PUBLIC
   ${LibDPDK_LINK_LIBRARIES})
 
 add_library(tulips_transport_ena_static STATIC ${SOURCES})
+target_link_libraries(tulips_transport_ena_static
+  PRIVATE
+  tulips_api_static
+  tulips_stack_static
+  tulips_system_static
+  PUBLIC
+  ${LibDPDK_LINK_LIBRARIES})
 
 install(TARGETS
   tulips_transport_ena

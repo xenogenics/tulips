@@ -16,6 +16,7 @@ add_executable(ofed-uspace ${SOURCES}
 
 target_link_libraries(ofed-uspace
   PUBLIC
+  tulips_api
+  tulips_stack
   tulips_transport_ofed
-  tulips_transport_pcap
-  tulips_api)
+  tulips_transport_pcap)

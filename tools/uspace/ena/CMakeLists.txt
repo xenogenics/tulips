@@ -17,7 +17,8 @@ add_executable(ena-uspace ${SOURCES}
 
 target_link_libraries(ena-uspace
   PRIVATE
-  tulips_transport_ena
-  tulips_transport_pcap
   tulips_api
-  tulips_ssl)
+  tulips_ssl
+  tulips_stack
+  tulips_transport_ena
+  tulips_transport_pcap)

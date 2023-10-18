@@ -5,6 +5,7 @@ add_library(tulips_api SHARED ${SOURCES})
 target_link_libraries(tulips_api PRIVATE tulips_stack)
 
 add_library(tulips_api_static STATIC ${SOURCES})
+target_link_libraries(tulips_api_static PRIVATE tulips_stack_static)
 
 install(TARGETS
   tulips_api
