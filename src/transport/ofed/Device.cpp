@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include <tulips/api/Status.h>
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/Utils.h>
@@ -545,7 +546,14 @@ Device::poll(Processor& proc)
     /*
      * Process the packet.
      */
-    proc.process(len, addr, system::Clock::read());
+    auto res = proc.process(len, addr, system::Clock::read());
+    /*
+     * Check the processor's status.
+     */
+    if (res != Status::Ok && res != Status::UnsupportedProtocol) {
+      m_log.error("OFED", "error processing buffer: ", toString(res));
+      return res;
+    }
     /*
      * Re-post the buffers every 10 WCs.
      */

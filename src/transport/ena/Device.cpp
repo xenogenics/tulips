@@ -230,7 +230,14 @@ Device::poll(Processor& proc)
      * Process the packet.
      */
     m_log.trace("ENA", "processing addr=", (void*)dat, " len=", len);
-    proc.process(len, dat, system::Clock::read());
+    ret = proc.process(len, dat, system::Clock::read());
+    /*
+     * Check the processor's status.
+     */
+    if (ret != Status::Ok && ret != Status::UnsupportedProtocol) {
+      m_log.error("OFED", "error processing buffer: ", toString(ret));
+      return ret;
+    }
     /*
      * Free the packet.
      */
@@ -238,7 +245,7 @@ Device::poll(Processor& proc)
     /*
      * Clear buffers sent in-band.
      */
-    auto ret = clearSentBuffers(proc);
+    ret = clearSentBuffers(proc);
     if (ret != Status::Ok) {
       return ret;
     }
