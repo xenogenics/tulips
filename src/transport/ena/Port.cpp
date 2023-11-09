@@ -301,7 +301,7 @@ Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
     /*
      * Allocate the pool.
      */
-    sprintf(name, "%*s_RX_%ld_", int(ifn.size()), ifn.data(), i);
+    sprintf(name, "%.*s_RX_%ld_", int(ifn.size()), ifn.data(), i);
     auto p = rte_pktmbuf_pool_create(name, m_nrxds, 0, 0, buflen, node);
     if (p == nullptr) {
       m_log.error("ENA", "create RX mempool failed: ", rte_strerror(rte_errno));
@@ -325,7 +325,7 @@ Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
     /*
      * Allocate the pool.
      */
-    sprintf(name, "%*s_TX_%ld_", int(ifn.size()), ifn.data(), i);
+    sprintf(name, "%.*s_TX_%ld_", int(ifn.size()), ifn.data(), i);
     auto p = rte_pktmbuf_pool_create(name, m_ntxds, 0, 8, buflen, node);
     if (p == nullptr) {
       m_log.error("ENA", "create TX mempool failed: ", rte_strerror(rte_errno));
