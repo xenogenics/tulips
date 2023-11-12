@@ -65,12 +65,7 @@ Processor::sendAbort(Connection& e)
   /*
    * Send the packet.
    */
-  auto ret = send(e);
-  /*
-   * Close the connection and return.
-   */
-  close(e);
-  return ret;
+  return send(e);
 }
 
 Status

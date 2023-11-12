@@ -400,8 +400,10 @@ Processor::onSlowTimer()
      */
     if (e.hasExpired()) {
       m_log.debug("TCP4", "<", e.id(), "> aborting");
+      auto res = sendAbort(e);
       m_handler.onTimedOut(e, system::Clock::read());
-      return sendAbort(e);
+      close(e);
+      return res;
     }
     /*
      * Exponential backoff.
@@ -649,24 +651,24 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_state = Connection::ESTABLISHED;
         m_handler.onConnected(e, ts);
         /*
-         * Send the newdata event. Pass the packet data directly. At this
-         * stage, no data has been buffered.
+         * Update the connection info.
+         */
+        e.m_rcv_nxt += plen;
+        e.m_newdata = plen > 0;
+        e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
+        /*
+         * Process any new data.
          */
         if (plen > 0) {
-          e.m_rcv_nxt += plen;
-          e.m_newdata = true;
-          e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
-          /*
-           * Notify the handler.
-           */
+          auto res = sendAck(e);
           uint32_t rlen = 0;
           m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
-          /*
-           * Send the ACK.
-           */
-          return sendAck(e);
+          return res;
         }
       }
+      /*
+       * Done.
+       */
       break;
     }
     /*
@@ -685,8 +687,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Update the connection info
          */
         e.m_state = Connection::ESTABLISHED;
-        e.m_rcv_nxt = seqno + 1;
         e.m_window = window;
+        e.m_rcv_nxt = seqno + 1;
+        e.m_newdata = plen > 0;
+        e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
         /*
          * Parse the options.
          */
@@ -699,32 +703,32 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         m_handler.onConnected(e, ts);
         /*
-         * Send the newdata event. Pass the packet data directly. At this
-         * stage, no data has been buffered.
+         * Send the ACK.
+         */
+        auto res = sendAck(e);
+        /*
+         * Notify the handler.
          */
         if (plen > 0) {
-          e.m_newdata = true;
-          e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
-          /*
-           * Notify the handler.
-           */
           uint32_t rlen = 0;
           m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
         }
         /*
-         * Send the ACK.
+         * Done.
          */
-        return sendAck(e);
+        return res;
       }
       /*
-       * Inform the application that the connection failed.
+       * Abort the connection and notify the handler.
        */
       m_log.debug("TCP4", "<", e.id(), "> failed, aborting");
+      auto res = sendAbort(e);
       m_handler.onAborted(e, ts);
       /*
-       * The connection is closed after we send the RST.
+       * Done.
        */
-      return sendAbort(e);
+      close(e);
+      return res;
     }
     /*
      * In the ESTABLISHED state, we call upon the application to feed data
@@ -823,9 +827,6 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * notified.
        */
       if (e.m_ackdata || e.m_newdata) {
-        uint32_t slen = 0;
-        uint32_t savl = 0;
-        uint8_t* sdat = nullptr;
         /*
          * Check if the application can send.
          */
@@ -836,14 +837,15 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         if (e.m_ackdata) {
           const uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
           /*
-           * Check if we can send data as a result of the ACK. This is useful
-           * to handle partial send without resorting to software TSO.
+           * Declare the send parameters assuming we can send data back.
            */
-          if (likely(can_send)) {
-            savl = bound - e.m_slen;
-            sdat = e.m_sdat + HEADER_LEN + e.m_slen;
-            slen = 0;
-          } else {
+          uint32_t savl = bound - e.m_slen;
+          uint8_t* sdat = e.m_sdat + HEADER_LEN + e.m_slen;
+          uint32_t slen = 0;
+          /*
+           * Reset the send parameters if we can't.
+           */
+          if (unlikely(!can_send)) {
             savl = 0;
             sdat = nullptr;
             slen = 0;
@@ -863,15 +865,20 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
            * Process the action.
            */
           switch (res) {
-            case Action::Abort:
+            case Action::Abort: {
               m_log.debug("TCP4", "<", e.id(), "> onAcked() -> abort");
+              auto res = sendAbort(e);
               m_handler.onAborted(e, ts);
-              return sendAbort(e);
-            case Action::Close:
+              close(e);
+              return res;
+            }
+            case Action::Close: {
               m_log.debug("TCP4", "<", e.id(), "> onAcked() -> close");
               return sendClose(e);
-            default:
+            }
+            default: {
               break;
+            }
           }
           /*
            * Truncate to available length if necessary
@@ -933,13 +940,15 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             }
           }
           /*
-           * Check if we can allow the handler to send a response.
+           * Declare the send parameters assuming we can send data back.
            */
-          if (likely(can_send)) {
-            savl = bound - e.m_slen;
-            sdat = e.m_sdat + HEADER_LEN + e.m_slen;
-            slen = 0;
-          } else {
+          uint32_t savl = bound - e.m_slen;
+          uint8_t* sdat = e.m_sdat + HEADER_LEN + e.m_slen;
+          uint32_t slen = 0;
+          /*
+           * Reset the send parameters if we can't.
+           */
+          if (unlikely(!can_send)) {
             savl = 0;
             sdat = nullptr;
             slen = 0;
@@ -961,8 +970,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           switch (res) {
             case Action::Abort: {
               m_log.debug("TCP4", "<", e.id(), "> onNewData() -> abort");
+              auto res = sendAbort(e);
               m_handler.onAborted(e, ts);
-              return sendAbort(e);
+              close(e);
+              return res;
             }
             case Action::Close: {
               m_log.debug("TCP4", "<", e.id(), "> onNewData() -> close");
@@ -1007,6 +1018,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         return Status::Ok;
       }
+      /*
+       * Done.
+       */
       break;
     }
     /*
@@ -1043,8 +1057,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           e.m_state = Connection::CLOSING;
         }
         e.m_rcv_nxt += 1;
+        auto ret = sendAck(e);
         m_handler.onClosed(e, ts);
-        return sendAck(e);
+        return ret;
       }
       /*
        * Otherwise, if we received an ACK, moved to FIN_WAIT_2.
@@ -1060,6 +1075,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       if (plen > 0) {
         return sendAck(e);
       }
+      /*
+       * Done.
+       */
       return Status::Ok;
     }
     case Connection::FIN_WAIT_2: {
@@ -1074,8 +1092,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
         e.m_rtm = 0;
+        auto ret = sendAck(e);
         m_handler.onClosed(e, ts);
-        return sendAck(e);
+        return ret;
       }
       /*
        * ACK any received data.
@@ -1083,6 +1102,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       if (plen > 0) {
         return sendAck(e);
       }
+      /*
+       * Done.
+       */
       return Status::Ok;
     }
     case Connection::TIME_WAIT: {
