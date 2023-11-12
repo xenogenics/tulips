@@ -504,24 +504,6 @@ Client::onSent(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts)
 }
 
 Action
-Client::onAcked(tcpv4::Connection& c, const Timestamp ts)
-{
-  /*
-   * Update the latency monitor.
-   */
-#ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  Connection& d = m_cns[c.id()];
-  d.count += 1;
-  d.lat += system::Clock::read() - d.history.front();
-  d.history.pop_front();
-#endif
-  /*
-   * Call the delegate.
-   */
-  return m_delegate.onAcked(c.id(), c.cookie(), ts);
-}
-
-Action
 Client::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
                 const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
 {
@@ -538,13 +520,6 @@ Client::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
    * Call the delegate.
    */
   return m_delegate.onAcked(c.id(), c.cookie(), ts, alen, sdata, slen);
-}
-
-Action
-Client::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                  const uint32_t len, const Timestamp ts)
-{
-  return m_delegate.onNewData(c.id(), c.cookie(), data, len, ts);
 }
 
 Action

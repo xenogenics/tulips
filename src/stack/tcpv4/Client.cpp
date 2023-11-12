@@ -120,6 +120,7 @@ Processor::abort(const Connection::ID id)
   /*
    * Done.
    */
+  close(c);
   return ret;
 }
 

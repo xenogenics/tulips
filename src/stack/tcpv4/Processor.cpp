@@ -7,6 +7,7 @@
 #include <tulips/stack/tcpv4/Processor.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
+#include <cstdint>
 #include <cstring>
 
 #ifdef __linux__
@@ -399,8 +400,10 @@ Processor::onSlowTimer()
      */
     if (e.hasExpired()) {
       m_log.debug("TCP4", "<", e.id(), "> aborting");
+      auto res = sendAbort(e);
       m_handler.onTimedOut(e, system::Clock::read());
-      return sendAbort(e);
+      close(e);
+      return res;
     }
     /*
      * Exponential backoff.
@@ -648,17 +651,24 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_state = Connection::ESTABLISHED;
         m_handler.onConnected(e, ts);
         /*
-         * Send the newdata event. Pass the packet data directly. At this
-         * stage, no data has been buffered.
+         * Update the connection info.
+         */
+        e.m_rcv_nxt += plen;
+        e.m_newdata = plen > 0;
+        e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
+        /*
+         * Process any new data.
          */
         if (plen > 0) {
-          e.m_rcv_nxt += plen;
-          e.m_newdata = true;
-          e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
-          m_handler.onNewData(e, data + tcpHdrLen, plen, ts);
-          return sendAck(e);
+          auto res = sendAck(e);
+          uint32_t rlen = 0;
+          m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
+          return res;
         }
       }
+      /*
+       * Done.
+       */
       break;
     }
     /*
@@ -677,8 +687,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Update the connection info
          */
         e.m_state = Connection::ESTABLISHED;
-        e.m_rcv_nxt = seqno + 1;
         e.m_window = window;
+        e.m_rcv_nxt = seqno + 1;
+        e.m_newdata = plen > 0;
+        e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
         /*
          * Parse the options.
          */
@@ -691,25 +703,32 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         m_handler.onConnected(e, ts);
         /*
-         * Send the newdata event. Pass the packet data directly. At this
-         * stage, no data has been buffered.
+         * Send the ACK.
+         */
+        auto res = sendAck(e);
+        /*
+         * Notify the handler.
          */
         if (plen > 0) {
-          e.m_newdata = true;
-          e.m_pshdata = (INTCP->flags & Flag::PSH) == Flag::PSH;
-          m_handler.onNewData(e, data + tcpHdrLen, plen, ts);
+          uint32_t rlen = 0;
+          m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
         }
-        return sendAck(e);
+        /*
+         * Done.
+         */
+        return res;
       }
       /*
-       * Inform the application that the connection failed.
+       * Abort the connection and notify the handler.
        */
       m_log.debug("TCP4", "<", e.id(), "> failed, aborting");
+      auto res = sendAbort(e);
       m_handler.onAborted(e, ts);
       /*
-       * The connection is closed after we send the RST.
+       * Done.
        */
-      return sendAbort(e);
+      close(e);
+      return res;
     }
     /*
      * In the ESTABLISHED state, we call upon the application to feed data
@@ -742,7 +761,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Process the embedded data.
          */
         if (plen > 0) {
-          m_handler.onNewData(e, data + tcpHdrLen, plen, ts);
+          uint32_t rlen = 0;
+          m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
         }
         /*
          * Acknowledge the FIN. If we are here there is no more outstanding
@@ -815,97 +835,84 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Notify the application on an ACK.
          */
         if (e.m_ackdata) {
+          const uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
           /*
-           * Check if we can send data as a result of the ACK. This is useful
-           * to handle partial send without resorting to software TSO.
+           * Declare the send parameters assuming we can send data back.
            */
-          if (likely(can_send)) {
-            uint32_t rlen = 0;
-            uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
-            uint32_t alen = bound - e.m_slen;
-            /*
-             * Notify the handler.
-             */
-            auto* const buffer = e.m_sdat + HEADER_LEN + e.m_slen;
-            auto action = m_handler.onAcked(e, ts, alen, buffer, rlen);
-            /*
-             * Bail out if the connection was aborted.
-             */
-            if (e.m_state == Connection::State::CLOSED) {
-              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
-              break;
-            }
-            /*
-             * Process the action.
-             */
-            switch (action) {
-              case Action::Abort:
-                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> abort");
-                m_handler.onAborted(e, ts);
-                return sendAbort(e);
-              case Action::Close:
-                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> close");
-                return sendClose(e);
-              default:
-                break;
-            }
-            /*
-             * Truncate to available length if necessary
-             */
-            if (rlen > alen) {
-              rlen = alen;
-            }
-            e.m_slen += rlen;
-            /*
-             * Update the send state.
-             */
-            can_send = e.hasAvailableSegments() && e.window() > e.m_slen;
+          uint32_t savl = bound - e.m_slen;
+          uint8_t* sdat = e.m_sdat + HEADER_LEN + e.m_slen;
+          uint32_t slen = 0;
+          /*
+           * Reset the send parameters if we can't.
+           */
+          if (unlikely(!can_send)) {
+            savl = 0;
+            sdat = nullptr;
+            slen = 0;
           }
           /*
-           * If we cannot send anything, just notify the application.
+           * Notify the handler.
            */
-          else {
-            /*
-             * Notify the handler.
-             */
-            auto action = m_handler.onAcked(e, ts);
-            /*
-             * Bail out if the connection was aborted.
-             */
-            if (e.m_state == Connection::State::CLOSED) {
-              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+          auto res = m_handler.onAcked(e, ts, savl, sdat, slen);
+          /*
+           * Bail out if the connection was aborted.
+           */
+          if (e.m_state == Connection::State::CLOSED) {
+            m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+            break;
+          }
+          /*
+           * Process the action.
+           */
+          switch (res) {
+            case Action::Abort: {
+              m_log.debug("TCP4", "<", e.id(), "> onAcked() -> abort");
+              auto res = sendAbort(e);
+              m_handler.onAborted(e, ts);
+              close(e);
+              return res;
+            }
+            case Action::Close: {
+              m_log.debug("TCP4", "<", e.id(), "> onAcked() -> close");
+              return sendClose(e);
+            }
+            default: {
               break;
             }
-            /*
-             * Process the action.
-             */
-            switch (action) {
-              case Action::Abort:
-                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> abort");
-                m_handler.onAborted(e, ts);
-                return sendAbort(e);
-              case Action::Close:
-                m_log.debug("TCP4", "<", e.id(), "> onAcked() -> close");
-                return sendClose(e);
-              default:
-                break;
-            }
           }
+          /*
+           * Truncate to available length if necessary
+           */
+          if (slen > savl) {
+            slen = savl;
+          }
+          /*
+           * Increase the send buffer length.
+           */
+          if (slen > 0) {
+            m_log.trace("TCP", "<", e.id(), "> onAcked() -> ", slen, "B");
+            e.m_slen += slen;
+          }
+          /*
+           * Update the send state.
+           */
+          can_send = e.hasAvailableSegments() && e.window() > e.m_slen;
         }
         /*
          * Collect the connection's buffer state.
          */
-        const uint8_t* dataptr = data + tcpHdrLen + urglen;
-        const uint32_t datalen = plen;
-        const uint32_t sendnxt = e.m_snd_nxt;
+        const uint8_t* rdat = data + tcpHdrLen + urglen;
+        const uint32_t rlen = plen;
+        const uint32_t snxt = e.m_snd_nxt;
         /*
          * Notify the application on new data.
          */
         if (e.m_newdata) {
+          const uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
           /*
            * Decrease the local window.
            */
-          e.m_wndlvl -= datalen;
+          e.m_wndlvl -= rlen;
           /*
            * Send an ACK immediately if the connection does not have
            * DELAYED_ACK or if the local window level is 0.
@@ -933,89 +940,66 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
             }
           }
           /*
-           * Notify the application and allow it to send a response.
+           * Declare the send parameters assuming we can send data back.
            */
-          if (likely(can_send)) {
-            uint32_t rlen = 0;
-            uint32_t bound = e.window() < m_mss ? e.window() : m_mss;
-            uint32_t alen = bound - e.m_slen;
-            /*
-             * Call the handler.
-             */
-            auto action = m_handler.onNewData(e, dataptr, datalen, ts, alen,
-                                              e.m_sdat + HEADER_LEN + e.m_slen,
-                                              rlen);
-            /*
-             * Bail out if the connection was aborted.
-             */
-            if (e.m_state == Connection::State::CLOSED) {
-              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+          uint32_t savl = bound - e.m_slen;
+          uint8_t* sdat = e.m_sdat + HEADER_LEN + e.m_slen;
+          uint32_t slen = 0;
+          /*
+           * Reset the send parameters if we can't.
+           */
+          if (unlikely(!can_send)) {
+            savl = 0;
+            sdat = nullptr;
+            slen = 0;
+          }
+          /*
+           * Call the handler.
+           */
+          auto res = m_handler.onNewData(e, rdat, rlen, ts, savl, sdat, slen);
+          /*
+           * Bail out if the connection was aborted.
+           */
+          if (e.m_state == Connection::State::CLOSED) {
+            m_log.debug("TCP4", "<", e.id(), "> connection aborted");
+            break;
+          }
+          /*
+           * Execute the action.
+           */
+          switch (res) {
+            case Action::Abort: {
+              m_log.debug("TCP4", "<", e.id(), "> onNewData() -> abort");
+              auto res = sendAbort(e);
+              m_handler.onAborted(e, ts);
+              close(e);
+              return res;
+            }
+            case Action::Close: {
+              m_log.debug("TCP4", "<", e.id(), "> onNewData() -> close");
+              return sendClose(e);
+            }
+            default: {
               break;
-            }
-            /*
-             * Execute the action.
-             */
-            switch (action) {
-              case Action::Abort: {
-                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> abort");
-                m_handler.onAborted(e, ts);
-                return sendAbort(e);
-              }
-              case Action::Close: {
-                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> close");
-                return sendClose(e);
-              }
-              default: {
-                break;
-              }
-            }
-            /*
-             * Truncate to available length if necessary
-             */
-            if (rlen > alen) {
-              rlen = alen;
-            }
-            /*
-             * Increase the send buffer length.
-             */
-            if (rlen > 0) {
-              m_log.trace("TCP", "<", e.id(), "> onNewData() -> ", rlen, "B");
-              e.m_slen += rlen;
             }
           }
           /*
-           * Notify the application.
+           * Truncate to available length if necessary
            */
-          else {
-            /*
-             * Call the handler.
-             */
-            auto action = m_handler.onNewData(e, dataptr, datalen, ts);
-            /*
-             * Bail out if the connection was aborted.
-             */
-            if (e.m_state == Connection::State::CLOSED) {
-              m_log.debug("TCP4", "<", e.id(), "> connection aborted");
-              break;
-            }
-            /*
-             * Execute the action.
-             */
-            switch (action) {
-              case Action::Abort: {
-                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> abort");
-                m_handler.onAborted(e, ts);
-                return sendAbort(e);
-              }
-              case Action::Close: {
-                m_log.debug("TCP4", "<", e.id(), "> onNewData() -> close");
-                return sendClose(e);
-              }
-              default: {
-                break;
-              }
-            }
+          if (slen > savl) {
+            slen = savl;
           }
+          /*
+           * Increase the send buffer length.
+           */
+          if (slen > 0) {
+            m_log.trace("TCP", "<", e.id(), "> onNewData() -> ", slen, "B");
+            e.m_slen += slen;
+          }
+          /*
+           * Update the send state.
+           */
+          can_send = e.hasAvailableSegments() && e.window() > e.m_slen;
         }
         /*
          * If there is any buffered send data, send it.
@@ -1027,13 +1011,16 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * If the connection supports DELAYED_ACK, arm the ACK timer.
          */
         if (HAS_DELAYED_ACK(e)) {
-          e.armAckTimer(sendnxt);
+          e.armAckTimer(snxt);
         }
         /*
          * Otherwise do nothing
          */
         return Status::Ok;
       }
+      /*
+       * Done.
+       */
       break;
     }
     /*
@@ -1070,8 +1057,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           e.m_state = Connection::CLOSING;
         }
         e.m_rcv_nxt += 1;
+        auto ret = sendAck(e);
         m_handler.onClosed(e, ts);
-        return sendAck(e);
+        return ret;
       }
       /*
        * Otherwise, if we received an ACK, moved to FIN_WAIT_2.
@@ -1087,6 +1075,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       if (plen > 0) {
         return sendAck(e);
       }
+      /*
+       * Done.
+       */
       return Status::Ok;
     }
     case Connection::FIN_WAIT_2: {
@@ -1101,8 +1092,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_state = Connection::TIME_WAIT;
         e.m_rcv_nxt += 1;
         e.m_rtm = 0;
+        auto ret = sendAck(e);
         m_handler.onClosed(e, ts);
-        return sendAck(e);
+        return ret;
       }
       /*
        * ACK any received data.
@@ -1110,6 +1102,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       if (plen > 0) {
         return sendAck(e);
       }
+      /*
+       * Done.
+       */
       return Status::Ok;
     }
     case Connection::TIME_WAIT: {

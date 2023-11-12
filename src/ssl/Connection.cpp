@@ -282,120 +282,23 @@ Connection::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
 Action
 Connection::onNewData(system::Logger& log, ID const& id,
                       api::interface::Delegate<ID>& delegate,
-                      const uint8_t* const data, const uint32_t len,
-                      const system::Clock::Value ts)
+                      const uint8_t* const rdat, const uint32_t rlen,
+                      const system::Clock::Value ts, const uint32_t savl,
+                      uint8_t* const sdat, uint32_t& slen)
 {
   /*
    * Write the data in the input BIO.
    */
-  int ret = BIO_write(m_bin, data, (int)len);
-  if (ret != (int)len) {
-    log.error("SSL", "<", id, "> failed to write ", len, "B in BIO");
-    return Action::Abort;
-  }
-  /*
-   * Show the buffer level.
-   */
-  auto acc = pendingWrite();
-  log.trace("SSL", "<", id, "> ", len, "B, (", acc, "/", BUFLEN, ")");
-  /*
-   * Only accept Ready state.
-   */
-  if (m_state != State::Ready && m_state != State::Shutdown) {
-    log.error("SSL", "<", id, "> received data in unexpected state");
-    return Action::Abort;
-  }
-  /*
-   * Process the internal buffer as long as there is data available.
-   */
-  do {
-    auto bl0 = pendingWrite();
-    ret = SSL_read(m_ssl, m_rdbf, BUFLEN);
-    auto bl1 = pendingWrite();
-    log.trace("SSL", "<", id, "> read: ", ret, ", ", bl0, " -> ", bl1);
-    /*
-     * Handle error conditions.
-     */
-    if (ret <= 0) {
-      auto err = SSL_get_error(m_ssl, ret);
-      auto sht = SSL_get_shutdown(m_ssl);
-      /*
-       * Check the shutdown condition.
-       */
-      if (sht & SSL_RECEIVED_SHUTDOWN) {
-        auto ret = SSL_shutdown(m_ssl);
-        /*
-         * Break if the shutdown completed.
-         */
-        if (ret == 1) {
-          log.debug("SSL", "<", id, "> shutdown completed");
-          m_state = State::Closed;
-          return Action::Close;
-        }
-        /*
-         * Break if the shutdown needs more data.
-         */
-        int err = SSL_get_error(m_ssl, ret);
-        if (err == SSL_ERROR_WANT_READ) {
-          break;
-        }
-        /*
-         * Abort otherwise.
-         */
-        log.error("SSL", "<", id, "> shutdown failed: ", ret, ", ", err);
-        return Action::Abort;
-      }
-      /*
-       * Check if the connection needs more data.
-       */
-      if (err == SSL_ERROR_WANT_READ) {
-        break;
-      }
-      /*
-       * Treat it as a read error otherwise.
-       */
-      else {
-        auto m = errorToString(err);
-        auto b = pendingWrite();
-        log.error("SSL", "<", id, "> read error: ", m, " (", ret, ", ", err,
-                  ", ", sht, ") ", b, "B");
-        return Action::Abort;
-      }
-    }
-    /*
-     * Notify the delegate.
-     */
-    auto act = delegate.onNewData(id, m_cookie, m_rdbf, ret, ts);
-    if (act != Action::Continue) {
-      return act;
-    }
-  } while (ret > 0 && m_state != State::Closed);
-  /*
-   * Continue processing.
-   */
-  return Action::Continue;
-}
-
-Action
-Connection::onNewData(system::Logger& log, ID const& id,
-                      api::interface::Delegate<ID>& delegate,
-                      const uint8_t* const data, const uint32_t len,
-                      const system::Clock::Value ts, const uint32_t alen,
-                      uint8_t* const sdata, uint32_t& slen)
-{
-  /*
-   * Write the data in the input BIO.
-   */
-  int ret = BIO_write(m_bin, data, (int)len);
-  if (ret != (int)len) {
-    log.error("SSL", "<", id, "> failed to write ", len, "B in BIO");
+  int ret = BIO_write(m_bin, rdat, (int)rlen);
+  if (ret != (int)rlen) {
+    log.error("SSL", "<", id, "> failed to write ", rlen, "B in BIO");
     return Action::Abort;
   }
   /*
    * Show the buffer level.
    */
   auto avl = pendingWrite();
-  log.trace("SSL", "<", id, "> ", len, "B, (", avl, "/", BUFLEN, ")");
+  log.trace("SSL", "<", id, "> ", rlen, "B, (", avl, "/", BUFLEN, ")");
   /*
    * Check the connection's state.
    */
@@ -427,12 +330,12 @@ Connection::onNewData(system::Logger& log, ID const& id,
         case 1: {
           log.debug("SSL", "<", id, "> connect successful");
           m_state = State::Connected;
-          return flush(log, alen, sdata, slen);
+          return flush(log, savl, sdat, slen);
         }
         default: {
           auto err = SSL_get_error(m_ssl, ret);
           if (err == SSL_ERROR_WANT_READ) {
-            return flush(log, alen, sdata, slen);
+            return flush(log, savl, sdat, slen);
           }
           log.error("SSL", "<", id, "> connect error: ", errorToString(err));
           return Action::Abort;
@@ -455,7 +358,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
         }
         case 1: {
           log.debug("SSL", "<", id, "> accept successful");
-          auto ret = flush(log, alen, sdata, slen);
+          auto ret = flush(log, savl, sdat, slen);
           m_state = State::Ready;
           m_cookie = delegate.onConnected(id, m_cookie, ts);
           return ret;
@@ -463,7 +366,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
         default: {
           auto err = SSL_get_error(m_ssl, ret);
           if (err == SSL_ERROR_WANT_READ) {
-            return flush(log, alen, sdata, slen);
+            return flush(log, savl, sdat, slen);
           }
           log.error("SSL", "<", id, "> accept error: ", errorToString(err));
           return Action::Abort;
@@ -477,7 +380,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
     case State::Ready:
     case State::Shutdown: {
       uint32_t acc = 0;
-      uint8_t out[alen];
+      uint8_t out[savl];
       /*
        * Process the internal buffer as long as there is data available.
        */
@@ -539,7 +442,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
          * Notify the delegate.
          */
         uint32_t r = 0;
-        uint32_t w = alen - acc;
+        uint32_t w = savl - acc;
         auto act = delegate.onNewData(id, m_cookie, m_rdbf, ret, ts, w, out, r);
         /*
          * Bail out if the connection is not longer ready.
@@ -551,13 +454,13 @@ Connection::onNewData(system::Logger& log, ID const& id,
          * Handle close or abort action.
          */
         if (act != Action::Continue) {
-          return abortOrClose(log, act, alen, sdata, slen);
+          return abortOrClose(log, act, savl, sdat, slen);
         }
         /*
          * Cap the written amount.
          */
-        if (r + acc > alen) {
-          r = alen - acc;
+        if (r + acc > savl) {
+          r = savl - acc;
         }
         /*
          * Skip writting if there is no payload.
@@ -575,7 +478,7 @@ Connection::onNewData(system::Logger& log, ID const& id,
       /*
        * Flush the output.
        */
-      return flush(log, alen, sdata, slen);
+      return flush(log, savl, sdat, slen);
     }
   }
 #if defined(__GNUC__) && defined(__GNUC_PREREQ)
@@ -634,58 +537,58 @@ Connection::write(system::Logger& log, ID const& id, const uint32_t len,
 
 Action
 Connection::abortOrClose(system::Logger& log, const Action r,
-                         const uint32_t alen, uint8_t* const sdata,
+                         const uint32_t savl, uint8_t* const sdat,
                          uint32_t& slen)
 {
   /*
-   * Process an abort request.
+   * Process Continue.
+   */
+  if (r == Action::Continue) {
+    return r;
+  }
+  /*
+   * Process Abort.
    */
   if (r == Action::Abort) {
     log.debug("SSL", "aborting connection");
-    return Action::Abort;
+    return r;
   }
   /*
-   * Process a close request.
+   * Process Close.
    */
-  if (r == Action::Close) {
-    log.debug("SSL", "closing connection");
-    /*
-     * Call SSL_shutdown, repeat if necessary.
-     */
-    int ret = SSL_shutdown(m_ssl);
-    if (ret == 0) {
-      ret = SSL_shutdown(m_ssl);
-    }
-    /*
-     * Check that the SSL connection expect an answer from the other peer.
-     */
-    if (ret < 0) {
-      auto err = SSL_get_error(m_ssl, ret);
-      if (err != SSL_ERROR_WANT_READ) {
-        log.error("SSL", "SSL_shutdown error: ", ssl::errorToString(err));
-        return Action::Abort;
-      }
-      /*
-       * Flush the shutdown signal.
-       */
-      m_state = State::Shutdown;
-      return flush(log, alen, sdata, slen);
-    }
-    /*
-     * Abort if the shutdown failed.
-     */
-    log.error("SSL", "SSL_shutdown error, aborting connection");
-    return Action::Abort;
+  log.debug("SSL", "closing connection");
+  /*
+   * Call SSL_shutdown, repeat if necessary.
+   */
+  int ret = SSL_shutdown(m_ssl);
+  if (ret == 0) {
+    ret = SSL_shutdown(m_ssl);
   }
   /*
-   * Default return.
+   * Check that the SSL connection expect an answer from the other peer.
    */
-  return Action::Continue;
+  if (ret < 0) {
+    auto err = SSL_get_error(m_ssl, ret);
+    if (err != SSL_ERROR_WANT_READ) {
+      log.error("SSL", "SSL_shutdown error: ", ssl::errorToString(err));
+      return Action::Abort;
+    }
+    /*
+     * Flush the shutdown signal.
+     */
+    m_state = State::Shutdown;
+    return flush(log, savl, sdat, slen);
+  }
+  /*
+   * Abort if the shutdown failed.
+   */
+  log.error("SSL", "SSL_shutdown error, aborting connection");
+  return Action::Abort;
 }
 
 Action
-Connection::flush(system::Logger& log, const uint32_t alen,
-                  uint8_t* const sdata, uint32_t& slen)
+Connection::flush(system::Logger& log, const uint32_t savl, uint8_t* const sdat,
+                  uint32_t& slen)
 {
   /*
    * Check and send any data in the BIO buffer.
@@ -695,15 +598,24 @@ Connection::flush(system::Logger& log, const uint32_t alen,
     return Action::Continue;
   }
   /*
+   * Skipping if there is no available room in the send buffer.
+   */
+  if (savl == 0) {
+    return Action::Continue;
+  }
+  /*
    * Get how much data to send back.
    */
-  size_t rlen = len > alen ? alen : len;
-  log.trace("SSL", "flushing ", rlen, "B (", len, "/", alen, ")");
+  size_t rlen = len > savl ? savl : len;
+  log.trace("SSL", "flushing ", rlen, "B (", len, "/", savl, ")");
   /*
-   * Send the response.
+   * Read the BIO buffer.
    */
-  BIO_read(m_bout, sdata, (int)rlen);
+  BIO_read(m_bout, sdat, (int)rlen);
   slen = rlen;
+  /*
+   * Done.
+   */
   return Action::Continue;
 }
 
