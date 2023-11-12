@@ -21,16 +21,6 @@ public:
   tulips::Action onNewData(UNUSED api::Client::ID const& id,
                            UNUSED void* const cookie,
                            UNUSED const uint8_t* const data,
-                           UNUSED const uint32_t len,
-                           UNUSED const Timestamp ts) override
-  {
-    m_data_received = true;
-    return tulips::Action::Continue;
-  }
-
-  tulips::Action onNewData(UNUSED api::Client::ID const& id,
-                           UNUSED void* const cookie,
-                           UNUSED const uint8_t* const data,
                            UNUSED const uint32_t len, UNUSED const Timestamp ts,
                            UNUSED const uint32_t alen,
                            UNUSED uint8_t* const sdata,

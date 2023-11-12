@@ -140,14 +140,9 @@ private:
   void onClosed(stack::tcpv4::Connection& c, const Timestamp ts) override;
   void onSent(stack::tcpv4::Connection& c, const Timestamp ts) override;
 
-  Action onAcked(stack::tcpv4::Connection& c, const Timestamp ts) override;
-
   Action onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
                  const uint32_t alen, uint8_t* const sdata,
                  uint32_t& slen) override;
-
-  Action onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                   const uint32_t len, const Timestamp ts) override;
 
   Action onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
                    const uint32_t len, const Timestamp ts, const uint32_t alen,

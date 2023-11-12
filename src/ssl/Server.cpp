@@ -158,26 +158,6 @@ Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 
 Action
 Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
-                const Timestamp ts)
-{
-  /*
-   * Grab the connection.
-   */
-  auto& c = m_cns[id];
-  /*
-   * Return if the handshake was not done.
-   */
-  if (c.state() != Connection::State::Ready) {
-    return Action::Continue;
-  }
-  /*
-   * Notify the delegate.
-   */
-  return m_delegate.onAcked(id, c.cookie(), ts);
-}
-
-Action
-Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
                 const Timestamp ts, const uint32_t alen, uint8_t* const sdata,
                 uint32_t& slen)
 {
@@ -189,21 +169,6 @@ Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
    * If the BIO has data pending, flush it.
    */
   return c.onAcked(m_log, id, m_delegate, ts, alen, sdata, slen);
-}
-
-Action
-Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
-                  const uint8_t* const data, const uint32_t len,
-                  const Timestamp ts)
-{
-  /*
-   * Grab the connection.
-   */
-  auto& c = m_cns[id];
-  /*
-   * Process the incoming data.
-   */
-  return c.onNewData(m_log, id, m_delegate, data, len, ts);
 }
 
 Action

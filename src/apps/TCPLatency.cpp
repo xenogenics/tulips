@@ -313,20 +313,6 @@ public:
 
   Action onNewData(UNUSED tulips::api::Server::ID const& id,
                    UNUSED void* const cookie, const uint8_t* const data,
-                   const uint32_t len, UNUSED const Timestamp ts) override
-  {
-    size_t const& header = *reinterpret_cast<const size_t*>(data);
-    if (header != m_next) {
-      std::cout << "header error: next=" << m_next << " cur=" << header
-                << std::endl;
-    }
-    m_next += 1;
-    m_bytes += len;
-    return Action::Continue;
-  }
-
-  Action onNewData(UNUSED tulips::api::Server::ID const& id,
-                   UNUSED void* const cookie, const uint8_t* const data,
                    const uint32_t len, UNUSED const Timestamp ts,
                    UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                    UNUSED uint32_t& slen) override

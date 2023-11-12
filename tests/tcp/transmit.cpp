@@ -54,26 +54,11 @@ public:
     m_out << "onSent:" << std::endl;
   }
 
-  Action onAcked(UNUSED tcpv4::Connection& c,
-                 UNUSED const Timestamp ts) override
-  {
-    m_out << "onAcked:" << std::endl;
-    return Action::Continue;
-  }
-
   Action onAcked(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts,
                  UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                  UNUSED uint32_t& slen) override
   {
     m_out << "onAcked:" << std::endl;
-    return Action::Continue;
-  }
-
-  Action onNewData(UNUSED tcpv4::Connection& c,
-                   UNUSED const uint8_t* const data, const uint32_t len,
-                   UNUSED const Timestamp ts) override
-  {
-    m_out << "onNewData: " << len << "B" << std::endl;
     return Action::Continue;
   }
 
@@ -150,33 +135,12 @@ public:
     m_out << "onSent:" << std::endl;
   }
 
-  Action onAcked(UNUSED tcpv4::Connection& c,
-                 UNUSED const Timestamp ts) override
-  {
-    m_out << "onAcked:" << std::endl;
-    return Action::Continue;
-  }
-
   Action onAcked(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts,
                  UNUSED const uint32_t alen, UNUSED uint8_t* const sdata,
                  UNUSED uint32_t& slen) override
   {
     m_out << "onAcked:" << std::endl;
     return Action::Continue;
-  }
-
-  Action onNewData(UNUSED tcpv4::Connection& c,
-                   UNUSED const uint8_t* const data, const uint32_t len,
-                   UNUSED const Timestamp ts) override
-  {
-    Action action = m_abort   ? Action::Abort
-                    : m_close ? Action::Close
-                              : Action::Continue;
-    m_rlen = len;
-    m_out << "onNewData:" << len << std::endl;
-    m_close = false;
-    m_abort = false;
-    return action;
   }
 
   Action onNewData(UNUSED tcpv4::Connection& c, const uint8_t* const data,

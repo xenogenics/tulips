@@ -76,23 +76,16 @@ public:
    * Process pending data on ACK.
    */
   Action onAcked(system::Logger& log, ID const& id, Delegate& delegate,
-                 const system::Clock::Value ts, const uint32_t alen,
-                 uint8_t* const sdata, uint32_t& slen);
+                 const system::Clock::Value ts, const uint32_t savl,
+                 uint8_t* const sdat, uint32_t& slen);
 
   /**
    * Processing incoming data and encrypt the response.
    */
   Action onNewData(system::Logger& log, ID const& id, Delegate& delegate,
-                   const uint8_t* const data, const uint32_t len,
-                   const system::Clock::Value ts);
-
-  /**
-   * Processing incoming data and encrypt the response.
-   */
-  Action onNewData(system::Logger& log, ID const& id, Delegate& delegate,
-                   const uint8_t* const data, const uint32_t len,
-                   const system::Clock::Value ts, const uint32_t alen,
-                   uint8_t* const sdata, uint32_t& slen);
+                   const uint8_t* const rdat, const uint32_t rlen,
+                   const system::Clock::Value ts, const uint32_t savl,
+                   uint8_t* const sdat, uint32_t& slen);
 
   /**
    * Return the connection's state.

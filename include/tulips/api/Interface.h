@@ -40,50 +40,21 @@ struct Delegate
                             const Timestamp ts) = 0;
 
   /**
-   * Callback when a packet has been acked. The delegate is not permitted
-   * to send a response.
-   *
-   * @param id the connection's handle.
-   * @param cookie the connection's user-defined state.
-   * @param ts the timestamp of the operation.
-   *
-   * @return an action to be taken upon completion of the callback.
-   */
-  virtual Action onAcked(ID const& id, void* const cookie,
-                         const Timestamp ts) = 0;
-
-  /**
    * Callback when a packet has been acked. The delegate is permitted to
    * send a response.
    *
    * @param id the connection's handle.
    * @param cookie the connection's user-defined state.
    * @param ts the timestamp of the operation.
-   * @param alen the amount of data available in the response frame.
-   * @param sdata a pointer to the response area in the frame.
+   * @param savl the amount of data available in the response frame.
+   * @param sdat a pointer to the response area in the frame.
    * @param slen the effective size of the response data written.
    *
    * @return an action to be taken upon completion of the callback.
    */
   virtual Action onAcked(ID const& id, void* const cookie, const Timestamp ts,
-                         const uint32_t alen, uint8_t* const sdata,
+                         const uint32_t savl, uint8_t* const sdat,
                          uint32_t& slen) = 0;
-
-  /**
-   * Callback when new data has been received. The delegate is not permitted
-   * to send a response.
-   *
-   * @param id the connection's handle.
-   * @param cookie the connection's user-defined state.
-   * @param data the received data.
-   * @param len the length of the received data.
-   * @param ts the timestamp of the operation.
-   *
-   * @return an action to be taken upon completion of the callback.
-   */
-  virtual Action onNewData(ID const& id, void* const cookie,
-                           const uint8_t* const data, const uint32_t len,
-                           const Timestamp ts) = 0;
 
   /**
    * Callback when new data has been received. The delegate is permitted to
@@ -91,19 +62,19 @@ struct Delegate
    *
    * @param id the connection's handle.
    * @param cookie the connection's user-defined state.
-   * @param data the received data.
-   * @param len the length of the received data.
+   * @param rdat the received data.
+   * @param rlen the length of the received data.
    * @param ts the timestamp of the operation.
-   * @param alen the amount of data available in the response frame.
-   * @param sdata a pointer to the response area in the frame.
+   * @param savl the amount of data available in the response frame.
+   * @param sdat a pointer to the response area in the frame.
    * @param slen the effective size of the response data written.
    *
    * @return an action to be taken upon completion of the callback.
    */
   virtual Action onNewData(ID const& id, void* const cookie,
-                           const uint8_t* const data, const uint32_t len,
-                           const Timestamp ts, const uint32_t alen,
-                           uint8_t* const sdata, uint32_t& slen) = 0;
+                           const uint8_t* const rdat, const uint32_t rlen,
+                           const Timestamp ts, const uint32_t savl,
+                           uint8_t* const sdat, uint32_t& slen) = 0;
 
   /*
    * Callback when a connection is closed.

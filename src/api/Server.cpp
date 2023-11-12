@@ -148,23 +148,10 @@ Server::onClosed(tcpv4::Connection& c, const Timestamp ts)
 }
 
 Action
-Server::onAcked(stack::tcpv4::Connection& c, const Timestamp ts)
-{
-  return m_delegate.onAcked(c.id(), c.cookie(), ts);
-}
-
-Action
 Server::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
                 const uint32_t alen, uint8_t* const sdata, uint32_t& slen)
 {
   return m_delegate.onAcked(c.id(), c.cookie(), ts, alen, sdata, slen);
-}
-
-Action
-Server::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
-                  const uint32_t len, const Timestamp ts)
-{
-  return m_delegate.onNewData(c.id(), c.cookie(), data, len, ts);
 }
 
 Action

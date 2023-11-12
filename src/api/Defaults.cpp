@@ -13,15 +13,8 @@ ClientDelegate::onConnected(UNUSED Client::ID const& id,
 
 Action
 ClientDelegate::onAcked(UNUSED Client::ID const& id, UNUSED void* const cookie,
-                        UNUSED const Timestamp ts)
-{
-  return Action::Continue;
-}
-
-Action
-ClientDelegate::onAcked(UNUSED Client::ID const& id, UNUSED void* const cookie,
-                        UNUSED const Timestamp ts, UNUSED const uint32_t alen,
-                        UNUSED uint8_t* const sdata, UNUSED uint32_t& slen)
+                        UNUSED const Timestamp ts, UNUSED const uint32_t savl,
+                        UNUSED uint8_t* const sdat, UNUSED uint32_t& slen)
 {
   return Action::Continue;
 }
@@ -29,19 +22,10 @@ ClientDelegate::onAcked(UNUSED Client::ID const& id, UNUSED void* const cookie,
 Action
 ClientDelegate::onNewData(UNUSED Client::ID const& id,
                           UNUSED void* const cookie,
-                          UNUSED const uint8_t* const data,
-                          UNUSED const uint32_t len, UNUSED const Timestamp ts)
-{
-  return Action::Continue;
-}
-
-Action
-ClientDelegate::onNewData(UNUSED Client::ID const& id,
-                          UNUSED void* const cookie,
-                          UNUSED const uint8_t* const data,
-                          UNUSED const uint32_t len, UNUSED const Timestamp ts,
-                          UNUSED const uint32_t alen,
-                          UNUSED uint8_t* const sdata, UNUSED uint32_t& slen)
+                          UNUSED const uint8_t* const rdat,
+                          UNUSED const uint32_t rlen, UNUSED const Timestamp ts,
+                          UNUSED const uint32_t savl,
+                          UNUSED uint8_t* const sdat, UNUSED uint32_t& slen)
 {
   return Action::Continue;
 }
@@ -61,15 +45,8 @@ ServerDelegate::onConnected(UNUSED Server::ID const& id,
 
 Action
 ServerDelegate::onAcked(UNUSED Client::ID const& id, UNUSED void* const cookie,
-                        UNUSED const Timestamp ts)
-{
-  return Action::Continue;
-}
-
-Action
-ServerDelegate::onAcked(UNUSED Client::ID const& id, UNUSED void* const cookie,
-                        UNUSED const Timestamp ts, UNUSED const uint32_t alen,
-                        UNUSED uint8_t* const sdata, UNUSED uint32_t& slen)
+                        UNUSED const Timestamp ts, UNUSED const uint32_t savl,
+                        UNUSED uint8_t* const sdat, UNUSED uint32_t& slen)
 {
   return Action::Continue;
 }
@@ -77,19 +54,10 @@ ServerDelegate::onAcked(UNUSED Client::ID const& id, UNUSED void* const cookie,
 Action
 ServerDelegate::onNewData(UNUSED Server::ID const& id,
                           UNUSED void* const cookie,
-                          UNUSED const uint8_t* const data,
-                          UNUSED const uint32_t len, UNUSED const Timestamp ts)
-{
-  return Action::Continue;
-}
-
-Action
-ServerDelegate::onNewData(UNUSED Server::ID const& id,
-                          UNUSED void* const cookie,
-                          UNUSED const uint8_t* const data,
-                          UNUSED const uint32_t len, UNUSED const Timestamp ts,
-                          UNUSED const uint32_t alen,
-                          UNUSED uint8_t* const sdata, UNUSED uint32_t& slen)
+                          UNUSED const uint8_t* const rdat,
+                          UNUSED const uint32_t rlen, UNUSED const Timestamp ts,
+                          UNUSED const uint32_t savl,
+                          UNUSED uint8_t* const sdat, UNUSED uint32_t& slen)
 {
   return Action::Continue;
 }
