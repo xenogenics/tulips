@@ -195,9 +195,11 @@ Port::~Port()
 void
 Port::run()
 {
-  if (m_admin->poll(m_raw) == Status::NoDataAvailable) {
+  Status status;
+  do {
+    status = m_admin->poll(m_raw);
     m_raw.run();
-  }
+  } while (status == Status::Ok);
 }
 
 Device::Ref
