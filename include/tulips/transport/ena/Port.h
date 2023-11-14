@@ -31,7 +31,8 @@ private:
   void setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
                            const uint16_t nqus);
 
-  void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info);
+  void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
+                               const uint16_t nqus);
 
   system::Logger& m_log;
   size_t m_ntxds;

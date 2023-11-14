@@ -128,16 +128,16 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto,
                stack::ipv4::Address const& laddr, const uint16_t lport,
                stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  return m_reta.set(laddr, lport, raddr, rport, m_queueid);
+  return m_reta.match(laddr, lport, raddr, rport, m_queueid);
 }
 
 void
 Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
-                 stack::ipv4::Address const& laddr, const uint16_t lport,
-                 stack::ipv4::Address const& raddr, const uint16_t rport)
-{
-  m_reta.clear(laddr, lport, raddr, rport, m_queueid);
-}
+                 UNUSED stack::ipv4::Address const& laddr,
+                 UNUSED const uint16_t lport,
+                 UNUSED stack::ipv4::Address const& raddr,
+                 UNUSED const uint16_t rport)
+{}
 
 Status
 Device::poll(Processor& proc)

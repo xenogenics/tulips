@@ -139,7 +139,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Update the RSS state.
    */
-  setupReceiveSideScaling(dev_info);
+  setupReceiveSideScaling(dev_info, nqus);
   /*
    * Reset the statistics of the port.
    */
@@ -350,7 +350,8 @@ Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
 }
 
 void
-Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
+Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
+                              const uint16_t nqus)
 {
   /*
    * Get the RSS configuration.
@@ -367,7 +368,7 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
    * Allocate the redirection table.
    */
   auto size = dev_info.reta_size;
-  m_reta = RedirectionTable::allocate(m_portid, size, hlen, hkey);
+  m_reta = RedirectionTable::allocate(m_portid, nqus, size, hlen, hkey);
 }
 
 }

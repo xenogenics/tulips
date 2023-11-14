@@ -34,8 +34,10 @@ Device::listen(const stack::ipv4::Protocol proto,
                stack::ipv4::Address const& laddr, const uint16_t lport,
                stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  auto index = m_listens++ % m_devices.size();
-  return m_devices[index]->listen(proto, laddr, lport, raddr, rport);
+  auto index = m_listens % m_devices.size();
+  auto status = m_devices[index]->listen(proto, laddr, lport, raddr, rport);
+  m_listens += status == Status::Ok;
+  return status;
 }
 
 void
