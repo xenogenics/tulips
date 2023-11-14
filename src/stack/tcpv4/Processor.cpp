@@ -927,7 +927,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
               can_send = e.hasAvailableSegments() && e.window() > 0;
             }
             /*
-             * Otherwise, just send the ACK. This will cause the
+             * Otherwise, just send the ACK.
              */
             else {
               res = sendAck(e);
