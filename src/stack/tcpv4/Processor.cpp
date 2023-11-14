@@ -437,12 +437,10 @@ Processor::onSlowTimer()
      * Handle keep-alive.
      */
     if (e.m_state == Connection::ESTABLISHED && HAS_KEEP_ALIVE(e)) {
-      m_log.debug("TCP4", "<", e.id(), "> check keep-alive");
       /*
        * Reset the live flag.
        */
       if (e.m_live) {
-        m_log.debug("TCP4", "<", e.id(), "> reset the live flag");
         e.m_live = false;
         e.m_ktm = KTO + 1;
         continue;

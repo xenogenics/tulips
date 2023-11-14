@@ -254,22 +254,6 @@ private:
   Status sendAck(Connection& e, const bool k);
 
   /**
-   * Send a keep-alive probe.
-   *
-   * @param e the connection to keep-alive.
-   * @param s the segment to use.
-   *
-   * @return the status of the operation.
-   */
-  inline Status sendKeepAlive(Connection& e, Segment& s)
-  {
-    uint8_t* outdata = s.m_dat;
-    OUTTCP->flags = Flag::ACK;
-    OUTTCP->offset = 5;
-    return send(e, HEADER_LEN, s);
-  }
-
-  /**
    * Respond to a connection request.
    *
    * @param e the connection to open.
