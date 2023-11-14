@@ -64,6 +64,7 @@ static constexpr size_t USED HEADER_LEN = sizeof(Header);
 static constexpr uint16_t USED HEADER_OVERHEAD = ipv4::HEADER_LEN + HEADER_LEN;
 
 static constexpr uint16_t USED ATO = 40;
+static constexpr uint16_t USED KTO = 5;
 static constexpr uint8_t USED RTO = 3;
 
 }

@@ -247,10 +247,11 @@ private:
    * saved and restored once the operation has completed.
    *
    * @param e the connection to send the ACK on.
+   * @param k the ACK is a keep-alive message.
    *
    * @return the status of the operation.
    */
-  Status sendAck(Connection& e);
+  Status sendAck(Connection& e, const bool k);
 
   /**
    * Respond to a connection request.
@@ -302,10 +303,11 @@ private:
    * Send the content of a connection's send buffer.
    *
    * @param e the connection.
+   * @param k the message is a keep-alive.
    *
    * @return the status of the operation.
    */
-  Status send(Connection& e);
+  Status send(Connection& e, const bool k);
 
   /** Handle retransmits for a given connection.
    *
@@ -314,6 +316,14 @@ private:
    * @return the status of the operation.
    */
   Status rexmit(Connection& e);
+
+  /** Handle aborts for a given connection.
+   *
+   * @param e the connection.
+   *
+   * @return the status of the operation.
+   */
+  Status abort(Connection& e);
 
   /**
    * Send a segment in the context of a connection.

@@ -24,10 +24,11 @@ static constexpr int USED MAXSYNRTX = 5;
  * need at least 3 bits for NRTX to SEGM_B cannot be more that 5.
  */
 #define SEGM_B 4
-#define NRTX_B (9 - SEGM_B)
+#define NRTX_B (8 - SEGM_B)
 
 #define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
 #define HAS_DELAYED_ACK(__e) ((__e).m_opts & Connection::DELAYED_ACK)
+#define HAS_KEEP_ALIVE(__e) ((__e).m_opts & Connection::KEEP_ALIVE)
 
 class Connection
 {
@@ -52,7 +53,8 @@ public:
   enum Option
   {
     NO_DELAY = 0x1,
-    DELAYED_ACK = 0x2
+    DELAYED_ACK = 0x2,
+    KEEP_ALIVE = 0x4
   };
 
   Connection();
@@ -205,15 +207,16 @@ private:
 
   struct
   {
-    uint64_t m_state : 4;       // . - Connection state
-    uint64_t m_ackdata : 1;     // . - Connection has been acked
-    uint64_t m_newdata : 1;     // . - Connection has new data
-    uint64_t m_pshdata : 1;     // . - Connection data is being pushed
-    uint64_t m_wndscl : 8;      // . - Remote peer window scale (max is 14)
-    uint64_t m_window : 16;     // . - Remote peer window
-    uint64_t m_segidx : SEGM_B; // 8 - Free segment index
-    uint64_t m_nrtx : NRTX_B;   // . - Number of retransmissions (3 bit minimum)
-    uint64_t m_slen : 24;       // . - Length of the send buffer
+    uint64_t m_state : 4;       //  4 - Connection state
+    uint64_t m_ackdata : 1;     //  5 - Connection has been acked
+    uint64_t m_newdata : 1;     //  6 - Connection has new data
+    uint64_t m_pshdata : 1;     //  7 - Connection data is being pushed
+    uint64_t m_live : 1;        //  8 - Connection is live
+    uint64_t m_wndscl : 8;      // 16 - Remote peer window scale (max is 14)
+    uint64_t m_window : 16;     // 32 - Remote peer window
+    uint64_t m_segidx : SEGM_B; // 36 - Free segment index
+    uint64_t m_nrtx : NRTX_B;   // 40 - Number of retransmissions (3 bit min)
+    uint64_t m_slen : 24;       // 64 - Length of the send buffer
   };
 
   uint8_t* m_sdat; // 8 - Send buffer
@@ -227,7 +230,8 @@ private:
   uint8_t m_rtm; // 1 - Retransmission timer
 
   uint32_t m_wndlvl; // 4 - Local window level
-  uint16_t m_atm;    // 2 - Delayed ACK timer
+  uint8_t m_atm;     // 2 - Delayed ACK timer
+  uint8_t m_ktm;     // 2 - Keep-alive timer
   uint16_t m_opts;   // 2 - Connection options (NO_DELAY, etc..)
   void* m_cookie;    // 8 - Application state
 
