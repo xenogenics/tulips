@@ -168,10 +168,29 @@ Device::poll(Processor& proc)
   if (!m_buffer->empty()) {
     uint16_t len = 0;
     system::Clock::Value ts = 0;
+    /*
+     * Read a packet.
+     */
     m_buffer->read_all((uint8_t*)&len, sizeof(len));
     m_buffer->read_all((uint8_t*)&ts, sizeof(ts));
     m_buffer->read_all(m_packet, len);
-    proc.process(len, m_packet, ts);
+    /*
+     * Process the packet.
+     */
+    ret = proc.process(len, m_packet, ts);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+    /*
+     * Run the processor.
+     *
+     * NOTE(xrg): it may not be necessary to run the processor here as these
+     * packets are only errand ARP/IP packets.
+     */
+    ret = proc.run();
+    if (ret != Status::Ok) {
+      return ret;
+    }
   }
   /*
    * Process the incoming receive buffers.
@@ -246,6 +265,16 @@ Device::poll(Processor& proc)
      * Clear buffers sent in-band.
      */
     ret = clearSentBuffers(proc);
+    if (ret != Status::Ok) {
+      return ret;
+    }
+    /*
+     * Run the processor.
+     *
+     * NOTE(xrg): we run the processor here to make sure that the internal
+     * timers in the stack are advancing properly.
+     */
+    ret = proc.run();
     if (ret != Status::Ok) {
       return ret;
     }
