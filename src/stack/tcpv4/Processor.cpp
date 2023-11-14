@@ -759,15 +759,15 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           Options::parse(m_log, e, nbytes, data);
         }
         /*
-         * Send the connected event.
-         */
-        m_handler.onConnected(e, ts);
-        /*
          * Send the ACK.
          */
         auto res = sendAck(e, false);
         /*
-         * Notify the handler.
+         * Notify the handler of the connection.
+         */
+        m_handler.onConnected(e, ts);
+        /*
+         * Notify the handler of any embedded data.
          */
         if (plen > 0) {
           uint32_t rlen = 0;
