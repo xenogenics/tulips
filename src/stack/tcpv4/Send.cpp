@@ -65,7 +65,7 @@ Processor::sendAbort(Connection& e)
   /*
    * Send the packet.
    */
-  return send(e);
+  return send(e, false);
 }
 
 Status
@@ -141,7 +141,7 @@ Processor::sendClose(Connection& e)
 }
 
 Status
-Processor::sendAck(Connection& e)
+Processor::sendAck(Connection& e, const bool k)
 {
   uint8_t bdat[e.m_mss];
   uint32_t blen = 0;
@@ -161,7 +161,7 @@ Processor::sendAck(Connection& e)
   uint8_t* outdata = e.m_sdat;
   OUTTCP->flags = Flag::ACK;
   OUTTCP->offset = 5;
-  auto ret = send(e);
+  auto ret = send(e, k);
   /*
    * Restore any saved send data.
    */
@@ -200,7 +200,7 @@ Processor::sendSyn(Connection& e, Segment& s)
 }
 
 Status
-Processor::send(Connection& e)
+Processor::send(Connection& e, const bool k)
 {
   uint8_t* outdata = e.m_sdat;
   /*
@@ -209,7 +209,7 @@ Processor::send(Connection& e)
    * calculating the checksum and finally send the packet.
    */
   OUTTCP->ackno = htonl(e.m_rcv_nxt);
-  OUTTCP->seqno = htonl(e.m_snd_nxt);
+  OUTTCP->seqno = htonl(e.m_snd_nxt - uint32_t(k));
   OUTTCP->srcport = e.m_lport;
   OUTTCP->dstport = e.m_rport;
   /*
@@ -227,7 +227,7 @@ Processor::send(Connection& e)
   /*
    * Reallocate the send buffer before sending
    */
-  Status ret = send(e.m_ripaddr, HEADER_LEN, e.m_mss, outdata);
+  Status ret = send(e.m_ripaddr, HEADER_LEN + size_t(k), e.m_mss, outdata);
   if (ret != Status::Ok) {
     return ret;
   }
@@ -309,10 +309,28 @@ Processor::rexmit(Connection& e)
 }
 
 Status
+Processor::abort(Connection& e)
+{
+  /*
+   * Abort the connection.
+   */
+  auto res = sendAbort(e);
+  /*
+   * Notify the handler and close the connection.
+   */
+  m_handler.onTimedOut(e, system::Clock::read());
+  close(e);
+  /*
+   *Done.
+   */
+  return res;
+}
+
+Status
 Processor::send(Connection& e, const uint32_t len, Segment& s)
 {
   uint8_t* outdata = s.m_dat;
-  const bool rexmit = s.m_seq != e.m_snd_nxt;
+  const bool rexmit = s.m_seq != e.m_snd_nxt && OUTTCP->flags != Flag::ACK;
   /*
    * We're done with the input processing. We are now ready to send a reply. Our
    * job is to fill in all the fields of the TCP and IP headers before
