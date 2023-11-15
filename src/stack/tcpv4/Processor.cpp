@@ -334,6 +334,7 @@ Processor::onFastTimer(const size_t ticks)
     /*
      * Update the delayed ack tick counter.
      */
+    m_log.debug("TCP4", "<", e.id(), "> ", e.m_atm, " ", ticks);
     e.m_atm -= ticks > e.m_atm ? e.m_atm : ticks;
     /*
      * Skip the connection if the timer has not expired.
