@@ -338,7 +338,7 @@ Processor::onFastTimer(const size_t ticks)
     /*
      * Skip the connection if the timer has not expired.
      */
-    if (--e.m_atm > 0) {
+    if (e.m_atm > 0) {
       continue;
     }
     /*
