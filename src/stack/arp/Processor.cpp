@@ -1,3 +1,4 @@
+#include "tulips/system/Clock.h"
 #include <tulips/stack/ARP.h>
 #include <tulips/stack/Utils.h>
 #include <tulips/stack/arp/Processor.h>
@@ -27,11 +28,12 @@ Processor::Processor(system::Logger& log, ethernet::Producer& eth,
 Status
 Processor::run()
 {
+  auto ts = system::Clock::read();
   /*
    * Poll the timer
    */
-  if (m_timer.expired()) {
-    m_timer.reset();
+  if (m_timer.expired(ts)) {
+    m_timer.reset(ts);
     ++m_time;
     for (auto& e : m_table) {
       if (e.ipaddr.empty()) {

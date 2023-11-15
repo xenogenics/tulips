@@ -547,6 +547,11 @@ TEST_F(TCP_Transmit, ConnectSendDisconnectFromServerWithAckCombining)
   ASSERT_TRUE(m_cli_evt->isConnected());
   ASSERT_TRUE(m_srv_evt->isConnected());
   /*
+   * Run the processors to reset their internal timers.
+   */
+  ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+  ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
+  /*
    * The client sends some data, #1
    */
   uint32_t res = 0;
@@ -696,6 +701,11 @@ TEST_F(TCP_Transmit, ConnectSendAbortFromServerWithAckCombining)
   ASSERT_EQ(Status::Ok, m_sdev->poll(*m_srv_eth_proc));
   ASSERT_TRUE(m_cli_evt->isConnected());
   ASSERT_TRUE(m_srv_evt->isConnected());
+  /*
+   * Run the processors to reset their internal timers.
+   */
+  ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+  ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
   /*
    * The client sends some data, #1
    */

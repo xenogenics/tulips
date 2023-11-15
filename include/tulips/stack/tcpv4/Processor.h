@@ -148,16 +148,20 @@ private:
   /**
    * Process tasks on the fast timer.
    *
+   * @param ticks elapsed ticks.
+   *
    * @return the status of the operation.
    */
-  Status onFastTimer();
+  Status onFastTimer(const size_t ticks);
 
   /**
    * Process tasks on the fast timer.
    *
+   * @param ticks elapsed ticks.
+   *
    * @return the status of the operation.
    */
-  Status onSlowTimer();
+  Status onSlowTimer(const size_t ticks);
   /**
    * Close a connection.
    *
