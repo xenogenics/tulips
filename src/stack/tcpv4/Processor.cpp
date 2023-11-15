@@ -72,18 +72,20 @@ Processor::unlisten(const Port port)
 Status
 Processor::run()
 {
+  auto ts = system::Clock::read();
   /*
    * Check the fast timer.
    */
-  if (m_fast.expired()) {
+  if (m_fast.expired(ts)) {
     /*
-     * Reset the timer.
+     * Get the ticks and reset the timer.
      */
-    m_fast.reset();
+    auto ticks = m_fast.ticks(ts);
+    m_fast.reset(ts);
     /*
      * Call the handler.
      */
-    auto ret = onFastTimer();
+    auto ret = onFastTimer(ticks);
     if (ret != Status::Ok) {
       return ret;
     }
@@ -91,15 +93,16 @@ Processor::run()
   /*
    * Check the slow timer.
    */
-  if (m_slow.expired()) {
+  if (m_slow.expired(ts)) {
     /*
-     * Reset the timer.
+     * Get the ticks and reset the timer.
      */
-    m_slow.reset();
+    auto ticks = m_slow.ticks(ts);
+    m_slow.reset(ts);
     /*
      * Call the handler.
      */
-    auto ret = onSlowTimer();
+    auto ret = onSlowTimer(ticks);
     if (ret != Status::Ok) {
       return ret;
     }
@@ -304,7 +307,7 @@ Processor::checksum(ipv4::Address const& src, ipv4::Address const& dst,
 #endif
 
 Status
-Processor::onFastTimer()
+Processor::onFastTimer(const size_t ticks)
 {
   /*
    * Scan the connections.
@@ -329,6 +332,10 @@ Processor::onFastTimer()
       continue;
     }
     /*
+     * Update the delayed ack tick counter.
+     */
+    e.m_atm -= ticks > e.m_atm ? e.m_atm : ticks;
+    /*
      * Skip the connection if the timer has not expired.
      */
     if (--e.m_atm > 0) {
@@ -349,7 +356,7 @@ Processor::onFastTimer()
 }
 
 Status
-Processor::onSlowTimer()
+Processor::onSlowTimer(const size_t ticks)
 {
   /*
    * Increase the initial sequence number.
@@ -373,11 +380,11 @@ Processor::onSlowTimer()
       /*
        * Increase the connection's timer.
        */
-      e.m_rtm += 1;
+      e.m_rtm += ticks;
       /*
        * If it timed out, close the connection.
        */
-      if (e.m_rtm == TIME_WAIT_TIMEOUT) {
+      if (e.m_rtm >= TIME_WAIT_TIMEOUT) {
         m_log.debug("TCP4", "<", e.id(), "> closed");
         close(e);
       }
@@ -389,44 +396,53 @@ Processor::onSlowTimer()
     /*
      * Handle retransmissions.
      */
-    if (e.hasOutstandingSegments() && --e.m_rtm == 0) {
+    if (e.hasOutstandingSegments()) {
       /*
-       * The connection has expired, reset it.
+       * Update the retransmission tick counter.
        */
-      if (e.hasExpired()) {
-        m_log.debug("TCP4", "<", e.id(), "> expired, aborting");
+      e.m_rtm -= ticks > e.m_rtm ? e.m_rtm : ticks;
+      /*
+       * Proceed with retransmissions.
+       */
+      if (e.m_rtm == 0) {
         /*
-         * Abort the connection.
+         * The connection has expired, reset it.
          */
-        auto res = abort(e);
-        if (res != Status::Ok) {
-          return res;
+        if (e.hasExpired()) {
+          m_log.debug("TCP4", "<", e.id(), "> expired, aborting");
+          /*
+           * Abort the connection.
+           */
+          auto res = abort(e);
+          if (res != Status::Ok) {
+            return res;
+          }
+          /*
+           * Done.
+           */
+          continue;
         }
         /*
-         * Done.
+         * Exponential backoff.
          */
-        continue;
-      }
-      /*
-       * Exponential backoff.
-       */
-      e.m_rtm = RTO << (e.m_nrtx > 4 ? 4 : e.m_nrtx);
-      e.m_nrtx += 1;
-      /*
-       * Print retransmission statistics.
-       */
-      m_log.debug("TCP4", "<", e.id(), "> automatic repeat request (",
-                  size_t(e.m_nrtx), "/", MAXRTX, ")");
-      m_log.debug("TCP4", "<", e.id(), "> segments available? ", std::boolalpha,
-                  e.hasAvailableSegments());
-      m_log.debug("TCP4", "<", e.id(), "> segments outstanding? ",
-                  std::boolalpha, e.hasOutstandingSegments());
-      /*
-       * Retransmit.
-       */
-      auto ret = rexmit(e);
-      if (ret != Status::Ok) {
-        return ret;
+        e.m_rtm = RTO << (e.m_nrtx > 4 ? 4 : e.m_nrtx);
+        e.m_nrtx += 1;
+        /*
+         * Print retransmission statistics.
+         */
+        m_log.debug("TCP4", "<", e.id(), "> automatic repeat request (",
+                    size_t(e.m_nrtx), "/", MAXRTX, ")");
+        m_log.debug("TCP4", "<", e.id(), "> segments available? ",
+                    std::boolalpha, e.hasAvailableSegments());
+        m_log.debug("TCP4", "<", e.id(), "> segments outstanding? ",
+                    std::boolalpha, e.hasOutstandingSegments());
+        /*
+         * Retransmit.
+         */
+        auto ret = rexmit(e);
+        if (ret != Status::Ok) {
+          return ret;
+        }
       }
       /*
        * Done.
@@ -446,9 +462,13 @@ Processor::onSlowTimer()
         continue;
       }
       /*
+       * Update the keep-alive tick counter.
+       */
+      e.m_ktm -= ticks > e.m_ktm ? e.m_ktm : ticks;
+      /*
        * If the connection is not live, send the keep-alive.
        */
-      if (--e.m_ktm > 0 && e.hasAvailableSegments()) {
+      if (e.m_ktm > 0 && e.hasAvailableSegments()) {
         m_log.debug("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
         /*
          * Send the ACK.

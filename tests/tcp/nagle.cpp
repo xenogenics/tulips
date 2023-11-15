@@ -449,6 +449,11 @@ TEST_F(TCP_Nagle, ConnectSendNagleRecvThenAck)
   ASSERT_TRUE(m_cli_evt->isConnected());
   ASSERT_TRUE(m_srv_evt->isConnected());
   /*
+   * Run the processors to reset their internal timers.
+   */
+  ASSERT_EQ(Status::Ok, m_cli_eth_proc->run());
+  ASSERT_EQ(Status::Ok, m_srv_eth_proc->run());
+  /*
    * Set delayed ACK on the server connection.
    */
   m_srv_tcp->setOptions(m_srv_evt->connectionID(),
