@@ -79,15 +79,25 @@ endif (TULIPS_TESTS)
 # Compiler flags
 #
 
-set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -Wfatal-errors")
 set(CMAKE_C_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-g3 -O3")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors -mssse3")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wfatal-errors")
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g3 -O3")
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mssse3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mssse3")
+endif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-address-of-packed-member")
+endif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64")
 
 #
 # Option definitions
