@@ -29,6 +29,7 @@ static constexpr int USED MAXSYNRTX = 5;
 #define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
 #define HAS_DELAYED_ACK(__e) ((__e).m_opts & Connection::DELAYED_ACK)
 #define HAS_KEEP_ALIVE(__e) ((__e).m_opts & Connection::KEEP_ALIVE)
+#define HAS_ABORT_ON_DROP(__e) ((__e).m_opts & Connection::ABORT_ON_DROP)
 
 class Connection
 {
@@ -52,9 +53,22 @@ public:
 
   enum Option
   {
+    /**
+     * Disable Nagle's algorithm.
+     */
     NO_DELAY = 0x1,
+    /**
+     * Send grouped ACKs every 40ms.
+     */
     DELAYED_ACK = 0x2,
-    KEEP_ALIVE = 0x4
+    /**
+     * Send a keep-alive probe every second, abort after 5 failures.
+     */
+    KEEP_ALIVE = 0x4,
+    /**
+     * Abort the connection on dropped or out-of-order packets.
+     */
+    ABORT_ON_DROP = 0x8
   };
 
   Connection();
@@ -86,8 +100,6 @@ private:
     }
   }
 
-  inline bool isActive() const { return m_state != CLOSED; }
-
   inline bool hasAvailableSegments() const
   {
     for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
@@ -118,6 +130,8 @@ private:
       return m_nrtx == MAXRTX;
     }
   }
+
+  inline bool isActive() const { return m_state != CLOSED; }
 
   inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
   {
