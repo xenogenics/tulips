@@ -13,6 +13,19 @@
 #include <net/ethernet.h>
 #include <rte_errno.h>
 
+namespace {
+
+static constexpr const size_t ENA_LEGACY_HASH_KEY_LEN = 40;
+
+static const uint8_t ENA_LEGACY_HASH_KEY[ENA_LEGACY_HASH_KEY_LEN] = {
+  0xbe, 0xac, 0x01, 0xfa, 0x6a, 0x42, 0xb7, 0x3b, 0x80, 0x30,
+  0xf2, 0x0c, 0x77, 0xcb, 0x2d, 0xa3, 0xae, 0x7b, 0x30, 0xb4,
+  0xd0, 0xca, 0x2b, 0xcb, 0x43, 0xa3, 0x8f, 0xb0, 0x41, 0x67,
+  0x25, 0x3d, 0x25, 0x5b, 0x0e, 0xc2, 0x6d, 0x5a, 0x56, 0xda,
+};
+
+}
+
 namespace tulips::transport::ena {
 
 Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
@@ -361,8 +374,17 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
   struct rte_eth_rss_conf rss_conf = { .rss_key = hkey };
   auto ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
   if (ret != 0) {
+    /*
+     * Warn about the failure.
+     */
+    m_log.warning("ENA", "failed to get RSS hash configuration, using legacy");
     delete[] hkey;
-    throw std::runtime_error("Failed to get the RSS hashing configuration");
+    /*
+     * Use the legacy key.
+     */
+    hlen = ENA_LEGACY_HASH_KEY_LEN;
+    hkey = new uint8_t[hlen];
+    memcpy(hkey, ENA_LEGACY_HASH_KEY, hlen);
   }
   /*
    * Allocate the redirection table.
