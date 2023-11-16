@@ -578,16 +578,29 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
   if (!(e.m_state == Connection::SYN_SENT &&
         (INTCP->flags & Flag::CTL) == (Flag::SYN | Flag::ACK))) {
     /*
-     * If there is incoming data or is SYN or FIN is set.
+     * If there is incoming data or if SYN or FIN is set.
      */
     if (plen > 0 || (INTCP->flags & (Flag::SYN | Flag::FIN)) != 0) {
       /*
-       * Send an ACK with the proper seqno if the received seqno is wrong.
+       * And the sequence number is not expected.
        */
       if (seqno != e.m_rcv_nxt) {
-        m_log.debug("TCP4", "<", e.id(), "> sequence ACK: in=", seqno,
-                    " exp=", e.m_rcv_nxt);
-        return sendAck(e, false);
+        /*
+         * Abort the connection if it does not support drops.
+         */
+        if (HAS_ABORT_ON_DROP(e)) {
+          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno,
+                      ", aborting");
+          return abort(e);
+        }
+        /*
+         * Otherwise, request a retransmission.
+         */
+        else {
+          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno, "/",
+                      e.m_rcv_nxt, ", requesting retransmission");
+          return sendAck(e, false);
+        }
       }
     }
   }
