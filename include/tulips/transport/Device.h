@@ -24,7 +24,7 @@ namespace transport {
 class Device : public Producer
 {
 public:
-  enum Hint
+  enum Hint : uint16_t
   {
     VALIDATE_IP_CSUM = 0x1,
     VALIDATE_L4_CSUM = 0x2,

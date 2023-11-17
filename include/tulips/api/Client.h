@@ -79,7 +79,7 @@ public:
 
   using interface::Client::open;
 
-  Status open(const ApplicationLayerProtocol alpn, const uint8_t options,
+  Status open(const ApplicationLayerProtocol alpn, const uint16_t options,
               ID& id) override;
 
   Status setHostName(const ID id, std::string_view hn) override;

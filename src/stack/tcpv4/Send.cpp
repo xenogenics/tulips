@@ -318,6 +318,24 @@ Processor::abort(Connection& e)
   /*
    * Notify the handler and close the connection.
    */
+  m_handler.onAborted(e, system::Clock::read());
+  close(e);
+  /*
+   *Done.
+   */
+  return res;
+}
+
+Status
+Processor::timeOut(Connection& e)
+{
+  /*
+   * Abort the connection.
+   */
+  auto res = sendAbort(e);
+  /*
+   * Notify the handler and close the connection.
+   */
   m_handler.onTimedOut(e, system::Clock::read());
   close(e);
   /*
