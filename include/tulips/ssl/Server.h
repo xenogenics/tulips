@@ -67,12 +67,12 @@ public:
    * Server interface.
    */
 
-  inline void setOptions(const ID id, const uint8_t options) override
+  inline void setOptions(const ID id, const uint16_t options) override
   {
     m_server->setOptions(id, options);
   }
 
-  inline void clearOptions(const ID id, const uint8_t options) override
+  inline void clearOptions(const ID id, const uint16_t options) override
   {
     m_server->clearOptions(id, options);
   }

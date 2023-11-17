@@ -413,7 +413,7 @@ Processor::onSlowTimer(const size_t ticks)
           /*
            * Abort the connection.
            */
-          auto res = abort(e);
+          auto res = timeOut(e);
           if (res != Status::Ok) {
             return res;
           }
@@ -489,7 +489,7 @@ Processor::onSlowTimer(const size_t ticks)
       /*
        * Abort the connection.
        */
-      auto res = abort(e);
+      auto res = timeOut(e);
       if (res != Status::Ok) {
         return res;
       }

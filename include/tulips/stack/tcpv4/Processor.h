@@ -313,21 +313,32 @@ private:
    */
   Status send(Connection& e, const bool k);
 
-  /** Handle retransmits for a given connection.
-   *
-   * @param e the connection.
-   *
-   * @return the status of the operation.
-   */
-  Status rexmit(Connection& e);
-
-  /** Handle aborts for a given connection.
+  /**
+   * Handle abort condition for a given connection.
    *
    * @param e the connection.
    *
    * @return the status of the operation.
    */
   Status abort(Connection& e);
+
+  /**
+   * Handle time-out condition for a given connection.
+   *
+   * @param e the connection.
+   *
+   * @return the status of the operation.
+   */
+  Status timeOut(Connection& e);
+
+  /**
+   * Handle retransmits for a given connection.
+   *
+   * @param e the connection.
+   *
+   * @return the status of the operation.
+   */
+  Status rexmit(Connection& e);
 
   /**
    * Send a segment in the context of a connection.

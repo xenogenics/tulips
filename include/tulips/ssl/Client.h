@@ -91,7 +91,7 @@ public:
 
   using api::interface::Client::open;
 
-  Status open(const ApplicationLayerProtocol alpn, const uint8_t options,
+  Status open(const ApplicationLayerProtocol alpn, const uint16_t options,
               ID& id) override;
 
   Status abort(const ID id) override;

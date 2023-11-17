@@ -120,7 +120,8 @@ Client::live() const
 }
 
 Status
-Client::open(const ApplicationLayerProtocol alpn, const uint8_t options, ID& id)
+Client::open(const ApplicationLayerProtocol alpn, const uint16_t options,
+             ID& id)
 {
   return m_client.open(alpn, options, id);
 }

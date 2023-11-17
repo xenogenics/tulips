@@ -149,7 +149,7 @@ public:
    *
    * @return the status of the operation.
    */
-  virtual Status open(const ApplicationLayerProtocol alp, const uint8_t opts,
+  virtual Status open(const ApplicationLayerProtocol alp, const uint16_t opts,
                       ID& id) = 0;
 
   /**
@@ -299,7 +299,7 @@ public:
    *
    * @return the status of the operation.
    */
-  virtual void setOptions(const ID id, const uint8_t options) = 0;
+  virtual void setOptions(const ID id, const uint16_t options) = 0;
 
   /**
    * Clear TCP options on a given connection.
@@ -309,7 +309,7 @@ public:
    *
    * @return the status of the operation.
    */
-  virtual void clearOptions(const ID id, const uint8_t options) = 0;
+  virtual void clearOptions(const ID id, const uint16_t options) = 0;
 
   /**
    * Close a connection.

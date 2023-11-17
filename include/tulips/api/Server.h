@@ -72,9 +72,9 @@ public:
 
   void unlisten(const stack::tcpv4::Port port) override;
 
-  void setOptions(const ID id, const uint8_t options) override;
+  void setOptions(const ID id, const uint16_t options) override;
 
-  void clearOptions(const ID id, const uint8_t options) override;
+  void clearOptions(const ID id, const uint16_t options) override;
 
   Status close(const ID id) override;
 

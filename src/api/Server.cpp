@@ -76,13 +76,13 @@ Server::unlisten(const stack::tcpv4::Port port)
 }
 
 void
-Server::setOptions(const ID id, const uint8_t options)
+Server::setOptions(const ID id, const uint16_t options)
 {
   m_tcp.setOptions(id, options);
 }
 
 void
-Server::clearOptions(const ID id, const uint8_t options)
+Server::clearOptions(const ID id, const uint16_t options)
 {
   m_tcp.clearOptions(id, options);
 }

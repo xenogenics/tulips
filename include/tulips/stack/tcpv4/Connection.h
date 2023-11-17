@@ -36,7 +36,7 @@ class Connection
 public:
   using ID = uint16_t;
 
-  enum State
+  enum State : uint8_t
   {
     CLOSE = 0x1,
     CLOSED = 0x2,
@@ -51,7 +51,7 @@ public:
     TIME_WAIT = 0xB,
   };
 
-  enum Option
+  enum Option : uint16_t
   {
     /**
      * Disable Nagle's algorithm.
