@@ -366,11 +366,12 @@ void
 Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
                               const uint16_t nqus)
 {
+  auto hlen = dev_info.hash_key_size;
+  auto hkey = new uint8_t[hlen];
+  auto dflt = false;
   /*
    * Get the RSS configuration.
    */
-  auto hlen = dev_info.hash_key_size;
-  auto hkey = new uint8_t[hlen];
   struct rte_eth_rss_conf rss_conf = { .rss_key = hkey };
   auto ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
   if (ret != 0) {
@@ -384,20 +385,17 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
      */
     hlen = ENA_LEGACY_HASH_KEY_LEN;
     hkey = new uint8_t[hlen];
+    dflt = true;
     /*
-     * Copy the legacy key by flipping it:
-     *
-     * https://github.com/amzn/amzn-drivers/issues/267#issuecomment-1566119986
+     * Copy the legacy key.
      */
-    for (size_t i = 0; i < ENA_LEGACY_HASH_KEY_LEN; i += 1) {
-      hkey[i] = ENA_LEGACY_HASH_KEY[ENA_LEGACY_HASH_KEY_LEN - i];
-    }
+    memcpy(hkey, ENA_LEGACY_HASH_KEY, hlen);
   }
   /*
    * Allocate the redirection table.
    */
   auto size = dev_info.reta_size;
-  m_reta = RedirectionTable::allocate(m_portid, nqus, size, hlen, hkey);
+  m_reta = RedirectionTable::allocate(m_portid, nqus, size, hlen, hkey, dflt);
 }
 
 }

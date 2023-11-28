@@ -86,9 +86,9 @@ headerLength(const uint8_t* const packet, const uint32_t plen, uint32_t& len)
 uint32_t
 toeplitz(stack::ipv4::Address const& saddr, stack::ipv4::Address const& daddr,
          const uint16_t sport, const uint16_t dport, const size_t len,
-         const uint8_t* const key)
+         const uint8_t* const key, const uint32_t init)
 {
-  uint32_t ret = 0;
+  uint32_t ret = init;
   uint8_t tuple[12];
   /*
    * Copy the key in a local buffer.

@@ -26,6 +26,6 @@ cap(const uint32_t length)
 uint32_t toeplitz(stack::ipv4::Address const& saddr,
                   stack::ipv4::Address const& daddr, const uint16_t sport,
                   const uint16_t dport, const size_t key_len,
-                  const uint8_t* const key);
+                  const uint8_t* const key, const uint32_t init);
 
 }
