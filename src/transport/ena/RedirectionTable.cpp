@@ -25,9 +25,6 @@ RedirectionTable::RedirectionTable(const uint16_t portid, const size_t nqus,
   }
   /*
    * Partition the RETA.
-   *
-   * NOTE(xrg): we don't allocate any slot for queue 0 as its sole purpose it to
-   * handle L2 messages.
    */
   for (size_t i = 0; i < nqus - 1; i += 1) {
     for (size_t j = 0; j < partlen; j += 1) {
@@ -45,6 +42,10 @@ RedirectionTable::RedirectionTable(const uint16_t portid, const size_t nqus,
     auto eidx = i & 0x3F;
     m_table[slot].reta[eidx] = nqus - 1;
   }
+  /*
+   * Reserve the first slot to redirect L2 flows to queue 0.
+   */
+  m_table[0].reta[0] = 0;
   /*
    * Update the RETA.
    */

@@ -384,7 +384,14 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
      */
     hlen = ENA_LEGACY_HASH_KEY_LEN;
     hkey = new uint8_t[hlen];
-    memcpy(hkey, ENA_LEGACY_HASH_KEY, hlen);
+    /*
+     * Copy the legacy key by flipping it:
+     *
+     * https://github.com/amzn/amzn-drivers/issues/267#issuecomment-1566119986
+     */
+    for (size_t i = 0; i < ENA_LEGACY_HASH_KEY_LEN; i += 1) {
+      hkey[i] = ENA_LEGACY_HASH_KEY[ENA_LEGACY_HASH_KEY_LEN - i];
+    }
   }
   /*
    * Allocate the redirection table.

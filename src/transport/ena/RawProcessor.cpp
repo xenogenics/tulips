@@ -1,6 +1,7 @@
 #include <tulips/stack/Ethernet.h>
 #include <tulips/system/SpinLock.h>
 #include <tulips/transport/ena/RawProcessor.h>
+#include <iostream>
 #include <mutex>
 #include <netinet/in.h>
 
