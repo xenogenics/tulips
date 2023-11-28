@@ -1,17 +1,20 @@
 #include <tulips/stack/Utils.h>
 #include <tulips/system/SpinLock.h>
 #include <tulips/transport/ena/RedirectionTable.h>
+#include <cstdint>
 #include <mutex>
+#include <endian.h>
 
 namespace tulips::transport::ena {
 
 RedirectionTable::RedirectionTable(const uint16_t portid, const size_t nqus,
                                    const size_t size, const size_t hlen,
-                                   const uint8_t* const hkey)
+                                   const uint8_t* const hkey, const bool dflt)
   : m_portid(portid)
   , m_size(size)
   , m_hlen(hlen)
   , m_hkey(hkey)
+  , m_default(dflt)
   , m_table(new struct rte_eth_rss_reta_entry64[size >> 6])
 {
   auto count = size >> 6;
@@ -25,9 +28,6 @@ RedirectionTable::RedirectionTable(const uint16_t portid, const size_t nqus,
   }
   /*
    * Partition the RETA.
-   *
-   * NOTE(xrg): we don't allocate any slot for queue 0 as its sole purpose it to
-   * handle L2 messages.
    */
   for (size_t i = 0; i < nqus - 1; i += 1) {
     for (size_t j = 0; j < partlen; j += 1) {
@@ -45,6 +45,10 @@ RedirectionTable::RedirectionTable(const uint16_t portid, const size_t nqus,
     auto eidx = i & 0x3F;
     m_table[slot].reta[eidx] = nqus - 1;
   }
+  /*
+   * Reserve the first slot to redirect L2 flows to queue 0.
+   */
+  m_table[0].reta[0] = 0;
   /*
    * Update the RETA.
    */
@@ -69,9 +73,38 @@ RedirectionTable::match(stack::ipv4::Address const& laddr, const uint16_t lport,
 {
   using stack::utils::toeplitz;
   /*
+   * Save IP and port information.
+   */
+  stack::ipv4::Address rx_ip = laddr, tx_ip = raddr;
+  uint16_t rx_port = lport, tx_port = rport;
+  uint32_t init = 0;
+  /*
+   * Re-order IPs and ports if necessary: https://tinyurl.com/mryamc52
+   */
+  if (m_default) {
+    if (be32toh(*rx_ip.data()) < be32toh(*tx_ip.data())) {
+      rx_ip = raddr;
+      tx_ip = laddr;
+    }
+    if (rx_port < tx_port) {
+      rx_port = rport;
+      tx_port = lport;
+    }
+    init = uint32_t(-1);
+  }
+  /*
    * Hash the payload and get the table index.
    */
-  auto hash = toeplitz(raddr, laddr, rport, lport, m_hlen, m_hkey);
+  auto hash = toeplitz(tx_ip, rx_ip, tx_port, rx_port, m_hlen, m_hkey, init);
+  /*
+   * Default keys only use the lower 16 bits: https://tinyurl.com/47vkdanv
+   */
+  if (m_default) {
+    hash = ((hash & 0xFFFF) | (hash << 16)) & 0xFFFFFFFF;
+  }
+  /*
+   * Compute the indexes and the slot.
+   */
   uint64_t indx = hash % m_size;
   uint64_t slot = indx >> 6;
   uint64_t eidx = indx & 0x3F;
