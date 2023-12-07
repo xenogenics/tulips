@@ -586,13 +586,18 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
      */
     if (plen > 0 || (INTCP->flags & (Flag::SYN | Flag::FIN)) != 0) {
       /*
+       * Grab the reorder buffer for the connection.
+       */
+      auto& buf = m_buffers[e.id()];
+      /*
        * And the sequence number is not expected.
        */
-      if (seqno != e.m_rcv_nxt) {
+      if (seqno != e.m_rcv_nxt || buf->expecting()) {
+        m_log.debug("TCP4", "<", e.id(), "> ", buf->level(), "/",
+                    buf->window());
         /*
          * Process the packet through its reorder buffer.
          */
-        auto& buf = m_buffers[e.id()];
         auto res = buf->process(e.m_rcv_nxt, seqno, ackno, plen, pdat);
         /*
          * Check the status.
@@ -602,8 +607,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
            * NOTE(xrg): we are missing a fragment, we wait for the next packet.
            */
           case Status::IncompleteData: {
-            m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno, "/",
-                        e.m_rcv_nxt, ", buffering");
+            m_log.debug("TCP4", "<", e.id(), "> unexpected ", e.m_rcv_nxt,
+                        " != ", seqno, "(", plen, "), buffering");
             return Status::Ok;
           }
           /*
@@ -614,16 +619,16 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              * Abort the connection if it does not support drops.
              */
             if (HAS_ABORT_ON_DROP(e)) {
-              m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno,
-                          ", aborting");
+              m_log.debug("TCP4", "<", e.id(), "> unexpected ", e.m_rcv_nxt,
+                          " != ", seqno, "(", plen, "), aborting");
               return abort(e);
             }
             /*
              * Otherwise, request a retransmission.
              */
             else {
-              m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno, "/",
-                          e.m_rcv_nxt, ", requesting retransmission");
+              m_log.debug("TCP4", "<", e.id(), "> unexpected ", e.m_rcv_nxt,
+                          " != ", seqno, "(", plen, "), requesting rexmit");
               return sendAck(e, false);
             }
           }

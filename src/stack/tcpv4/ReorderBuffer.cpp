@@ -51,10 +51,17 @@ ReorderBuffer::process(const uint32_t expsq, uint32_t& seqno, uint32_t& ackno,
     return Status::IncompleteData;
   }
   /*
-   * Copy the data and increase the level.
+   * Copy the data.
    */
   memcpy(m_data + wridx, data, len);
-  m_level = m_level + len;
+  /*
+   * Update the level.
+   */
+  if (seqno == m_seqat && len >= window()) {
+    m_level = len;
+  } else {
+    m_level = m_level + len;
+  }
   /*
    * Update the internal state.
    */

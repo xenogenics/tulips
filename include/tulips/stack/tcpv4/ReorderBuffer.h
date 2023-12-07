@@ -23,6 +23,12 @@ public:
   Status process(const uint32_t expsq, uint32_t& seqno, uint32_t& ackno,
                  uint16_t& len, const uint8_t*& data);
 
+  constexpr bool expecting() const { return m_level != 0; }
+
+  constexpr size_t level() const { return m_level; }
+
+  constexpr size_t window() const { return linear(m_seqnx) - m_seqat; }
+
 private:
   ReorderBuffer(const size_t);
 
@@ -34,8 +40,6 @@ private:
     }
     return seqno;
   }
-
-  constexpr size_t window() const { return linear(m_seqnx) - m_seqat; }
 
   const size_t m_capacity;
   size_t m_level;
