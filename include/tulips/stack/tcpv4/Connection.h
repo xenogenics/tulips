@@ -51,7 +51,7 @@ public:
     TIME_WAIT = 0xB,
   };
 
-  enum Option : uint16_t
+  enum Option : uint8_t
   {
     /**
      * Disable Nagle's algorithm.
@@ -244,9 +244,10 @@ private:
   uint8_t m_rtm; // 1 - Retransmission timer
 
   uint32_t m_wndlvl; // 4 - Local window level
-  uint8_t m_atm;     // 2 - Delayed ACK timer
-  uint8_t m_ktm;     // 2 - Keep-alive timer
-  uint16_t m_opts;   // 2 - Connection options (NO_DELAY, etc..)
+  uint8_t m_atm;     // 1 - Delayed ACK timer
+  uint8_t m_ktm;     // 1 - Keep-alive timer
+  uint8_t m_ooo;     // 1 - Out-of-order counter
+  uint8_t m_opts;    // 1 - Connection options (NO_DELAY, etc..)
   void* m_cookie;    // 8 - Application state
 
   /*

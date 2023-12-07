@@ -225,6 +225,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   e->m_wndlvl = WndLimits::max();
   e->m_atm = 0;
   e->m_ktm = 0;
+  e->m_ooo = 0;
   e->m_opts = 0;
   e->m_ackdata = false;
   e->m_newdata = false;
@@ -450,6 +451,41 @@ Processor::onSlowTimer(const size_t ticks)
       continue;
     }
     /*
+     * Handle OoO packets.
+     */
+    if (e.m_ooo > 0) {
+      Status ret = Status::Ok;
+      /*
+       * Reset OoO counter.
+       */
+      /*
+       * Abort the connection if it does not support drops.
+       */
+      if (HAS_ABORT_ON_DROP(e)) {
+        m_log.debug("TCP4", "<", e.id(), "> SEQ ", e.m_rcv_nxt,
+                    " stale, aborting");
+        ret = abort(e);
+      }
+      /*
+       * Otherwise, request a retransmission.
+       */
+      else {
+        m_log.debug("TCP4", "<", e.id(), "> SEQ ", e.m_rcv_nxt,
+                    "stale, requesting retransmission");
+        ret = sendAck(e, false);
+      }
+      /*
+       * Handle return status.
+       */
+      if (ret != Status::Ok) {
+        return ret;
+      }
+      /*
+       * Done.
+       */
+      continue;
+    }
+    /*
      * Handle keep-alive.
      */
     if (e.m_state == Connection::ESTABLISHED && HAS_KEEP_ALIVE(e)) {
@@ -469,7 +505,7 @@ Processor::onSlowTimer(const size_t ticks)
        * If the connection is not live, send the keep-alive.
        */
       if (e.m_ktm > 0 && e.hasAvailableSegments()) {
-        m_log.debug("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
+        m_log.trace("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", int(KTO));
         /*
          * Send the ACK.
          */
@@ -582,25 +618,37 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
      */
     if (plen > 0 || (INTCP->flags & (Flag::SYN | Flag::FIN)) != 0) {
       /*
+       * Update the OoO counter.
+       */
+      e.m_ooo = seqno == e.m_rcv_nxt ? 0 : e.m_ooo + 1;
+      /*
        * And the sequence number is not expected.
        */
       if (seqno != e.m_rcv_nxt) {
         /*
+         * Check if the OoO packet can be forgiven.
+         */
+        if (e.m_ooo < OOO) {
+          m_log.debug("TCP4", "<", e.id(), "> SEQ ", seqno, " != ", e.m_rcv_nxt,
+                      ", ignoring (", int(e.m_ooo), "/", int(OOO), ")");
+          return Status::Ok;
+        }
+        /*
          * Abort the connection if it does not support drops.
          */
         if (HAS_ABORT_ON_DROP(e)) {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno,
+          m_log.debug("TCP4", "<", e.id(), "> SEQ ", seqno, " != ", e.m_rcv_nxt,
                       ", aborting");
+          e.m_ooo = 0;
           return abort(e);
         }
         /*
          * Otherwise, request a retransmission.
          */
-        else {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno, "/",
-                      e.m_rcv_nxt, ", requesting retransmission");
-          return sendAck(e, false);
-        }
+        m_log.debug("TCP4", "<", e.id(), "> SEQ ", seqno, " != ", e.m_rcv_nxt,
+                    ", requesting retransmission");
+        e.m_ooo = 0;
+        return sendAck(e, false);
       }
     }
   }

@@ -267,6 +267,7 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   c.m_wndlvl = WndLimits::max();
   c.m_atm = 0;
   c.m_ktm = 0;
+  c.m_ooo = 0;
   c.m_opts = 0;
   c.m_ackdata = false;
   c.m_newdata = false;
