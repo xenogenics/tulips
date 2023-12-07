@@ -307,9 +307,12 @@ if (LINUX)
   list(FILTER SOURCES EXCLUDE REGEX ".*tap.*")
 endif (LINUX)
 
+if (NOT LibDPDK_FOUND)
+  list(FILTER SOURCES EXCLUDE REGEX ".*ena.*")
+endif (NOT LibDPDK_FOUND)
+
 if (NOT LibIBVerbs_FOUND)
   list(FILTER SOURCES EXCLUDE REGEX ".*ofed.*")
-  list(FILTER SOURCES EXCLUDE REGEX ".*uspace.*")
 endif (NOT LibIBVerbs_FOUND)
 
 foreach (SOURCE ${SOURCES})
