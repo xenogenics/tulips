@@ -93,7 +93,7 @@ Processor::abort(const Connection::ID id)
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -130,7 +130,7 @@ Processor::close(const Connection::ID id)
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -168,7 +168,7 @@ Processor::setOptions(const Connection::ID id, const uint8_t options)
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -188,7 +188,7 @@ Processor::clearOptions(const Connection::ID id, const uint8_t options)
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -209,7 +209,7 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -288,7 +288,7 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
   /*
    * Update the connection index.
    */
-  m_index.insert({ std::hash<Connection>()(c), id });
+  m_index->insert({ std::hash<Connection>()(c), id });
   /*
    * Prepare the SYN. SYN segments don't contain any data but have a size of 1
    * to increase the sequence number by 1.
@@ -315,7 +315,7 @@ Processor::isClosed(const Connection::ID id) const
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return true;
   }
   Connection const& c = m_conns[id];
@@ -329,7 +329,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -408,7 +408,7 @@ Processor::get(const Connection::ID id, ipv4::Address& laddr, Port& lport,
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -437,7 +437,7 @@ Processor::cookie(const Connection::ID id) const
   /*
    * Check if the connection is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_conns.size()) {
     return nullptr;
   }
   Connection const& c = m_conns[id];

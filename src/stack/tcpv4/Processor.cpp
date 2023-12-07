@@ -24,17 +24,17 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   , m_ethto(eth)
   , m_ipv4to(ip4)
   , m_handler(h)
-  , m_nconn(nconn)
   , m_ethfrom(nullptr)
   , m_ipv4from(nullptr)
-  , m_iss(0)
-  , m_mss(m_ipv4to.mss() - HEADER_LEN)
-  , m_listenports()
+  , m_stats(std::make_unique<Statistics>())
+  , m_index(std::make_unique<Index>())
   , m_conns()
-  , m_index()
-  , m_stats()
   , m_fast()
   , m_slow()
+  , m_buffers()
+  , m_ports(std::make_unique<Ports>())
+  , m_iss(0)
+  , m_mss(m_ipv4to.mss() - HEADER_LEN)
 {
   /*
    * Arm the timers.
@@ -42,14 +42,16 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   m_fast.set(system::Clock::MILLISECOND);
   m_slow.set(system::Clock::SECOND);
   /*
-   * Resize the connections.
+   * Resize the connections and buffers.
    */
   m_conns.resize(nconn);
+  m_buffers.resize(nconn);
   /*
    * Set the connection IDs.
    */
   for (uint16_t id = 0; id < nconn; id += 1) {
     m_conns[id].m_id = id;
+    m_buffers[id] = ReorderBuffer::allocate(4096);
   }
 }
 
@@ -58,7 +60,7 @@ Processor::listen(const Port lport)
 {
   auto const& lip = m_ipv4to.hostAddress();
   if (m_device.listen(ipv4::Protocol::TCP, lip, lport) == Status::Ok) {
-    m_listenports.insert(htons(lport));
+    m_ports->insert(htons(lport));
   }
 }
 
@@ -66,7 +68,7 @@ void
 Processor::unlisten(const Port port)
 {
   m_device.unlisten(ipv4::Protocol::TCP, m_ipv4to.hostAddress(), port);
-  m_listenports.erase(htons(port));
+  m_ports->erase(htons(port));
 }
 
 Status
@@ -121,7 +123,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   /*
    * Update the stats.
    */
-  m_stats.recv += 1;
+  m_stats->recv += 1;
   /*
    * Compute and check the TCP checksum.
    */
@@ -129,8 +131,8 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   uint16_t csum = checksum(m_ipv4from->sourceAddress(),
                            m_ipv4from->destinationAddress(), len, data);
   if (csum != 0xffff) {
-    m_stats.drop += 1;
-    m_stats.chkerr += 1;
+    m_stats->drop += 1;
+    m_stats->chkerr += 1;
     m_log.error("TCP", "invalid checksum (",
                 m_ipv4from->sourceAddress().toString(), ", ",
                 m_ipv4from->destinationAddress().toString(), ", ", len, ", 0x",
@@ -141,8 +143,8 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   /*
    * Check existing connections.
    */
-  auto i = m_index.find(std::hash<Header>()(*INTCP));
-  if (i != m_index.end()) {
+  auto i = m_index->find(std::hash<Header>()(*INTCP));
+  if (i != m_index->end()) {
     auto& c = m_conns[i->second];
     if (c.m_state != Connection::CLOSED &&
         c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
@@ -155,14 +157,14 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * a RST.
    */
   if ((INTCP->flags & Flag::CTL) != Flag::SYN) {
-    m_stats.rst += 1;
+    m_stats->rst += 1;
     return sendReset(data);
   }
   /*
    * No matching connection found, so we send a RST packet.
    */
-  if (m_listenports.count(INTCP->dstport) == 0) {
-    m_stats.synrst += 1;
+  if (m_ports->count(INTCP->dstport) == 0) {
+    m_stats->synrst += 1;
     return sendReset(data);
   }
   /*
@@ -195,7 +197,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * connections.
    */
   if (e == m_conns.end()) {
-    m_stats.syndrop += 1;
+    m_stats->syndrop += 1;
     return Status::Ok;
   }
   /*
@@ -258,7 +260,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   /*
    * Update the connection index.
    */
-  m_index.insert({ std::hash<Connection>()(*e), e->id() });
+  m_index->insert({ std::hash<Connection>()(*e), e->id() });
   /*
    * Send the SYN/ACK.
    */
@@ -508,7 +510,7 @@ Processor::close(Connection& e)
    * Unlisten the connection's local port.
    */
   m_device.unlisten(ipv4::Protocol::TCP, m_ipv4to.hostAddress(), e.m_lport);
-  m_index.erase(std::hash<Connection>()(e));
+  m_index->erase(std::hash<Connection>()(e));
   /*
    * Clear the segments.
    */
@@ -673,7 +675,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * situations.
        */
       else if (acklm < explm) {
-        m_stats.ackerr += 1;
+        m_stats->ackerr += 1;
         break;
       }
       /*

@@ -94,7 +94,7 @@ Processor::sendReset(const uint8_t* const data)
   /*
    * Update the flags.
    */
-  m_stats.rst += 1;
+  m_stats->rst += 1;
   OUTTCP->flags = Flag::RST;
   OUTTCP->offset = 5;
   /*
@@ -251,7 +251,7 @@ Processor::send(Connection& e, const bool k)
 Status
 Processor::rexmit(Connection& e)
 {
-  m_stats.rexmit += 1;
+  m_stats->rexmit += 1;
   /*
    * Handle the retransmit dependending on the connection's state.
    */

@@ -7,12 +7,14 @@
 #include <tulips/stack/ipv4/Producer.h>
 #include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/EventHandler.h>
+#include <tulips/stack/tcpv4/ReorderBuffer.h>
 #include <tulips/system/Buffer.h>
 #include <tulips/system/Logger.h>
 #include <tulips/system/Timer.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
@@ -33,6 +35,8 @@ static constexpr int USED TIME_WAIT_TIMEOUT = 120;
  */
 struct Statistics
 {
+  using Ref = std::unique_ptr<Statistics>;
+
   uint64_t drop;    // Number of dropped TCP segments.
   uint64_t recv;    // Number of received TCP segments.
   uint64_t sent;    // Number of sent TCP segments.
@@ -121,7 +125,7 @@ public:
     /*
      * Check that the connection is valid.
      */
-    if (id >= m_nconn) {
+    if (id >= m_conns.size()) {
       return Status::InvalidConnection;
     }
     /*
@@ -139,6 +143,7 @@ private:
   using Ports = std::unordered_set<Port>;
   using Connections = std::vector<Connection>;
   using Index = std::unordered_map<uint64_t, Connection::ID>;
+  using ReorderBuffers = std::vector<ReorderBuffer::Ref>;
 
 #if !(defined(TULIPS_HAS_HW_CHECKSUM) && defined(TULIPS_DISABLE_CHECKSUM_CHECK))
   static uint16_t checksum(ipv4::Address const& src, ipv4::Address const& dst,
@@ -395,22 +400,24 @@ private:
   Status send(ipv4::Address const& dst, const uint32_t len, const uint16_t mss,
               uint8_t* const outdata);
 
-  system::Logger& m_log;
-  transport::Device& m_device;
-  ethernet::Producer& m_ethto;
-  ipv4::Producer& m_ipv4to;
-  EventHandler& m_handler;
-  const size_t m_nconn;
-  ethernet::Processor* m_ethfrom;
-  ipv4::Processor* m_ipv4from;
-  uint32_t m_iss;
-  uint32_t m_mss;
-  Ports m_listenports;
-  Connections m_conns;
-  Index m_index;
-  Statistics m_stats;
-  system::Timer m_fast;
-  system::Timer m_slow;
+  system::Logger& m_log;          //  0B -  8B
+  transport::Device& m_device;    //  8B -  8B
+  ethernet::Producer& m_ethto;    // 16B -  8B
+  ipv4::Producer& m_ipv4to;       // 24B -  8B
+  EventHandler& m_handler;        // 32B -  8B
+  ethernet::Processor* m_ethfrom; // 40B -  8B
+  ipv4::Processor* m_ipv4from;    // 48B -  8B
+  Statistics::Ref m_stats;        // 56B -  8B
+
+  std::unique_ptr<Index> m_index; //  0B -  8B
+  Connections m_conns;            //  8B - 24B
+  system::Timer m_fast;           // 32B - 16B
+  system::Timer m_slow;           // 40B - 16B
+
+  ReorderBuffers m_buffers;       //  0B - 24B
+  std::unique_ptr<Ports> m_ports; // 24B -  8B
+  uint32_t m_iss;                 // 32B -  4B
+  uint32_t m_mss;                 // 36B -  4B
 };
 
 }
