@@ -1,5 +1,6 @@
 #include <tulips/api/Status.h>
 #include <tulips/stack/tcpv4/ReorderBuffer.h>
+#include <cstring>
 #include <limits>
 
 namespace tulips::stack::tcpv4 {
