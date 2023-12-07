@@ -534,13 +534,14 @@ Status
 Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
                    const Timestamp ts)
 {
+  uint16_t plen;
+  const uint8_t* pdat;
   /*
    * Gather the input packet information.
    */
-  uint16_t plen;
   uint16_t window = ntohs(INTCP->wnd);
-  const uint32_t seqno = ntohl(INTCP->seqno);
-  const uint32_t ackno = ntohl(INTCP->ackno);
+  uint32_t seqno = ntohl(INTCP->seqno);
+  uint32_t ackno = ntohl(INTCP->ackno);
   /*
    * Reset the connection's data state
    */
@@ -568,6 +569,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    */
   uint16_t tcpHdrLen = HEADER_LEN_WITH_OPTS(INTCP);
   plen = len - tcpHdrLen;
+  pdat = data + tcpHdrLen;
   /*
    * Print the flow information if requested.
    */
@@ -588,20 +590,59 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       if (seqno != e.m_rcv_nxt) {
         /*
-         * Abort the connection if it does not support drops.
+         * Process the packet through its reorder buffer.
          */
-        if (HAS_ABORT_ON_DROP(e)) {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno,
-                      ", aborting");
-          return abort(e);
-        }
+        auto& buf = m_buffers[e.id()];
+        auto res = buf->process(e.m_rcv_nxt, seqno, ackno, plen, pdat);
         /*
-         * Otherwise, request a retransmission.
+         * Check the status.
          */
-        else {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno, "/",
-                      e.m_rcv_nxt, ", requesting retransmission");
-          return sendAck(e, false);
+        switch (res) {
+          /*
+           * NOTE(xrg): we are missing a fragment, we wait for the next packet.
+           */
+          case Status::IncompleteData: {
+            m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno, "/",
+                        e.m_rcv_nxt, ", buffering");
+            return Status::Ok;
+          }
+          /*
+           * NOTE(xrg): we ran out of space, we consider the packet lost.
+           */
+          case Status::NoMoreResources: {
+            /*
+             * Abort the connection if it does not support drops.
+             */
+            if (HAS_ABORT_ON_DROP(e)) {
+              m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno,
+                          ", aborting");
+              return abort(e);
+            }
+            /*
+             * Otherwise, request a retransmission.
+             */
+            else {
+              m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno, "/",
+                          e.m_rcv_nxt, ", requesting retransmission");
+              return sendAck(e, false);
+            }
+          }
+          /*
+           * NOTE(xrg): the reordering was successful.
+           */
+          case Status::Ok: {
+            m_log.debug("TCP4", "<", e.id(), "> reassembled ", e.m_rcv_nxt,
+                        " ->", seqno);
+            break;
+          }
+          /*
+           * NOTE(xrg): this path should never be taken.
+           */
+          default: {
+            m_log.error("TCP4", "<", e.id(),
+                        "> unexpected reorder buffer status, aborting");
+            return abort(e);
+          }
         }
       }
     }
@@ -755,7 +796,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         if (plen > 0) {
           auto res = sendAck(e, false);
           uint32_t rlen = 0;
-          m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
+          m_handler.onNewData(e, pdat, plen, ts, 0, nullptr, rlen);
           return res;
         }
       }
@@ -804,7 +845,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         if (plen > 0) {
           uint32_t rlen = 0;
-          m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
+          m_handler.onNewData(e, pdat, plen, ts, 0, nullptr, rlen);
         }
         /*
          * Done.
@@ -849,7 +890,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         if (plen > 0) {
           uint32_t rlen = 0;
-          m_handler.onNewData(e, data + tcpHdrLen, plen, ts, 0, nullptr, rlen);
+          m_handler.onNewData(e, pdat, plen, ts, 0, nullptr, rlen);
         }
         /*
          * Acknowledge the FIN. If we are here there is no more outstanding
@@ -985,7 +1026,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * Collect the connection's buffer state.
          */
-        const uint8_t* rdat = data + tcpHdrLen + urglen;
+        const uint8_t* rdat = pdat + urglen;
         const uint32_t rlen = plen;
         const uint32_t snxt = e.m_snd_nxt;
         /*
