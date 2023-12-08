@@ -28,7 +28,7 @@ public:
     m_out.open(path);
   }
 
-  ~Client() override { m_out.close(); }
+  ~Client() override { m_out.close(); } // NOLINT(bugprone-exception-escape)
 
   void onConnected(UNUSED tcpv4::Connection& c,
                    UNUSED const Timestamp ts) override
@@ -95,7 +95,7 @@ public:
     m_out.open(path);
   }
 
-  ~Server() override { m_out.close(); }
+  ~Server() override { m_out.close(); } // NOLINT(bugprone-exception-escape)
 
   void onConnected(tcpv4::Connection& c, UNUSED const Timestamp ts) override
   {

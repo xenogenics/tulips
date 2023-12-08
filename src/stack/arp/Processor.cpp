@@ -131,6 +131,12 @@ Processor::process(const uint16_t len, const uint8_t* const data,
       update(INARP->sipaddr, INARP->shwaddr);
       break;
     }
+    /*
+     * Ignore any other value.
+     */
+    default: {
+      break;
+    }
   }
   /*
    * Return our status

@@ -23,8 +23,8 @@ Action
 ClientDelegate::onNewData(UNUSED Client::ID const& id,
                           UNUSED void* const cookie,
                           UNUSED const uint8_t* const rdat,
-                          UNUSED const uint32_t rlen, UNUSED const Timestamp ts,
-                          UNUSED const uint32_t savl,
+                          UNUSED const uint32_t rlen, UNUSED const bool pushed,
+                          UNUSED const Timestamp ts, UNUSED const uint32_t savl,
                           UNUSED uint8_t* const sdat, UNUSED uint32_t& slen)
 {
   return Action::Continue;
@@ -55,8 +55,8 @@ Action
 ServerDelegate::onNewData(UNUSED Server::ID const& id,
                           UNUSED void* const cookie,
                           UNUSED const uint8_t* const rdat,
-                          UNUSED const uint32_t rlen, UNUSED const Timestamp ts,
-                          UNUSED const uint32_t savl,
+                          UNUSED const uint32_t rlen, UNUSED const bool pushed,
+                          UNUSED const Timestamp ts, UNUSED const uint32_t savl,
                           UNUSED uint8_t* const sdat, UNUSED uint32_t& slen)
 {
   return Action::Continue;

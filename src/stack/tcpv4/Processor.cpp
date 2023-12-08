@@ -1235,7 +1235,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
     /*
      * Unhandled cases.
      */
-    case Connection::CLOSED: {
+    default: {
       break;
     }
   }
@@ -1244,4 +1244,5 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    */
   return Status::Ok;
 }
+
 }

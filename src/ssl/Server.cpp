@@ -174,8 +174,8 @@ Server::onAcked(ID const& id, [[maybe_unused]] void* const cookie,
 Action
 Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
                   const uint8_t* const data, const uint32_t len,
-                  const Timestamp ts, const uint32_t alen, uint8_t* const sdata,
-                  uint32_t& slen)
+                  const bool pushed, const Timestamp ts, const uint32_t alen,
+                  uint8_t* const sdata, uint32_t& slen)
 {
   /*
    * Grab the connection.
@@ -184,7 +184,8 @@ Server::onNewData(ID const& id, [[maybe_unused]] void* const cookie,
   /*
    * Write the data in the input BIO.
    */
-  return c.onNewData(m_log, id, m_delegate, data, len, ts, alen, sdata, slen);
+  return c.onNewData(m_log, id, m_delegate, data, len, pushed, ts, alen, sdata,
+                     slen);
 }
 
 void

@@ -64,6 +64,7 @@ struct Delegate
    * @param cookie the connection's user-defined state.
    * @param rdat the received data.
    * @param rlen the length of the received data.
+   * @param pushed the incoming packet was PSH'd
    * @param ts the timestamp of the operation.
    * @param savl the amount of data available in the response frame.
    * @param sdat a pointer to the response area in the frame.
@@ -73,8 +74,9 @@ struct Delegate
    */
   virtual Action onNewData(ID const& id, void* const cookie,
                            const uint8_t* const rdat, const uint32_t rlen,
-                           const Timestamp ts, const uint32_t savl,
-                           uint8_t* const sdat, uint32_t& slen) = 0;
+                           const bool pushed, const Timestamp ts,
+                           const uint32_t savl, uint8_t* const sdat,
+                           uint32_t& slen) = 0;
 
   /*
    * Callback when a connection is closed.

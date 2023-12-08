@@ -106,8 +106,9 @@ public:
                  uint32_t& slen) override;
 
   Action onNewData(ID const& id, void* const cookie, const uint8_t* const data,
-                   const uint32_t len, const Timestamp ts, const uint32_t alen,
-                   uint8_t* const sdata, uint32_t& slen) override;
+                   const uint32_t len, const bool pushed, const Timestamp ts,
+                   const uint32_t alen, uint8_t* const sdata,
+                   uint32_t& slen) override;
 
   void onClosed(ID const& id, void* const cookie, const Timestamp ts) override;
 
