@@ -62,7 +62,7 @@ errorToString(const int err)
       return "SSL_ERROR_WANT_X509_LOOKUP";
     case SSL_ERROR_SYSCALL:
       return "SSL_ERROR_SYSCALL";
-    case SSL_ERROR_SSL: {
+    default: {
       char buffer[1024];
       ERR_error_string_n(ERR_peek_error(), buffer, 1024);
       return { buffer };
@@ -283,8 +283,8 @@ Action
 Connection::onNewData(system::Logger& log, ID const& id,
                       api::interface::Delegate<ID>& delegate,
                       const uint8_t* const rdat, const uint32_t rlen,
-                      const system::Clock::Value ts, const uint32_t savl,
-                      uint8_t* const sdat, uint32_t& slen)
+                      const bool pushed, const system::Clock::Value ts,
+                      const uint32_t savl, uint8_t* const sdat, uint32_t& slen)
 {
   /*
    * Write the data in the input BIO.
@@ -443,7 +443,8 @@ Connection::onNewData(system::Logger& log, ID const& id,
          */
         uint32_t r = 0;
         uint32_t w = savl - acc;
-        auto act = delegate.onNewData(id, m_cookie, m_rdbf, ret, ts, w, out, r);
+        auto act =
+          delegate.onNewData(id, m_cookie, m_rdbf, ret, pushed, ts, w, out, r);
         /*
          * Bail out if the connection is not longer ready.
          */

@@ -84,8 +84,8 @@ public:
    */
   Action onNewData(system::Logger& log, ID const& id, Delegate& delegate,
                    const uint8_t* const rdat, const uint32_t rlen,
-                   const system::Clock::Value ts, const uint32_t savl,
-                   uint8_t* const sdat, uint32_t& slen);
+                   const bool pushed, const system::Clock::Value ts,
+                   const uint32_t savl, uint8_t* const sdat, uint32_t& slen);
 
   /**
    * Return the connection's state.

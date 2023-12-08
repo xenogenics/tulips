@@ -159,8 +159,8 @@ Server::onNewData(stack::tcpv4::Connection& c, const uint8_t* const data,
                   const uint32_t len, const Timestamp ts, const uint32_t alen,
                   uint8_t* const sdata, uint32_t& slen)
 {
-  return m_delegate.onNewData(c.id(), c.cookie(), data, len, ts, alen, sdata,
-                              slen);
+  return m_delegate.onNewData(c.id(), c.cookie(), data, len,
+                              c.isNewDataPushed(), ts, alen, sdata, slen);
 }
 
 }

@@ -19,8 +19,8 @@ public:
 
   Action onNewData(Client::ID const& id, void* const cookie,
                    const uint8_t* const rdat, const uint32_t rlen,
-                   const Timestamp ts, const uint32_t savl, uint8_t* const sdat,
-                   uint32_t& slen) override;
+                   const bool pushed, const Timestamp ts, const uint32_t savl,
+                   uint8_t* const sdat, uint32_t& slen) override;
 
   void onClosed(Client::ID const& id, void* const cookie,
                 const Timestamp ts) override;
@@ -40,8 +40,8 @@ public:
 
   Action onNewData(Server::ID const& id, void* const cookie,
                    const uint8_t* const rdat, const uint32_t rlen,
-                   const Timestamp ts, const uint32_t savl, uint8_t* const sdat,
-                   uint32_t& slen) override;
+                   const bool pushed, const Timestamp ts, const uint32_t savl,
+                   uint8_t* const sdat, uint32_t& slen) override;
 
   void onClosed(Server::ID const& id, void* const cookie,
                 const Timestamp ts) override;
