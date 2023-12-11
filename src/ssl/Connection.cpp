@@ -158,19 +158,26 @@ Connection::connect(system::Logger& log, ID const& id,
     }
   }
   /*
-   * Connect.
+   * Try to connect.
+   *
+   * NOTE(xrg): on non-blocking sockets, this operation returns -1.
    */
-  if (SSL_connect(m_ssl) != -1) {
-    log.error("SSL", "<", id, "> connect error");
+  auto ret = SSL_connect(m_ssl);
+  auto err = SSL_get_error(m_ssl, ret);
+  /*
+   * Check the result.
+   */
+  if (ret != -1) {
+    auto msg = ssl::errorToString(err);
+    log.error("SSL", "<", id, "> connect error: ", msg);
     return Status::ProtocolError;
   }
   /*
    * Check the error.
    */
-  auto err = SSL_get_error(m_ssl, -1);
   if (err != SSL_ERROR_WANT_READ) {
-    auto error = ssl::errorToString(err);
-    log.error("SSL", "<", id, "> connect error: ", error);
+    auto msg = ssl::errorToString(err);
+    log.error("SSL", "<", id, "> connect error: ", msg);
     return Status::ProtocolError;
   }
   /*
@@ -324,7 +331,9 @@ Connection::onNewData(system::Logger& log, ID const& id,
       ret = SSL_connect(m_ssl);
       switch (ret) {
         case 0: {
-          log.error("SSL", "<", id, "> connect error, controlled shutdown");
+          auto err = SSL_get_error(m_ssl, ret);
+          auto msg = ssl::errorToString(err);
+          log.error("SSL", "<", id, "> connect error: ", msg);
           return Action::Abort;
         }
         case 1: {
@@ -337,7 +346,8 @@ Connection::onNewData(system::Logger& log, ID const& id,
           if (err == SSL_ERROR_WANT_READ) {
             return flush(log, savl, sdat, slen);
           }
-          log.error("SSL", "<", id, "> connect error: ", errorToString(err));
+          auto msg = ssl::errorToString(err);
+          log.error("SSL", "<", id, "> connect error: ", msg);
           return Action::Abort;
         }
       }
