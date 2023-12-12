@@ -27,6 +27,7 @@ enum class Status
    * Protocol errors
    */
   ProtocolError,
+  SslError,
   UnsupportedProtocol,
   /*
    * Connection errors

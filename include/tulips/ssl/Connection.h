@@ -37,6 +37,7 @@ public:
   {
     Closed,
     Open,
+    Opening,
     Connecting,
     Connected,
     Accepting,
@@ -91,6 +92,11 @@ public:
    * Return the connection's state.
    */
   constexpr State state() const { return m_state; }
+
+  /**
+   * Move the connection to ready.
+   */
+  void setOpening() { m_state = State::Opening; }
 
   /**
    * Move the connection to ready.

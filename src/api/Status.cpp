@@ -28,6 +28,8 @@ toString(const Status s)
       return "UnsupportedData";
     case Status::ProtocolError:
       return "ProtocolError";
+    case Status::SslError:
+      return "SslError";
     case Status::UnsupportedProtocol:
       return "UnsupportedProtocol";
     case Status::HardwareTranslationMissing:

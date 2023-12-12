@@ -144,7 +144,7 @@ Connection::connect(system::Logger& log, ID const& id,
       static uint8_t name[] = "\x08http/1.1";
       if (SSL_set_alpn_protos(m_ssl, name, 9)) {
         log.error("SSL", "<", id, "> failed to set ALPN for H1");
-        return Status::ProtocolError;
+        return Status::SslError;
       };
       break;
     }
@@ -152,7 +152,7 @@ Connection::connect(system::Logger& log, ID const& id,
       static uint8_t name[] = "\x02h2";
       if (SSL_set_alpn_protos(m_ssl, name, 3)) {
         log.error("SSL", "<", id, "> failed to set ALPN for H2");
-        return Status::ProtocolError;
+        return Status::SslError;
       };
       break;
     }
@@ -169,16 +169,16 @@ Connection::connect(system::Logger& log, ID const& id,
    */
   if (ret != -1) {
     auto msg = ssl::errorToString(err);
-    log.error("SSL", "<", id, "> connect error: ", msg);
-    return Status::ProtocolError;
+    log.error("SSL", "<", id, "> initial connect error: ", msg);
+    return Status::SslError;
   }
   /*
    * Check the error.
    */
   if (err != SSL_ERROR_WANT_READ) {
     auto msg = ssl::errorToString(err);
-    log.error("SSL", "<", id, "> connect error: ", msg);
-    return Status::ProtocolError;
+    log.error("SSL", "<", id, "> initial connect error: ", msg);
+    return Status::SslError;
   }
   /*
    * Update the state and return.
@@ -224,7 +224,7 @@ Connection::shutdown(system::Logger& log, ID const& id)
       auto err = SSL_get_error(m_ssl, ret);
       auto error = ssl::errorToString(err);
       log.error("SSL", "<", id, "> SSL_shutdown error: ", error);
-      return Status::ProtocolError;
+      return Status::SslError;
     }
   }
 }
@@ -313,15 +313,22 @@ Connection::onNewData(system::Logger& log, ID const& id,
     /*
      * Closed is not a valid state.
      */
-    case State::Open: {
-      log.error("SSL", "<", id, "> received data on OPEN");
+    case State::Closed: {
+      log.error("SSL", "<", id, "> received data on CLOSED");
       return Action::Abort;
     }
     /*
-     * Closed is not a valid state.
+     * Opening is not a valid state.
      */
-    case State::Closed: {
-      log.error("SSL", "<", id, "> received data on CLOSED");
+    case State::Opening: {
+      log.error("SSL", "<", id, "> received data on OPENING");
+      return Action::Abort;
+    }
+    /*
+     * Open is not a valid state.
+     */
+    case State::Open: {
+      log.error("SSL", "<", id, "> received data on OPEN");
       return Action::Abort;
     }
     /*

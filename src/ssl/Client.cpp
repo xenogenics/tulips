@@ -216,11 +216,27 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
      * Connection is closed.
      */
     case Connection::State::Closed: {
+      /*
+       * Connect the TCP connection.
+       */
       Status res = m_client.connect(id, ripaddr, rport);
       if (res != Status::Ok) {
         return res;
       }
-      [[fallthrough]];
+      /*
+       * Transition the connection's state.
+       */
+      c.setOpening();
+      /*
+       * Done.
+       */
+      return Status::OperationInProgress;
+    }
+    /*
+     * Connection is opening.
+     */
+    case Connection::State::Opening: {
+      return Status::OperationInProgress;
     }
     /*
      * Start the SSL handshake.
