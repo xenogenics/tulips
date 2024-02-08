@@ -33,6 +33,7 @@ public:
   size_t count() const { return cnt.getValue(); }
   long cpuId() const { return cpu.getValue(); }
   system::Logger::Level verbosity() const { return vrb.getValue(); }
+  bool isSynchronous() const { return syn.isSet(); }
   bool withSSL() const { return ssl.isSet(); }
   std::string_view sslCert() const { return crt.getValue(); }
   std::string_view sslKey() const { return key.getValue(); }
@@ -56,6 +57,7 @@ private:
   TCLAP::ValueArg<size_t> cnt;
   TCLAP::ValueArg<long> cpu;
   TCLAP::ValueArg<system::Logger::Level> vrb;
+  TCLAP::SwitchArg syn;
   TCLAP::SwitchArg ssl;
   TCLAP::ValueArg<std::string> crt;
   TCLAP::ValueArg<std::string> key;

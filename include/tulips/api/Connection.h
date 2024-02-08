@@ -1,8 +1,8 @@
 #pragma once
 
-#include "tulips/system/Clock.h"
 #include <tulips/api/Interface.h>
 #include <tulips/stack/tcpv4/Connection.h>
+#include <tulips/system/Clock.h>
 #include <functional>
 #include <list>
 #include <optional>
@@ -104,10 +104,10 @@ public:
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   void markOnSent(const system::Clock::Value ts) { m_history.push_back(ts); }
 
-  void markOnAcked()
+  void markOnAcked(const system::Clock::Value ts)
   {
     m_count += 1;
-    m_lat += system::Clock::read() - m_history.front();
+    m_lat += ts - m_history.front();
     m_history.pop_front();
   }
 

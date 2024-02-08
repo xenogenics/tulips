@@ -501,7 +501,7 @@ Client::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
    * Update the latency monitor.
    */
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  m_cns[c.id()].markOnAcked();
+  m_cns[c.id()].markOnAcked(ts);
 #endif
   /*
    * Call the delegate.

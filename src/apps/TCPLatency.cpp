@@ -59,12 +59,20 @@ class Delegate : public api::defaults::ClientDelegate
 public:
   using api::defaults::ClientDelegate::Timestamp;
 
-  void* onConnected(UNUSED tulips::api::Client::ID const& id,
-                    UNUSED void* const cookie,
-                    UNUSED const Timestamp ts) override
+  Action onAcked(UNUSED const api::Client::ID& id, UNUSED void* const cookie,
+                 UNUSED const Timestamp ts, UNUSED const uint32_t savl,
+                 UNUSED uint8_t* const sdat, UNUSED uint32_t& slen) override
   {
-    return nullptr;
+    m_acked = true;
+    return Action::Continue;
   }
+
+  constexpr auto acked() const { return m_acked; }
+
+  void clear() { m_acked = false; }
+
+private:
+  bool m_acked = true;
 };
 
 int
@@ -251,6 +259,12 @@ run(Options const& options, transport::Device::Ref dev)
           break;
         }
         /*
+         * Check if we can proceed.
+         */
+        if (options.isSynchronous() && !delegate.acked()) {
+          break;
+        }
+        /*
          * Process the iteration.
          */
         iterations += 1;
@@ -267,6 +281,7 @@ run(Options const& options, transport::Device::Ref dev)
             if (options.count() > 0 && sends == options.count()) {
               keep_running = false;
             }
+            delegate.clear();
             break;
           }
           case Status::OperationInProgress: {
