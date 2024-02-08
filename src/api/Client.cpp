@@ -361,9 +361,6 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Send the payload.
    */
-#ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  c.pre = c.pre ?: system::Clock::read();
-#endif
   return m_tcp.send(id, len, data, off);
 }
 
@@ -381,13 +378,7 @@ Client::averageLatency(UNUSED const ID id)
   /*
    * Compute the latency.
    */
-  uint64_t res = 0;
-  if (c.count > 0) {
-    res = system::Clock::nanosecondsOf(c.lat / c.count);
-  }
-  c.lat = 0;
-  c.count = 0;
-  return res;
+  return c.latency();
 #else
   return 0;
 #endif
@@ -498,9 +489,7 @@ void
 Client::onSent(UNUSED tcpv4::Connection& c, UNUSED const Timestamp ts)
 {
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  Connection& d = m_cns[c.id()];
-  d.history.push_back(d.pre);
-  d.pre = 0;
+  m_cns[c.id()].markOnSent(ts);
 #endif
 }
 
@@ -512,10 +501,7 @@ Client::onAcked(stack::tcpv4::Connection& c, const Timestamp ts,
    * Update the latency monitor.
    */
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  Connection& d = m_cns[c.id()];
-  d.count += 1;
-  d.lat += system::Clock::read() - d.history.front();
-  d.history.pop_front();
+  m_cns[c.id()].markOnAcked(ts);
 #endif
   /*
    * Call the delegate.

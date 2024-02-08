@@ -35,7 +35,7 @@ The protocols are implemented using combinations of processors and producers.
 With this combination, protocols can be arranged in pipelines like below:
 
 <p align=center>
-<img src="https://github.com/IBM/tulips/blob/master/docs/rsrcs/stack_pipeline.svg" width=80%>
+<img src="https://github.com/xenogenics/tulips/blob/master/docs/rsrcs/stack_pipeline.svg" width=80%>
 </p>
 
 One end of the pipeline is always a hardware device (`ofed`, `shm`, ...). The
@@ -198,7 +198,7 @@ segmenting those payloads into MTU-sized payloads and sequentially send them.
 When implemented in software this feature is very costly.
 
 <p align=center>
-<img src="https://github.com/IBM/tulips/blob/master/docs/rsrcs/segmentation.svg" width=70%>
+<img src="https://github.com/xenogenics/tulips/blob/master/docs/rsrcs/segmentation.svg" width=70%>
 </p>
 
 Modern NICs offer an optimization named TCP Segmentation Offload (TSO) that
@@ -218,7 +218,7 @@ as the remote peer advertise a large enough receive window. The TCP layer
 supports multiple asynchronous segments before an ACK is received.
 
 <p align=center>
-<img src="https://github.com/IBM/tulips/blob/master/docs/rsrcs/asyncsegs.svg" width=80%>
+<img src="https://github.com/xenogenics/tulips/blob/master/docs/rsrcs/asyncsegs.svg" width=80%>
 </p>
 
 The default configuration can have up to 4 asynchronous segments. The stack can
