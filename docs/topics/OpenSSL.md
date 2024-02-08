@@ -27,5 +27,5 @@ circular buffer and minimize as much as possible redundant copies.
 The NIC cards used where ConnectX-5.
 
 <p align=center>
-<img src="https://github.com/IBM/tulips/blob/master/docs/exps/usr_krn_ssl.svg" width=100%>
+<img src="https://github.com/xenogenics/tulips/blob/master/docs/exps/usr_krn_ssl.svg" width=100%>
 </p>

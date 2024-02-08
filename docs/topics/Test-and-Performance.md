@@ -23,10 +23,10 @@ The round-trip switch overhead is about 500 ns, close to the advertised 250 ns o
 ## Results
 
 <p align=center>
-<img src="https://github.com/IBM/tulips/blob/master/docs/exps/pkt_per_sec.svg" width=100%>
+<img src="https://github.com/xenogenics/tulips/blob/master/docs/exps/pkt_per_sec.svg" width=100%>
 </p>
 
 <p align=center>
-<img src="https://github.com/IBM/tulips/blob/master/docs/exps/bits_per_sec.svg" width=100%>
+<img src="https://github.com/xenogenics/tulips/blob/master/docs/exps/bits_per_sec.svg" width=100%>
 </p>
 
