@@ -149,7 +149,7 @@ run(Options const& options, transport::Device::Ref dev)
      * Process the stack
      */
     if (options.wait()) {
-      switch (device->wait(*client, WAIT_DELAY)) {
+      switch (auto status = device->wait(*client, WAIT_DELAY)) {
         case Status::Ok: {
           break;
         }
@@ -158,13 +158,13 @@ run(Options const& options, transport::Device::Ref dev)
           break;
         }
         default: {
-          std::cout << "Unknown error, aborting" << std::endl;
+          std::cout << toString(status) << ", aborting" << std::endl;
           keep_running_local = false;
           continue;
         }
       }
     } else {
-      switch (device->poll(*client)) {
+      switch (auto status = device->poll(*client)) {
         case Status::Ok: {
           break;
         }
@@ -175,7 +175,7 @@ run(Options const& options, transport::Device::Ref dev)
           break;
         }
         default: {
-          std::cout << "Unknown error, aborting" << std::endl;
+          std::cout << toString(status) << ", aborting" << std::endl;
           keep_running_local = false;
           continue;
         }
@@ -431,7 +431,7 @@ run(Options const& options, transport::Device::Ref dev)
      * Process the stack
      */
     if (options.wait()) {
-      switch (device->wait(*server, WAIT_DELAY)) {
+      switch (auto status = device->wait(*server, WAIT_DELAY)) {
         case Status::Ok: {
           break;
         }
@@ -440,13 +440,13 @@ run(Options const& options, transport::Device::Ref dev)
           break;
         }
         default: {
-          std::cout << "Unknown error, aborting" << std::endl;
+          std::cout << toString(status) << ", aborting" << std::endl;
           keep_running = false;
           continue;
         }
       }
     } else {
-      switch (device->poll(*server)) {
+      switch (auto status = device->poll(*server)) {
         case Status::Ok: {
           break;
         }
@@ -457,7 +457,7 @@ run(Options const& options, transport::Device::Ref dev)
           break;
         }
         default: {
-          std::cout << "Unknown error, aborting" << std::endl;
+          std::cout << toString(status) << ", aborting" << std::endl;
           keep_running = false;
           continue;
         }

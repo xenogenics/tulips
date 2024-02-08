@@ -7,6 +7,17 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif ()
 
+if (LibDPDK_FOUND)
+  include_directories(${LibDPDK_INCLUDE_DIRS})
+  add_executable(lat_ena lat_ena.cpp)
+  target_link_libraries(lat_ena
+    PRIVATE
+    tulips_apps_static
+    tulips_stack_static
+    tulips_transport_ena_static
+    tulips_transport_stubs_static)
+endif (LibDPDK_FOUND)
+
 if (LibIBVerbs_FOUND)
   add_executable(lat_ofed lat_ofed.cpp)
   target_link_libraries(lat_ofed
