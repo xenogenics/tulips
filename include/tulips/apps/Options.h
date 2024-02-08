@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tulips/system/Logger.h>
 #include <cstdint>
 #include <tclap/CmdLine.h>
 
@@ -30,10 +31,11 @@ public:
   bool wait() const { return wai.isSet(); }
   size_t length() const { return len.getValue(); }
   size_t count() const { return cnt.getValue(); }
+  long cpuId() const { return cpu.getValue(); }
+  system::Logger::Level verbosity() const { return vrb.getValue(); }
   bool withSSL() const { return ssl.isSet(); }
   std::string_view sslCert() const { return crt.getValue(); }
   std::string_view sslKey() const { return key.getValue(); }
-  long cpuId() const { return cpu.getValue(); }
 
 private:
   TCLAP::ValueArg<int> usd;
@@ -52,10 +54,11 @@ private:
   TCLAP::SwitchArg wai;
   TCLAP::ValueArg<size_t> len;
   TCLAP::ValueArg<size_t> cnt;
+  TCLAP::ValueArg<long> cpu;
+  TCLAP::ValueArg<system::Logger::Level> vrb;
   TCLAP::SwitchArg ssl;
   TCLAP::ValueArg<std::string> crt;
   TCLAP::ValueArg<std::string> key;
-  TCLAP::ValueArg<long> cpu;
 };
 
 }

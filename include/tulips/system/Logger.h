@@ -138,3 +138,39 @@ private:
 };
 
 }
+
+/*
+ * Converters.
+ */
+
+namespace std {
+
+inline istream&
+operator>>(istream& is, tulips::system::Logger::Level& level)
+{
+  /*
+   * Parse the input as a string.
+   */
+  std::string value;
+  is >> value;
+  /*
+   * Convert the value.
+   */
+  if (value == "error" || value == "ERROR") {
+    level = tulips::system::Logger::Level::Error;
+  } else if (value == "warning" || value == "WARNING") {
+    level = tulips::system::Logger::Level::Warning;
+  } else if (value == "info" || value == "INFO") {
+    level = tulips::system::Logger::Level::Info;
+  } else if (value == "debug" || value == "DEBUG") {
+    level = tulips::system::Logger::Level::Debug;
+  } else {
+    level = tulips::system::Logger::Level::Trace;
+  }
+  /*
+   * Done.
+   */
+  return is;
+}
+
+}

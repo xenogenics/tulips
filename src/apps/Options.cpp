@@ -1,7 +1,10 @@
+#include "tulips/system/Logger.h"
 #include <tulips/apps/Options.h>
 #include <cstdint>
 
 namespace tulips::apps {
+
+using system::Logger;
 
 Options::Options(TCLAP::CmdLine& cmd)
   : usd("u", "us", "uS delay between sends", false, 1000, "DELAY", cmd)
@@ -20,10 +23,11 @@ Options::Options(TCLAP::CmdLine& cmd)
   , wai("w", "wait", "Wait instead of poll", cmd)
   , len("l", "length", "Payload length", false, 8, "LEN", cmd)
   , cnt("c", "count", "Send count", false, 0, "COUNT", cmd)
+  , cpu("a", "affinity", "CPU affinity", false, -1, "CPUID", cmd)
+  , vrb("v", "verbose", "Verbosity", false, Logger::Level::Info, "LEVEL", cmd)
   , ssl("", "ssl", "Use OpenSSL", cmd)
   , crt("", "cert", "SSL certificate", false, "", "PEM", cmd)
   , key("", "key", "SSL private key", false, "", "PEM", cmd)
-  , cpu("", "cpu", "CPU affinity", false, -1, "CPUID", cmd)
 {}
 
 bool

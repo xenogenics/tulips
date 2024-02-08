@@ -74,7 +74,7 @@ run(Options const& options, transport::Device::Ref dev)
   /*
    * Create the console logger.
    */
-  auto log = system::ConsoleLogger(system::Logger::Level::Trace);
+  auto log = system::ConsoleLogger(options.verbosity());
   /*
    * Signal handler
    */
@@ -352,7 +352,7 @@ run(Options const& options, transport::Device::Ref dev)
   /*
    * Create the console logger.
    */
-  auto log = system::ConsoleLogger(system::Logger::Level::Trace);
+  auto log = system::ConsoleLogger(options.verbosity());
   /*
    * Signal handler
    */
