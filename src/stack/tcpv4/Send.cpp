@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "tulips/system/Clock.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/Utils.h>
@@ -389,8 +390,8 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    */
   if (likely(!rexmit)) {
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
-    if (OUTTCP->flags & TCP_PSH) {
-      m_handler.onSent(e);
+    if (OUTTCP->flags & Flag::PSH) {
+      m_handler.onSent(e, system::Clock::read());
     }
 #endif
     e.m_snd_nxt += s.m_len;

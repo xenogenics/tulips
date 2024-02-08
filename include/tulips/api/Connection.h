@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tulips/system/Clock.h"
 #include <tulips/api/Interface.h>
 #include <tulips/stack/tcpv4/Connection.h>
 #include <functional>
@@ -39,7 +40,6 @@ public:
     , m_host()
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
     , m_count(0)
-    , m_pre(0)
     , m_lat(0)
     , m_history()
 #endif
@@ -97,6 +97,32 @@ public:
     m_opts = 0;
   }
 
+  /*
+   * Latency monitoring.
+   */
+
+#ifdef TULIPS_ENABLE_LATENCY_MONITOR
+  void markOnSent(const system::Clock::Value ts) { m_history.push_back(ts); }
+
+  void markOnAcked()
+  {
+    m_count += 1;
+    m_lat += system::Clock::read() - m_history.front();
+    m_history.pop_front();
+  }
+
+  uint64_t latency()
+  {
+    uint64_t res = 0;
+    if (m_count > 0) {
+      res = m_lat / m_count;
+    }
+    m_lat = 0;
+    m_count = 0;
+    return res;
+  }
+#endif
+
 private:
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   using History = std::list<system::Clock::Value>;
@@ -108,7 +134,6 @@ private:
   std::optional<std::string> m_host;
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   size_t m_count;
-  system::Clock::Value m_pre;
   system::Clock::Value m_lat;
   History m_history;
 #endif
