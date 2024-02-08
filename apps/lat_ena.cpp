@@ -35,7 +35,7 @@ try {
   /*
    * Create the console logger.
    */
-  auto logger = system::ConsoleLogger(system::Logger::Level::Trace);
+  auto logger = system::ConsoleLogger(system::Logger::Level::Info);
   /*
    * Make sure the interface is set.
    */
