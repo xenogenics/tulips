@@ -113,7 +113,7 @@ public:
   Status send(const ID id, const uint32_t len, const uint8_t* const data,
               uint32_t& off) override;
 
-  system::Clock::Value averageLatency(const ID id) override;
+  size_t averageLatency(const ID id) override;
 
   /*
    * Client delegate.

@@ -28,13 +28,12 @@ Processor::Processor(system::Logger& log, ethernet::Producer& eth,
 Status
 Processor::run()
 {
-  auto ts = system::Clock::read();
   /*
    * Poll the timer
    */
-  if (m_timer.expired(ts)) {
-    m_timer.reset(ts);
-    ++m_time;
+  if (m_timer.expired()) {
+    m_time += m_timer.ticks();
+    m_timer.reset();
     for (auto& e : m_table) {
       if (e.ipaddr.empty()) {
         continue;
@@ -45,6 +44,9 @@ Processor::run()
       }
     }
   }
+  /*
+   * Done.
+   */
   return Status::Ok;
 }
 

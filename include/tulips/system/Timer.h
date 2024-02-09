@@ -7,27 +7,27 @@ namespace tulips::system {
 class Timer
 {
 public:
-  inline void set(const Clock::Value interval)
+  inline void set(const size_t interval_ns)
   {
-    m_interval = interval;
-    m_start = Clock::read();
+    m_interval = Clock::toTicks(interval_ns);
+    m_start = Clock::instant();
   }
 
-  inline void reset(const Clock::Value ts) { m_start = ts; }
+  inline void reset() { m_start = Clock::instant(); }
 
-  inline bool expired(const Clock::Value ts) const
+  inline bool expired() const
   {
-    return ts - m_start >= m_interval;
+    return Clock::instant() - m_start >= m_interval;
   }
 
-  inline size_t ticks(const Clock::Value ts) const
+  inline size_t ticks() const
   {
-    return (ts - m_start) / m_interval;
+    return (Clock::instant() - m_start) / m_interval;
   }
 
 private:
-  Clock::Value m_start = 0;
-  Clock::Value m_interval = 0;
+  Clock::Instant m_start = 0;
+  size_t m_interval = 0;
 };
 
 }

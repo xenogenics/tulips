@@ -362,7 +362,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   return flush(id);
 }
 
-system::Clock::Value
+size_t
 Client::averageLatency(const ID id)
 {
   return m_client.averageLatency(id);

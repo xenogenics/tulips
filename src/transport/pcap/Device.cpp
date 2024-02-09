@@ -7,16 +7,16 @@ namespace tulips::transport::pcap {
 
 static void
 writePacket(pcap_dumper_t* const dumper, const void* const data,
-            const size_t len, const system::Clock::Value ts)
+            const size_t len, const system::Clock::Epoch ts)
 {
   struct pcap_pkthdr hdr;
-  system::Clock::Value secs = ts / system::Clock::SECOND;
+  system::Clock::Epoch secs = ts / system::Clock::SECOND;
 #ifdef __OpenBSD__
-  system::Clock::Value nscs = ts - secs * system::Clock::SECOND;
+  size_t nscs = ts - secs * system::Clock::SECOND;
   hdr.ts.tv_sec = secs;
   hdr.ts.tv_usec = nscs / 1000ULL;
 #else
-  system::Clock::Value nscs = ts - secs * system::Clock::SECOND;
+  size_t nscs = ts - secs * system::Clock::SECOND;
   hdr.ts.tv_sec = (time_t)secs;
   hdr.ts.tv_usec = (time_t)nscs;
 #endif
@@ -82,7 +82,7 @@ Device::commit(const uint16_t len, uint8_t* const buf, const uint16_t mss)
 {
   Status ret = m_device->commit(len, buf, mss);
   if (ret == Status::Ok) {
-    writePacket(m_pcap_dumper, buf, len, system::Clock::read());
+    writePacket(m_pcap_dumper, buf, len, system::Clock::now());
   }
   return ret;
 }

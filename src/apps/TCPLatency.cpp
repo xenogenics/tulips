@@ -244,11 +244,10 @@ run(Options const& options, transport::Device::Ref dev)
          * Process the delay.
          */
         if (options.usDelay() != 0) {
-          auto ts = system::Clock::read();
-          if (!timer.expired(ts)) {
+          if (!timer.expired()) {
             break;
           }
-          timer.reset(ts);
+          timer.reset();
         }
         /*
          * Check if we need to stop.
@@ -436,11 +435,10 @@ run(Options const& options, transport::Device::Ref dev)
      * Process the artificial delay.
      */
     if (options.usDelay() != 0) {
-      auto ts = system::Clock::read();
-      if (!timer.expired(ts)) {
+      if (!timer.expired()) {
         continue;
       }
-      timer.reset(ts);
+      timer.reset();
     }
     /*
      * Process the stack

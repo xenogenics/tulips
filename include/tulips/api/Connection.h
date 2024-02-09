@@ -102,9 +102,9 @@ public:
    */
 
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  void markOnSent(const system::Clock::Value ts) { m_history.push_back(ts); }
+  void markOnSent(const system::Clock::Epoch ts) { m_history.push_back(ts); }
 
-  void markOnAcked(const system::Clock::Value ts)
+  void markOnAcked(const system::Clock::Epoch ts)
   {
     m_count += 1;
     m_lat += ts - m_history.front();
@@ -125,7 +125,7 @@ public:
 
 private:
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
-  using History = std::list<system::Clock::Value>;
+  using History = std::list<system::Clock::Epoch>;
 #endif
 
   State m_state;
@@ -134,7 +134,7 @@ private:
   std::optional<std::string> m_host;
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
   size_t m_count;
-  system::Clock::Value m_lat;
+  size_t m_lat;
   History m_history;
 #endif
 };

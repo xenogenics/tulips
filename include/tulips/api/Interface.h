@@ -20,7 +20,7 @@ struct Delegate
   /**
    * Timestamp type alias.
    */
-  using Timestamp = system::Clock::Value;
+  using Timestamp = system::Clock::Epoch;
 
   /*
    * Virtual default destructor.
@@ -249,7 +249,7 @@ public:
    *
    * @return the average latency of the connection.
    */
-  virtual system::Clock::Value averageLatency(const ID id) = 0;
+  virtual size_t averageLatency(const ID id) = 0;
 };
 
 /**

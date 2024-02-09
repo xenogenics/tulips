@@ -49,13 +49,13 @@ public:
    * Open the connection.
    */
   void open(SSL_CTX* const ctx, const ID id, void* const cookie,
-            const system::Clock::Value ts, const int keyfd);
+            const system::Clock::Epoch ts, const int keyfd);
 
   /**
    * Open the connection.
    */
   void accept(SSL_CTX* const ctx, const ID id, void* const cookie,
-              const system::Clock::Value ts, const int keyfd);
+              const system::Clock::Epoch ts, const int keyfd);
 
   /**
    * Close the connection.
@@ -77,7 +77,7 @@ public:
    * Process pending data on ACK.
    */
   Action onAcked(system::Logger& log, ID const& id, Delegate& delegate,
-                 const system::Clock::Value ts, const uint32_t savl,
+                 const system::Clock::Epoch ts, const uint32_t savl,
                  uint8_t* const sdat, uint32_t& slen);
 
   /**
@@ -85,7 +85,7 @@ public:
    */
   Action onNewData(system::Logger& log, ID const& id, Delegate& delegate,
                    const uint8_t* const rdat, const uint32_t rlen,
-                   const bool pushed, const system::Clock::Value ts,
+                   const bool pushed, const system::Clock::Epoch ts,
                    const uint32_t savl, uint8_t* const sdat, uint32_t& slen);
 
   /**
@@ -116,7 +116,7 @@ public:
   /**
    * Return the connection's timestamp.
    */
-  constexpr system::Clock::Value timestamp() const { return m_ts; }
+  constexpr system::Clock::Epoch timestamp() const { return m_ts; }
 
   /**
    * Return the key file's descriptor.
@@ -178,11 +178,11 @@ private:
    * Initialize the connection's state.
    */
   void initialize(SSL_CTX* const ctx, const ID id, void* const cookie,
-                  const system::Clock::Value ts, const int keyfd);
+                  const system::Clock::Epoch ts, const int keyfd);
 
   ID m_id;
   void* m_cookie;
-  system::Clock::Value m_ts;
+  system::Clock::Epoch m_ts;
   int m_keyfd;
   BIO* m_bin;
   BIO* m_bout;

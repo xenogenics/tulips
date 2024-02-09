@@ -546,7 +546,7 @@ Device::poll(Processor& proc)
     /*
      * Process the packet.
      */
-    auto res = proc.process(len, addr, system::Clock::read());
+    auto res = proc.process(len, addr, system::Clock::now());
     /*
      * Check the processor's status.
      */

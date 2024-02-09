@@ -77,7 +77,7 @@ errorToString(const int err)
 
 void
 Connection::open(SSL_CTX* ctx, const ID id, void* const cookie,
-                 const system::Clock::Value ts, const int keyfd)
+                 const system::Clock::Epoch ts, const int keyfd)
 {
   initialize(ctx, id, cookie, ts, keyfd);
   m_state = State::Open;
@@ -85,7 +85,7 @@ Connection::open(SSL_CTX* ctx, const ID id, void* const cookie,
 
 void
 Connection::accept(SSL_CTX* ctx, const ID id, void* const cookie,
-                   const system::Clock::Value ts, const int keyfd)
+                   const system::Clock::Epoch ts, const int keyfd)
 {
   initialize(ctx, id, cookie, ts, keyfd);
   m_state = State::Accepting;
@@ -231,7 +231,7 @@ Connection::shutdown(system::Logger& log, ID const& id)
 
 Action
 Connection::onAcked(system::Logger& log, ID const& id, Delegate& delegate,
-                    const system::Clock::Value ts, const uint32_t alen,
+                    const system::Clock::Epoch ts, const uint32_t alen,
                     uint8_t* const sdata, uint32_t& slen)
 {
   /*
@@ -290,7 +290,7 @@ Action
 Connection::onNewData(system::Logger& log, ID const& id,
                       api::interface::Delegate<ID>& delegate,
                       const uint8_t* const rdat, const uint32_t rlen,
-                      const bool pushed, const system::Clock::Value ts,
+                      const bool pushed, const system::Clock::Epoch ts,
                       const uint32_t savl, uint8_t* const sdat, uint32_t& slen)
 {
   /*
@@ -639,7 +639,7 @@ Connection::flush(system::Logger& log, const uint32_t savl, uint8_t* const sdat,
 
 void
 Connection::initialize(SSL_CTX* ctx, const ID id, void* const cookie,
-                       const system::Clock::Value ts, const int keyfd)
+                       const system::Clock::Epoch ts, const int keyfd)
 {
   /*
    * Update the state.
