@@ -102,7 +102,7 @@ class Client
    *
    * @return the average latency of the connection.
    */
-  virtual system::Clock::Value averageLatency(const ID id) = 0;
+  virtual size_t averageLatency(const ID id) = 0;
 }
 ```
 Clients can have multiple connections. The exact amount of connections can be

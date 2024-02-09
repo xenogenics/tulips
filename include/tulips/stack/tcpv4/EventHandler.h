@@ -13,7 +13,7 @@ public:
   /**
    * Timestamp type alias.
    */
-  using Timestamp = system::Clock::Value;
+  using Timestamp = system::Clock::Epoch;
 
   /**
    * Default destructor.

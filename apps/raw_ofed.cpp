@@ -28,7 +28,7 @@ public:
   RawProcessor()
     : m_ethto(nullptr)
     , m_ethfrom(nullptr)
-    , m_last(system::Clock::read())
+    , m_last(system::Clock::now())
     , m_lat(0)
     , m_count(0)
   {}
@@ -43,7 +43,7 @@ public:
      * Get the timing data.
      */
     if (m_last > 0) {
-      m_lat += system::Clock::read() - m_last;
+      m_lat += system::Clock::instant() - m_last;
     }
     /*
      * Process the response.
@@ -62,7 +62,7 @@ public:
   {
     m_ethto->setType(len);
     memcpy(m_buffer, data, len);
-    m_last = system::Clock::read();
+    m_last = system::Clock::now();
     Status ret = m_ethto->commit(len, m_buffer);
     if (ret != Status::Ok) {
       return ret;
@@ -87,11 +87,11 @@ public:
     return *this;
   }
 
-  system::Clock::Value averageLatency()
+  size_t averageLatency()
   {
     uint64_t res = 0;
     if (m_count > 0) {
-      res = m_lat / m_count;
+      res = system::Clock::toNanos(m_lat) / m_count;
     }
     m_lat = 0;
     m_count = 0;
@@ -101,8 +101,8 @@ public:
 private:
   ethernet::Producer* m_ethto;
   ethernet::Processor* m_ethfrom;
-  system::Clock::Value m_last;
-  system::Clock::Value m_lat;
+  system::Clock::Epoch m_last;
+  system::Clock::Epoch m_lat;
   size_t m_count;
   uint8_t* m_buffer;
 };

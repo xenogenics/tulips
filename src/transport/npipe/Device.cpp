@@ -126,7 +126,7 @@ Device::poll(Processor& proc)
    * Process the data.
    */
   m_log.debug("NPIPE", "process ", len, "B");
-  return proc.process(len, m_read_buffer, system::Clock::read());
+  return proc.process(len, m_read_buffer, system::Clock::now());
 }
 
 Status

@@ -319,7 +319,7 @@ Processor::abort(Connection& e)
   /*
    * Notify the handler and close the connection.
    */
-  m_handler.onAborted(e, system::Clock::read());
+  m_handler.onAborted(e, system::Clock::now());
   close(e);
   /*
    *Done.
@@ -337,7 +337,7 @@ Processor::timeOut(Connection& e)
   /*
    * Notify the handler and close the connection.
    */
-  m_handler.onTimedOut(e, system::Clock::read());
+  m_handler.onTimedOut(e, system::Clock::now());
   close(e);
   /*
    *Done.
@@ -391,7 +391,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   if (likely(!rexmit)) {
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
     if (OUTTCP->flags & Flag::PSH) {
-      m_handler.onSent(e, system::Clock::read());
+      m_handler.onSent(e, system::Clock::now());
     }
 #endif
     e.m_snd_nxt += s.m_len;

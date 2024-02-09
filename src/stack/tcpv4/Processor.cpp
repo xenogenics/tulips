@@ -72,16 +72,15 @@ Processor::unlisten(const Port port)
 Status
 Processor::run()
 {
-  auto ts = system::Clock::read();
   /*
    * Check the fast timer.
    */
-  if (m_fast.expired(ts)) {
+  if (m_fast.expired()) {
     /*
      * Get the ticks and reset the timer.
      */
-    auto ticks = m_fast.ticks(ts);
-    m_fast.reset(ts);
+    auto ticks = m_fast.ticks();
+    m_fast.reset();
     /*
      * Call the handler.
      */
@@ -93,12 +92,12 @@ Processor::run()
   /*
    * Check the slow timer.
    */
-  if (m_slow.expired(ts)) {
+  if (m_slow.expired()) {
     /*
      * Get the ticks and reset the timer.
      */
-    auto ticks = m_slow.ticks(ts);
-    m_slow.reset(ts);
+    auto ticks = m_slow.ticks();
+    m_slow.reset();
     /*
      * Call the handler.
      */

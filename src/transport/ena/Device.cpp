@@ -142,18 +142,22 @@ Device::unlisten(UNUSED const stack::ipv4::Protocol proto,
 Status
 Device::poll(Processor& proc)
 {
-  auto now = system::Clock::read();
+  using system::Clock;
+  /*
+   * Print statistics every 10 seconds.
+   */
+  static const size_t PERIOD = 10 * Clock::toTicks(system::Clock::SECOND);
   /*
    * Print the stats every seconds on queue 0.
    */
-  if (m_queueid == 0 && now - m_laststats >= 10 * system::Clock::SECOND) {
+  if (m_queueid == 0 && Clock::instant() - m_laststats >= PERIOD) {
     struct rte_eth_stats stats;
     rte_eth_stats_get(m_portid, &stats);
     m_log.debug("ENA", "TX: pkts=", stats.opackets, " byts=", stats.obytes,
                 " errs=", stats.oerrors);
     m_log.debug("ENA", "RX: pkts=", stats.ipackets, " byts=", stats.ibytes,
                 " errs=", stats.ierrors, " miss=", stats.imissed);
-    m_laststats = now;
+    m_laststats = Clock::instant();
   }
   /*
    * Clear buffers sent out-of-band.
@@ -167,7 +171,7 @@ Device::poll(Processor& proc)
    */
   if (!m_buffer->empty()) {
     uint16_t len = 0;
-    system::Clock::Value ts = 0;
+    system::Clock::Epoch ts = 0;
     /*
      * Read a packet.
      */
@@ -249,7 +253,7 @@ Device::poll(Processor& proc)
      * Process the packet.
      */
     m_log.trace("ENA", "processing addr=", (void*)dat, " len=", len);
-    ret = proc.process(len, dat, system::Clock::read());
+    ret = proc.process(len, dat, system::Clock::now());
     /*
      * Check the processor's status.
      */

@@ -9,7 +9,7 @@ namespace tulips::transport {
 class Processor
 {
 public:
-  using Timestamp = system::Clock::Value;
+  using Timestamp = system::Clock::Epoch;
 
   /**
    * Virtual destructor.

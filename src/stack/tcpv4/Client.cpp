@@ -26,7 +26,7 @@ Processor::findLocalPort() const
     /*
      * Compute a local port value.
      */
-    auto lport = (system::Clock::read() & 0x3FFF) + 10000;
+    auto lport = (system::Clock::instant() & 0x3FFF) + 10000;
     /*
      * Find a match.
      */
@@ -116,7 +116,7 @@ Processor::abort(const Connection::ID id)
   /*
    * Notify the handler.
    */
-  m_handler.onAborted(c, system::Clock::read());
+  m_handler.onAborted(c, system::Clock::now());
   /*
    * Done.
    */

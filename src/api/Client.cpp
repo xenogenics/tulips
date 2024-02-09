@@ -364,7 +364,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   return m_tcp.send(id, len, data, off);
 }
 
-system::Clock::Value
+size_t
 Client::averageLatency(UNUSED const ID id)
 {
 #ifdef TULIPS_ENABLE_LATENCY_MONITOR
