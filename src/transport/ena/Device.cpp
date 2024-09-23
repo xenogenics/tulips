@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
-#include <sstream>
 #include <stdexcept>
 #include <thread>
 #include <dpdk/rte_config.h>

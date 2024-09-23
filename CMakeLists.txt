@@ -217,7 +217,7 @@ message(STATUS "[ TULIPS OPTIONS END ]")
 #
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-address-of-packed-member")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-address-of-packed-member -Wno-vla-extension")
 endif ()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
