@@ -372,7 +372,7 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
   /*
    * Get the RSS configuration.
    */
-  struct rte_eth_rss_conf rss_conf = { .rss_key = hkey };
+  struct rte_eth_rss_conf rss_conf = { .rss_key = hkey, .rss_key_len = hlen };
   auto ret = rte_eth_dev_rss_hash_conf_get(m_portid, &rss_conf);
   if (ret != 0) {
     /*
