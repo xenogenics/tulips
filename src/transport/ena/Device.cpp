@@ -309,6 +309,7 @@ Device::prepare(uint8_t*& buf)
    * Make sure we have free TX buffers.
    */
   if (m_free.empty()) {
+    m_log.trace("ENA", "no more TX buffer on queue: ", m_queueid);
     return Status::NoMoreResources;
   }
   /*

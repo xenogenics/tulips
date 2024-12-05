@@ -86,6 +86,7 @@ Processor::run()
      */
     auto ret = onFastTimer(ticks);
     if (ret != Status::Ok) {
+      m_log.error("TCP", "error on FAST timer invocation: ", ret);
       return ret;
     }
   }
@@ -103,6 +104,7 @@ Processor::run()
      */
     auto ret = onSlowTimer(ticks);
     if (ret != Status::Ok) {
+      m_log.error("TCP", "error on SLOW timer invocation: ", ret);
       return ret;
     }
   }
@@ -209,6 +211,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   uint8_t* sdat;
   Status ret = m_ipv4to.prepare(sdat);
   if (ret != Status::Ok) {
+    m_log.error("TCP", "preparing buffer failed: ", ret);
     return ret;
   }
   /*
@@ -345,6 +348,7 @@ Processor::onFastTimer(const size_t ticks)
      */
     auto ret = sendAck(e, false);
     if (ret != Status::Ok) {
+      m_log.error("TCP", "sending delayed ACK failed: ", ret);
       return ret;
     }
   }
