@@ -634,9 +634,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       if (ackno == seg.m_seq) {
         /*
-         * Skip scanning if the ACK has payload (in-flight packet).
+         * Stop checking if the ACK is also a FIN or has payload. The current
+         * segment could be in-flight and the server has not processed it yet.
          */
-        if (plen > 0) {
+        if ((INTCP->flags & Flag::FIN) || plen > 0) {
           break;
         }
         /*
@@ -1123,7 +1124,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_rcv_nxt += plen;
       }
       /*
-       * If we get a FIN, change the connection to TIME_WAIT or CLOSING.
+       * If we get a FIN, change the connection to TIME_WAIT if any pending
+       * segment has been ACKEd, or CLOSING otherwise.
        */
       if (INTCP->flags & Flag::FIN) {
         if (e.m_ackdata) {
