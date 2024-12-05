@@ -257,7 +257,7 @@ Device::poll(Processor& proc)
      * Check the processor's status.
      */
     if (ret != Status::Ok && ret != Status::UnsupportedProtocol) {
-      m_log.error("OFED", "error processing buffer: ", toString(ret));
+      m_log.error("ENA", "error processing buffer: ", toString(ret));
       return ret;
     }
     /*
