@@ -98,7 +98,7 @@ private:
   inline bool hasAvailableSegments() const
   {
     for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len == 0) {
+      if (m_segments[i].length() == 0) {
         return true;
       }
     }
@@ -108,7 +108,7 @@ private:
   inline bool hasOutstandingSegments() const
   {
     for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len != 0) {
+      if (m_segments[i].length() != 0) {
         return true;
       }
     }
@@ -149,7 +149,7 @@ private:
   {
     size_t count = 0;
     for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len == 0) {
+      if (m_segments[i].length() == 0) {
         count += 1;
       }
     }
@@ -160,7 +160,7 @@ private:
   {
     size_t count = 0;
     for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len > 0) {
+      if (m_segments[i].length() > 0) {
         count += 1;
       }
     }
@@ -172,7 +172,7 @@ private:
     size_t idx = 0;
     for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
       idx = i & SEGMENT_BMASK;
-      if (m_segments[idx].m_len == 0) {
+      if (m_segments[idx].length() == 0) {
         return m_segments[idx];
       }
     }
@@ -200,7 +200,7 @@ private:
   }
 
   /*
-   * Member variables, all in one cache line.
+   * First cache line: member variables.
    */
 
   ID m_id;                      // 2 - Connection ID
@@ -245,8 +245,10 @@ private:
   void* m_cookie;        // 8 - Application state
 
   /*
-   * Segments. Size is 16B per segment, 4 segments per cache line, for a maximum
-   * of 16 segments (segment index is 4 bits).
+   * Next 4 cache lines: segments.
+   *
+   * Size is 16B per segment, 4 segments per cache line, for a maximum of 16
+   * segments (segment index is 4 bits).
    */
 
   Segment m_segments[SEGMENT_COUNT];

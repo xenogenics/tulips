@@ -180,7 +180,7 @@ Processor::sendAck(Connection& e, const bool k)
 Status
 Processor::sendSyn(Connection& e, Segment& s)
 {
-  uint8_t* outdata = s.m_dat;
+  uint8_t* outdata = s.data();
   uint16_t len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
   OUTTCP->flags |= Flag::SYN;
   OUTTCP->offset = len >> 2;
@@ -287,7 +287,7 @@ Processor::rexmit(Connection& e)
      */
     case Connection::ESTABLISHED: {
       m_log.debug("TCP4", "<", e.id(), "> retransmit PSH");
-      const auto len = e.segment().m_len + HEADER_LEN;
+      const auto len = e.segment().length() + HEADER_LEN;
       return send(e, len, e.segment());
     }
     /*
@@ -357,15 +357,15 @@ Processor::timeOut(Connection& e)
 Status
 Processor::send(Connection& e, const uint32_t len, Segment& s)
 {
-  uint8_t* outdata = s.m_dat;
-  const bool rexmit = s.m_seq != e.m_snd_nxt && OUTTCP->flags != Flag::ACK;
+  uint8_t* outdata = s.data();
+  const bool rexmit = s.seq() != e.m_snd_nxt && OUTTCP->flags != Flag::ACK;
   /*
    * We're done with the input processing. We are now ready to send a reply. Our
    * job is to fill in all the fields of the TCP and IP headers before
    * calculating the checksum and finally send the packet.
    */
   OUTTCP->ackno = htonl(e.m_rcv_nxt);
-  OUTTCP->seqno = htonl(s.m_seq);
+  OUTTCP->seqno = htonl(s.seq());
   OUTTCP->srcport = e.m_lport;
   OUTTCP->dstport = e.m_rport;
   /*
@@ -391,7 +391,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    * Print the flow information.
    */
   m_log.trace("FLOW", "<", e.id(), (rexmit ? "> <+ " : "> <- "),
-              getFlags(*OUTTCP), " len:", len, " seq:", s.m_seq,
+              getFlags(*OUTTCP), " len:", len, " seq:", s.seq(),
               " ack:", e.m_rcv_nxt, " seg:", e.id(s),
               " lvl:", e.freeSegments());
   /*
@@ -403,7 +403,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
       m_handler.onSent(e, system::Clock::now());
     }
 #endif
-    e.m_snd_nxt += s.m_len;
+    e.m_snd_nxt += s.length();
   }
   /*
    * Update IP and Ethernet attributes

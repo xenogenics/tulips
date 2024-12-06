@@ -13,7 +13,6 @@
 #include <tulips/transport/Device.h>
 #include <tulips/transport/Processor.h>
 #include <cstdint>
-#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -267,7 +266,7 @@ private:
    */
   inline Status sendSynAck(Connection& e, Segment& s)
   {
-    uint8_t* outdata = s.m_dat;
+    uint8_t* outdata = s.data();
     OUTTCP->flags = Flag::ACK;
     return sendSyn(e, s);
   }
@@ -282,7 +281,7 @@ private:
    */
   inline Status sendFin(Connection& e, Segment& s)
   {
-    uint8_t* outdata = s.m_dat;
+    uint8_t* outdata = s.data();
     OUTTCP->flags |= Flag::FIN;
     OUTTCP->offset = 5;
     return send(e, HEADER_LEN, s);
@@ -298,7 +297,7 @@ private:
    */
   inline Status sendFinAck(Connection& e, Segment& s)
   {
-    uint8_t* outdata = s.m_dat;
+    uint8_t* outdata = s.data();
     OUTTCP->flags = Flag::ACK;
     return sendFin(e, s);
   }
@@ -351,7 +350,7 @@ private:
    */
   inline Status send(Connection& e, Segment& s, const uint8_t flags = 0)
   {
-    uint8_t* outdata = s.m_dat;
+    uint8_t* outdata = s.data();
     /*
      * Send PSH/ACK message. TCP does not require to send an ACK with PSH,
      * but Linux seems pretty bent on wanting one. So we play nice. Again.
@@ -365,7 +364,7 @@ private:
     /*
      * Send the segment.
      */
-    return send(e, s.m_len + HEADER_LEN, s);
+    return send(e, s.length() + HEADER_LEN, s);
   }
 
   /**

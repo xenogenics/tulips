@@ -516,8 +516,8 @@ Processor::close(Connection& e)
    * Clear the segments.
    */
   for (auto& s : e.m_segments) {
-    if (s.m_len > 0) {
-      m_ipv4to.release(s.m_dat);
+    if (s.length() > 0) {
+      m_ipv4to.release(s.data());
       s.clear();
     }
   }
@@ -620,19 +620,19 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Compute the expected ackno.
        */
-      uint64_t explm = (uint64_t)seg.m_seq + seg.m_len;
+      uint64_t explm = (uint64_t)seg.seq() + seg.length();
       uint64_t acklm = ackno;
       /*
        * Linearly adjust the received ACK number to handle overflow cases.
        */
-      if (ackno < seg.m_seq) {
+      if (ackno < seg.seq()) {
         acklm += 1ULL << 32;
       }
       /*
        * Check if the peers is letting us know about something that went amok.
        * It can be either an OoO packet or a window size change.
        */
-      if (ackno == seg.m_seq) {
+      if (ackno == seg.seq()) {
         /*
          * Stop checking if the ACK is also a FIN or has payload. The current
          * segment could be in-flight and the server has not processed it yet.
@@ -702,7 +702,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Release the buffer associated with the segment.
        */
-      m_ipv4to.release(seg.m_dat);
+      m_ipv4to.release(seg.data());
       /*
        * Clear the current seqgment and go to the next segment. The compiler
        * will generate the wrap-around appropriate for the bit length of the
