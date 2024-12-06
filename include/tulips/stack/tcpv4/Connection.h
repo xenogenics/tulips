@@ -29,7 +29,6 @@ static constexpr int USED MAXSYNRTX = 5;
 #define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
 #define HAS_DELAYED_ACK(__e) ((__e).m_opts & Connection::DELAYED_ACK)
 #define HAS_KEEP_ALIVE(__e) ((__e).m_opts & Connection::KEEP_ALIVE)
-#define HAS_ABORT_ON_DROP(__e) ((__e).m_opts & Connection::ABORT_ON_DROP)
 
 class Connection
 {
@@ -65,10 +64,6 @@ public:
      * Send a keep-alive probe every second, abort after 5 failures.
      */
     KEEP_ALIVE = 0x4,
-    /**
-     * Abort the connection on dropped or out-of-order packets.
-     */
-    ABORT_ON_DROP = 0x8
   };
 
   Connection();
@@ -208,16 +203,16 @@ private:
    * Member variables, all in one cache line.
    */
 
-  ID m_id; // 2 - Connection ID
-
+  ID m_id;                      // 2 - Connection ID
+                                //
   ethernet::Address m_rethaddr; // 6 - Ethernet address of the remote host
   ipv4::Address m_ripaddr;      // 4 - IP address of the remote host
-
-  Port m_lport; // 2 - Local TCP port, in network byte order
-  Port m_rport; // 2 - Local remote TCP port, in network byte order
-
-  uint32_t m_rcv_nxt; // 4 - Sequence number that we expect to receive next
-  uint32_t m_snd_nxt; // 4 - Sequence number that was last sent by us
+                                //
+  Port m_lport;                 // 2 - Local TCP port, in network byte order
+  Port m_rport;                 // 2 - Remote TCP port, in network byte order
+                                //
+  uint32_t m_rcv_nxt;           // 4 - Sequence that we expect to receive next
+  uint32_t m_snd_nxt;           // 4 - Sequence that was last sent by us
 
   struct
   {
@@ -233,21 +228,21 @@ private:
     uint64_t m_slen : 24;       // 64 - Length of the send buffer
   };
 
-  uint8_t* m_sdat; // 8 - Send buffer
-
   uint16_t m_initialmss; // 2 - Initial maximum segment size for the connection
   uint16_t m_mss;        // 2 - Current maximum segment size for the connection
-
-  uint8_t m_sa;  // 1 - Retransmission time-out calculation state
-  uint8_t m_sv;  // 1 - Retransmission time-out calculation state
-  uint8_t m_rto; // 1 - Retransmission time-out
-  uint8_t m_rtm; // 1 - Retransmission timer
-
-  uint32_t m_wndlvl; // 4 - Local window level
-  uint8_t m_atm;     // 2 - Delayed ACK timer
-  uint8_t m_ktm;     // 2 - Keep-alive timer
-  uint16_t m_opts;   // 2 - Connection options (NO_DELAY, etc..)
-  void* m_cookie;    // 8 - Application state
+                         //
+  uint8_t m_sa;          // 1 - Retransmission time-out calculation state
+  uint8_t m_sv;          // 1 - Retransmission time-out calculation state
+  uint8_t m_rto;         // 1 - Retransmission time-out
+  uint8_t m_rtm;         // 1 - Retransmission timer
+                         //
+  uint32_t m_wndlvl;     // 4 - Local window level
+  uint8_t m_atm;         // 1 - Delayed ACK timer
+  uint8_t m_ktm;         // 1 - Keep-alive timer
+  uint16_t m_opts;       // 2 - Connection options (NO_DELAY, etc..)
+                         //
+  uint8_t* m_sdat;       // 8 - Send buffer
+  void* m_cookie;        // 8 - Application state
 
   /*
    * Segments. Size is 16B per segment, 4 segments per cache line, for a maximum

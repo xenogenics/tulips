@@ -588,22 +588,18 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * And the sequence number is not expected.
        */
       if (seqno != e.m_rcv_nxt) {
+        m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno,
+                    ", sending ACK for ", e.m_rcv_nxt);
         /*
-         * Abort the connection if it does not support drops.
+         * Reset the delayed ACK timer.
          */
-        if (HAS_ABORT_ON_DROP(e)) {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno,
-                      ", aborting");
-          return abort(e);
+        if (HAS_DELAYED_ACK(e)) {
+          e.m_atm = 0;
         }
         /*
-         * Otherwise, request a retransmission.
+         * Send an ACK for the sequence number we expect.
          */
-        else {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno, "/",
-                      e.m_rcv_nxt, ", requesting retransmission");
-          return sendAck(e, false);
-        }
+        return sendAck(e, false);
       }
     }
   }
