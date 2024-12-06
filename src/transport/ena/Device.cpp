@@ -257,7 +257,7 @@ Device::poll(Processor& proc)
      * Check the processor's status.
      */
     if (ret != Status::Ok && ret != Status::UnsupportedProtocol) {
-      m_log.error("OFED", "error processing buffer: ", toString(ret));
+      m_log.error("ENA", "error processing buffer: ", toString(ret));
       return ret;
     }
     /*
@@ -309,6 +309,7 @@ Device::prepare(uint8_t*& buf)
    * Make sure we have free TX buffers.
    */
   if (m_free.empty()) {
+    m_log.trace("ENA", "no more TX buffer on queue: ", m_queueid);
     return Status::NoMoreResources;
   }
   /*

@@ -90,6 +90,7 @@ Processor::sendReset(const uint8_t* const data)
    */
   Status ret = m_ipv4to.prepare(outdata);
   if (ret != Status::Ok) {
+    m_log.error("TCP", "preparing buffer failed: ", ret);
     return ret;
   }
   /*
@@ -246,7 +247,15 @@ Processor::send(Connection& e, const bool k)
   /*
    * Prepare a new buffer
    */
-  return m_ipv4to.prepare(e.m_sdat);
+  ret = m_ipv4to.prepare(e.m_sdat);
+  if (ret != Status::Ok) {
+    m_log.error("TCP", "preparing buffer failed: ", ret);
+    return ret;
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Status
@@ -411,7 +420,15 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
   /*
    * Prepare a new buffer
    */
-  return m_ipv4to.prepare(e.m_sdat);
+  ret = m_ipv4to.prepare(e.m_sdat);
+  if (ret != Status::Ok) {
+    m_log.error("TCP", "preparing buffer failed: ", ret);
+    return ret;
+  }
+  /*
+   * Done.
+   */
+  return Status::Ok;
 }
 
 Status

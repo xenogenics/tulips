@@ -86,6 +86,7 @@ Processor::run()
      */
     auto ret = onFastTimer(ticks);
     if (ret != Status::Ok) {
+      m_log.error("TCP", "error on FAST timer invocation: ", ret);
       return ret;
     }
   }
@@ -103,6 +104,7 @@ Processor::run()
      */
     auto ret = onSlowTimer(ticks);
     if (ret != Status::Ok) {
+      m_log.error("TCP", "error on SLOW timer invocation: ", ret);
       return ret;
     }
   }
@@ -209,6 +211,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   uint8_t* sdat;
   Status ret = m_ipv4to.prepare(sdat);
   if (ret != Status::Ok) {
+    m_log.error("TCP", "preparing buffer failed: ", ret);
     return ret;
   }
   /*
@@ -345,6 +348,7 @@ Processor::onFastTimer(const size_t ticks)
      */
     auto ret = sendAck(e, false);
     if (ret != Status::Ok) {
+      m_log.error("TCP", "sending delayed ACK failed: ", ret);
       return ret;
     }
   }
@@ -584,22 +588,18 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * And the sequence number is not expected.
        */
       if (seqno != e.m_rcv_nxt) {
+        m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno,
+                    ", sending ACK for ", e.m_rcv_nxt);
         /*
-         * Abort the connection if it does not support drops.
+         * Reset the delayed ACK timer.
          */
-        if (HAS_ABORT_ON_DROP(e)) {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno,
-                      ", aborting");
-          return abort(e);
+        if (HAS_DELAYED_ACK(e)) {
+          e.m_atm = 0;
         }
         /*
-         * Otherwise, request a retransmission.
+         * Send an ACK for the sequence number we expect.
          */
-        else {
-          m_log.debug("TCP4", "<", e.id(), "> unexpected ACK ", seqno, "/",
-                      e.m_rcv_nxt, ", requesting retransmission");
-          return sendAck(e, false);
-        }
+        return sendAck(e, false);
       }
     }
   }
@@ -634,9 +634,10 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       if (ackno == seg.m_seq) {
         /*
-         * Skip scanning if the ACK has payload (in-flight packet).
+         * Stop checking if the ACK is also a FIN or has payload. The current
+         * segment could be in-flight and the server has not processed it yet.
          */
-        if (plen > 0) {
+        if ((INTCP->flags & Flag::FIN) || plen > 0) {
           break;
         }
         /*
@@ -1123,7 +1124,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         e.m_rcv_nxt += plen;
       }
       /*
-       * If we get a FIN, change the connection to TIME_WAIT or CLOSING.
+       * If we get a FIN, change the connection to TIME_WAIT if any pending
+       * segment has been ACKEd, or CLOSING otherwise.
        */
       if (INTCP->flags & Flag::FIN) {
         if (e.m_ackdata) {
