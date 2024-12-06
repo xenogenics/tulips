@@ -5,6 +5,7 @@
 #include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
+#include <tulips/stack/tcpv4/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <cstdint>
@@ -145,9 +146,49 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   auto i = m_index.find(std::hash<Header>()(*INTCP));
   if (i != m_index.end()) {
     auto& c = m_conns[i->second];
-    if (c.m_state != Connection::CLOSED &&
-        c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
-      return process(c, len, data, ts);
+    if (c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
+      if (c.m_state != Connection::CLOSED) {
+        /*
+         * Process the incoming packet.
+         */
+        auto ret = process(c, len, data, ts);
+        if (ret != Status::Ok) {
+          return ret;
+        }
+        /*
+         * Catch-up to the buffered frames.
+         */
+        c.m_fb.catchUp(c.m_rcv_nxt);
+        /*
+         * Process any buffered packet.
+         */
+        while (!c.m_fb.empty()) {
+          auto const& frame = c.m_fb.peek();
+          const uint32_t seqno = ntohl(frame.header().seqno);
+          /*
+           * Bail out if the frame does not match the expected sequence.
+           */
+          if (seqno != c.m_rcv_nxt) {
+            break;
+          }
+          m_log.debug("TCP4", "<", c.id(), "> buffered frame with SEQ ", seqno);
+          /*
+           * Process the packet.
+           */
+          auto ret = process(c, frame.length(), frame.data(), ts);
+          if (ret != Status::Ok) {
+            return ret;
+          }
+          /*
+           * Pop the frame.
+           */
+          c.m_fb.pop();
+        }
+      }
+      /*
+       * Done.
+       */
+      return Status::Ok;
     }
   }
   /*
@@ -513,6 +554,10 @@ Processor::close(Connection& e)
   m_device.unlisten(ipv4::Protocol::TCP, m_ipv4to.hostAddress(), e.m_lport);
   m_index.erase(std::hash<Connection>()(e));
   /*
+   * Clear the frame buffer.
+   */
+  e.m_fb.clear();
+  /*
    * Clear the segments.
    */
   for (auto& s : e.m_segments) {
@@ -588,8 +633,31 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * And the sequence number is not expected.
        */
       if (seqno != e.m_rcv_nxt) {
-        m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno,
-                    ", sending ACK for ", e.m_rcv_nxt);
+        /*
+         * Spurious rexmit, we just ignore those.
+         */
+        if (SEQ_LT(seqno, e.m_rcv_nxt)) {
+          m_log.debug("TCP4", "<", e.id(), "> spurious rexmit of SEQ ", seqno);
+        }
+        /*
+         * Out-of-order or dropped packet.
+         */
+        else {
+          /*
+           * Push the frame in the framebuffer.
+           */
+          if (e.m_fb.push(len, data)) {
+            m_log.debug("TCP4", "<", e.id(), "> Out-of-order SEQ ", seqno,
+                        ", sending ACK for ", e.m_rcv_nxt);
+          }
+          /*
+           * Abort in case of failure.
+           */
+          else {
+            m_log.debug("TCP4", "<", e.id(), "> still behind, aborting");
+            return abort(e);
+          }
+        }
         /*
          * Reset the delayed ACK timer.
          */

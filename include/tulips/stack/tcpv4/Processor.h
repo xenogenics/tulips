@@ -176,7 +176,7 @@ private:
   uint16_t findLocalPort() const;
 
   /**
-   * Process the incoming packet for a given connection.
+   * Process the incoming TCP frame for a given connection.
    *
    * @param e the connection.
    * @param len the length of the packet.

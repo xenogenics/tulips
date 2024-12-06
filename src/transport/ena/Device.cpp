@@ -174,9 +174,9 @@ Device::poll(Processor& proc)
     /*
      * Read a packet.
      */
-    m_buffer->read_all((uint8_t*)&len, sizeof(len));
-    m_buffer->read_all((uint8_t*)&ts, sizeof(ts));
-    m_buffer->read_all(m_packet, len);
+    m_buffer->readAll((uint8_t*)&len, sizeof(len));
+    m_buffer->readAll((uint8_t*)&ts, sizeof(ts));
+    m_buffer->readAll(m_packet, len);
     /*
      * Process the packet.
      */

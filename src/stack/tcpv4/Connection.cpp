@@ -31,6 +31,7 @@ Connection::Connection()
   , m_opts(0)
   , m_sdat(nullptr)
   , m_cookie(nullptr)
+  , m_fb()
   , m_segments()
 {}
 

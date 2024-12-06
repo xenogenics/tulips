@@ -74,7 +74,7 @@ s_ctrl(BIO* h, int cmd, long num, UNUSED void* ptr)
       break;
     case BIO_CTRL_WPENDING:
     case BIO_CTRL_PENDING:
-      ret = (long)b->read_available();
+      ret = (long)b->readAvailable();
       break;
     case BIO_CTRL_DUP:
     case BIO_CTRL_FLUSH:

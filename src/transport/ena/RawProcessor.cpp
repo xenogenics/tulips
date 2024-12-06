@@ -17,9 +17,9 @@ RawProcessor::process(const uint16_t len, const uint8_t* const data,
    */
   if (ntohs(eth->type) != stack::ethernet::ETHTYPE_IP) {
     for (auto const& buffer : m_buffers) {
-      buffer->write_all((uint8_t*)&len, sizeof(len));
-      buffer->write_all((uint8_t*)&ts, sizeof(ts));
-      buffer->write_all(data, len);
+      buffer->writeAll((uint8_t*)&len, sizeof(len));
+      buffer->writeAll((uint8_t*)&ts, sizeof(ts));
+      buffer->writeAll(data, len);
     }
   }
   /*

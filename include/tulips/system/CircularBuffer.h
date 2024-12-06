@@ -72,7 +72,7 @@ public:
    */
   inline size_t read(uint8_t* const buffer, const size_t len)
   {
-    const size_t delta = read_available();
+    const size_t delta = readAvailable();
     size_t n = len > delta ? delta : len;
     memcpy(buffer, readAt(), n);
     m_read.counter.store(m_read.counter + n, std::memory_order_release);
@@ -85,12 +85,12 @@ public:
    * @param buffer the target buffer to copy the data into.
    * @param len the request length.
    */
-  inline void read_all(uint8_t* const buffer, const size_t len)
+  inline void readAll(uint8_t* const buffer, const size_t len)
   {
     /*
      * Busy wait for the data to be available.
      */
-    while (read_available() < len) {
+    while (readAvailable() < len) {
     }
     /*
      * Read the data.
@@ -109,7 +109,7 @@ public:
    */
   inline size_t write(const uint8_t* const buffer, const size_t len)
   {
-    const size_t delta = write_available();
+    const size_t delta = writeAvailable();
     size_t n = len > delta ? delta : len;
     memcpy(writeAt(), buffer, n);
     m_write.counter.store(m_write.counter + n, std::memory_order_release);
@@ -122,12 +122,12 @@ public:
    * @param buffer the source buffer to copy the data from.
    * @param len the request length.
    */
-  inline void write_all(const uint8_t* const buffer, const size_t len)
+  inline void writeAll(const uint8_t* const buffer, const size_t len)
   {
     /*
      * Busy wait until there is enough space available.
      */
-    while (write_available() < len) {
+    while (writeAvailable() < len) {
     }
     /*
      * Write the data.
@@ -137,11 +137,36 @@ public:
   }
 
   /**
+   * Prepare the buffer for a write.
+   *
+   * @param len the request length.
+   *
+   * @return the write buffer if possible, nullptr otherwise.
+   */
+  inline uint8_t* prepare(const size_t len) const
+  {
+    if (len > writeAvailable()) {
+      return nullptr;
+    }
+    return writeAt();
+  }
+
+  /*
+   * Commit a previously prepared buffer.
+   *
+   * @param len the length of the prepared buffer.
+   */
+  inline void commit(const size_t len)
+  {
+    m_write.counter.store(m_write.counter + len, std::memory_order_release);
+  }
+
+  /**
    * Check how much data is available to read from the reader point of view.
    *
    * @return the amount of data available to read.
    */
-  inline size_t read_available() const
+  inline size_t readAvailable() const
   {
     auto read = m_read.counter.load(std::memory_order_relaxed);
     auto write = m_write.counter.load(std::memory_order_acquire);
@@ -153,7 +178,7 @@ public:
    *
    * @return the amount of space available to write.
    */
-  inline size_t write_available() const
+  inline size_t writeAvailable() const
   {
     auto read = m_read.counter.load(std::memory_order_acquire);
     auto write = m_write.counter.load(std::memory_order_relaxed);
@@ -194,7 +219,7 @@ public:
    */
   inline void skip(const size_t len)
   {
-    const size_t delta = read_available();
+    const size_t delta = readAvailable();
     size_t n = len > delta ? delta : len;
     m_read.counter.store(m_read.counter + n, std::memory_order_release);
   }

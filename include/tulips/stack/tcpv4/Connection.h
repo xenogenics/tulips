@@ -4,6 +4,7 @@
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
+#include <tulips/stack/tcpv4/FrameBuffer.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Segment.h>
 #include <tulips/system/SpinLock.h>
@@ -88,12 +89,70 @@ private:
   static constexpr size_t SEGMENT_COUNT = 1 << SEGM_B;
   static constexpr size_t SEGMENT_BMASK = SEGMENT_COUNT - 1;
 
+  /*
+   * State.
+   */
+
+  inline bool isActive() const { return m_state != CLOSED; }
+
+  inline bool hasPendingSendData() const { return m_slen != 0; }
+
+  inline bool hasExpired() const
+  {
+    if (m_state == Connection::SYN_SENT || m_state == Connection::SYN_RCVD) {
+      return m_nrtx == MAXSYNRTX;
+    } else {
+      return m_nrtx == MAXRTX;
+    }
+  }
+
+  inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
+  {
+    return header.dstport == m_lport && header.srcport == m_rport &&
+           ripaddr == m_ripaddr;
+  }
+
+  inline uint32_t window() const { return (uint32_t)m_window << m_wndscl; }
+
+  inline uint32_t window(const uint16_t wnd) const
+  {
+    return (uint32_t)wnd << m_wndscl;
+  }
+
+  inline void updateRttEstimation()
+  {
+    int8_t m = m_rto - m_rtm;
+    /*
+     * This is taken directly from VJs original code in his paper
+     */
+    m = m - (m_sa >> 3);
+    m_sa += m;
+    m = m < 0 ? -m : m;
+    m = m - (m_sv >> 2);
+    m_sv += m;
+    m_rto = (m_sa >> 3) + m_sv;
+  }
+
+  inline void resetSendBuffer()
+  {
+    m_slen = 0;
+    m_sdat = nullptr;
+  }
+
+  /*
+   * Timers.
+   */
+
   inline void armAckTimer(const uint32_t sendnxt)
   {
     if (m_newdata && m_atm == 0 && sendnxt == m_snd_nxt) {
       m_atm = ATO;
     }
   }
+
+  /*
+   * Segments.
+   */
 
   inline bool hasAvailableSegments() const
   {
@@ -115,35 +174,21 @@ private:
     return false;
   }
 
-  inline bool hasPendingSendData() const { return m_slen != 0; }
-
-  inline bool hasExpired() const
-  {
-    if (m_state == Connection::SYN_SENT || m_state == Connection::SYN_RCVD) {
-      return m_nrtx == MAXSYNRTX;
-    } else {
-      return m_nrtx == MAXRTX;
-    }
-  }
-
-  inline bool isActive() const { return m_state != CLOSED; }
-
-  inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
-  {
-    return header.dstport == m_lport && header.srcport == m_rport &&
-           ripaddr == m_ripaddr;
-  }
-
-  inline uint32_t window() const { return (uint32_t)m_window << m_wndscl; }
-
-  inline uint32_t window(const uint16_t wnd) const
-  {
-    return (uint32_t)wnd << m_wndscl;
-  }
-
-  inline size_t id(Segment const& s) const { return &s - m_segments; }
+  inline size_t segmentId(Segment const& s) const { return &s - m_segments; }
 
   inline Segment& segment() { return m_segments[m_segidx]; }
+
+  inline Segment& nextAvailableSegment()
+  {
+    size_t idx = 0;
+    for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
+      idx = i & SEGMENT_BMASK;
+      if (m_segments[idx].length() == 0) {
+        return m_segments[idx];
+      }
+    }
+    throw std::runtime_error("have you called hasAvailableSegments()?");
+  }
 
   inline size_t freeSegments() const
   {
@@ -165,38 +210,6 @@ private:
       }
     }
     return count;
-  }
-
-  inline Segment& nextAvailableSegment()
-  {
-    size_t idx = 0;
-    for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
-      idx = i & SEGMENT_BMASK;
-      if (m_segments[idx].length() == 0) {
-        return m_segments[idx];
-      }
-    }
-    throw std::runtime_error("have you called hasAvailableSegments()?");
-  }
-
-  inline void updateRttEstimation()
-  {
-    int8_t m = m_rto - m_rtm;
-    /*
-     * This is taken directly from VJs original code in his paper
-     */
-    m = m - (m_sa >> 3);
-    m_sa += m;
-    m = m < 0 ? -m : m;
-    m = m - (m_sv >> 2);
-    m_sv += m;
-    m_rto = (m_sa >> 3) + m_sv;
-  }
-
-  inline void resetSendBuffer()
-  {
-    m_slen = 0;
-    m_sdat = nullptr;
   }
 
   /*
@@ -245,13 +258,19 @@ private:
   void* m_cookie;        // 8 - Application state
 
   /*
+   * Frame buffer.
+   */
+
+  FrameBuffer m_fb;
+
+  /*
    * Next 4 cache lines: segments.
    *
    * Size is 16B per segment, 4 segments per cache line, for a maximum of 16
    * segments (segment index is 4 bits).
    */
 
-  Segment m_segments[SEGMENT_COUNT];
+  Segment m_segments[SEGMENT_COUNT] __attribute__((aligned(64)));
 
   /*
    * Friendship declaration.
@@ -263,7 +282,7 @@ private:
 
 } __attribute__((aligned(64)));
 
-static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 64,
+static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 128,
               "Size of tcpv4::Connection is invalid");
 }
 

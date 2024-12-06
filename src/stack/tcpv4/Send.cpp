@@ -392,7 +392,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    */
   m_log.trace("FLOW", "<", e.id(), (rexmit ? "> <+ " : "> <- "),
               getFlags(*OUTTCP), " len:", len, " seq:", s.seq(),
-              " ack:", e.m_rcv_nxt, " seg:", e.id(s),
+              " ack:", e.m_rcv_nxt, " seg:", e.segmentId(s),
               " lvl:", e.freeSegments());
   /*
    * Update the connection and segment state.
