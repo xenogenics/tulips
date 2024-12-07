@@ -9,8 +9,6 @@
 #include <tulips/transport/ena/RedirectionTable.h>
 #include <cstdint>
 #include <cstdlib>
-#include <limits>
-#include <string>
 #include <vector>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_mempool.h>

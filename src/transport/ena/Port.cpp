@@ -232,9 +232,14 @@ Port::next(system::Logger& log, const bool bound)
    */
   auto* txpool = m_txpools[qid];
   /*
+   * Cap how many RX buffers the device may poll.
+   */
+  constexpr const size_t RX_POLL_LIMIT = 128;
+  const size_t nrxds = std::min(RX_POLL_LIMIT, m_nrxds);
+  /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
+  auto* dev = new ena::Device(log, m_portid, qid, m_ntxds, nrxds, *m_reta,
                               m_address, m_mtu, txpool, bound);
   /*
    * Add the device queue to the raw processor.
