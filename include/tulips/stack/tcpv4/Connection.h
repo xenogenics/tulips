@@ -24,7 +24,7 @@ static constexpr int USED MAXSYNRTX = 5;
  * We rely on the compiler to wrap around the value of the next segment. We
  * need at least 3 bits for NRTX to SEGM_B cannot be more that 5.
  */
-#define SEGM_B 4
+#define SEGM_B 5
 #define NRTX_B (8 - SEGM_B)
 
 #define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
