@@ -145,15 +145,15 @@ Device::poll(Processor& proc)
    * Define the RX buffer quota.
    */
   static const uint16_t RX_QUOTA = 32;
-  static const size_t WARN_THRESHOLD = m_nrxbs >> 2;
+  static const size_t INFO_THRESHOLD = m_nrxbs >> 1;
   /*
    * Print statistics every 10 seconds.
    */
   static const size_t PERIOD = 10 * Clock::toTicks(system::Clock::SECOND);
   /*
-   * Cap the execution of the processor to 1ms.
+   * Cap the execution of the processor to 25ms.
    */
-  static const size_t TIME_QUOTA_NS = 10 * system::Clock::MILLISECOND;
+  static const size_t TIME_QUOTA_NS = 25 * system::Clock::MILLISECOND;
   static const size_t TIME_QUOTA = Clock::toTicks(TIME_QUOTA_NS);
   const auto start_ts = Clock::instant();
   /*
@@ -222,9 +222,9 @@ Device::poll(Processor& proc)
    */
   if (pktcnt > 0) {
     auto ns = Clock::toNanos(end_ts - start_ts);
-    if (pktcnt > WARN_THRESHOLD || ns > TIME_QUOTA_NS) {
-      m_log.warning("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
-                    m_nrxbs, ", processed in ", ns, "ns");
+    if (pktcnt > INFO_THRESHOLD || ns > TIME_QUOTA_NS) {
+      m_log.debug("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
+                  m_nrxbs, ", processed in ", ns, "ns");
     } else {
       m_log.trace("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
                   m_nrxbs, ", processed in ", ns, "ns");
