@@ -521,7 +521,7 @@ Processor::onSlowTimer(const size_t ticks)
        * If the connection is not live, send the keep-alive.
        */
       if (e.m_ktm > 0 && e.hasAvailableSegments()) {
-        m_log.debug("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
+        m_log.trace("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
         /*
          * Send the ACK.
          */

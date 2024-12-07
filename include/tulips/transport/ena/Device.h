@@ -70,6 +70,8 @@ private:
 
   Status clearSentBuffers(Processor& proc);
 
+  Status poll(Processor& proc, const uint16_t nbrx, size_t& pktcnt);
+
   uint16_t m_portid;
   uint16_t m_qid;
   uint16_t m_ntxbs;

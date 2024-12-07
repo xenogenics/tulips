@@ -5,7 +5,6 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/RedirectionTable.h>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -143,9 +142,20 @@ Device::poll(Processor& proc)
 {
   using system::Clock;
   /*
+   * Define the RX buffer quota.
+   */
+  static const uint16_t RX_QUOTA = 32;
+  static const size_t WARN_THRESHOLD = m_nrxbs >> 2;
+  /*
    * Print statistics every 10 seconds.
    */
   static const size_t PERIOD = 10 * Clock::toTicks(system::Clock::SECOND);
+  /*
+   * Cap the execution of the processor to 1ms.
+   */
+  static const size_t TIME_QUOTA_NS = 10 * system::Clock::MILLISECOND;
+  static const size_t TIME_QUOTA = Clock::toTicks(TIME_QUOTA_NS);
+  const auto start_ts = Clock::instant();
   /*
    * Print the stats every seconds on queue 0.
    */
@@ -196,23 +206,53 @@ Device::poll(Processor& proc)
     }
   }
   /*
+   * Poll the device while there is data.
+   */
+  size_t pktcnt = 0;
+  size_t end_ts = Clock::instant();
+  while (end_ts - start_ts < TIME_QUOTA) {
+    ret = poll(proc, RX_QUOTA, pktcnt);
+    end_ts = Clock::instant();
+    if (ret != Status::Ok) {
+      break;
+    }
+  }
+  /*
+   * Log how many buffer were processed.
+   */
+  if (pktcnt > 0) {
+    auto ns = Clock::toNanos(end_ts - start_ts);
+    if (pktcnt > WARN_THRESHOLD || ns > TIME_QUOTA_NS) {
+      m_log.warning("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
+                    m_nrxbs, ", processed in ", ns, "ns");
+    } else {
+      m_log.trace("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
+                  m_nrxbs, ", processed in ", ns, "ns");
+    }
+  }
+  /*
+   * Done.
+   */
+  return ret;
+}
+
+Status
+Device::poll(Processor& proc, const uint16_t nrxbs, size_t& pktcnt)
+{
+  /*
    * Process the incoming receive buffers.
    */
-  struct rte_mbuf* mbufs[m_nrxbs];
-  auto nbrx = rte_eth_rx_burst(m_portid, m_qid, mbufs, m_nrxbs);
+  struct rte_mbuf* mbufs[nrxbs];
+  auto nbrx = rte_eth_rx_burst(m_portid, m_qid, mbufs, nrxbs);
+  /*
+   * Update the counter.
+   */
+  pktcnt += nbrx;
   /*
    * Check if there are any buffer.
    */
   if (nbrx == 0) {
     return Status::NoDataAvailable;
-  }
-  /*
-   * Log how many buffer we will process.
-   */
-  if (nbrx == m_nrxbs) {
-    m_log.debug("ENA", "[", m_qid, "] received buffers ", nbrx, "/", m_nrxbs);
-  } else {
-    m_log.trace("ENA", "[", m_qid, "] received buffers ", nbrx, "/", m_nrxbs);
   }
   /*
    * Process the buffers.
@@ -257,7 +297,7 @@ Device::poll(Processor& proc)
      */
     m_log.trace("ENA", "[", m_qid, "] processing buffer addr=", (void*)dat,
                 " len=", len);
-    ret = proc.process(len, dat, system::Clock::now());
+    auto ret = proc.process(len, dat, system::Clock::now());
     /*
      * Check the processor's status.
      */
