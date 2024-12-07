@@ -71,7 +71,7 @@ private:
   Status clearSentBuffers(Processor& proc);
 
   uint16_t m_portid;
-  uint16_t m_queueid;
+  uint16_t m_qid;
   uint16_t m_ntxbs;
   uint16_t m_nrxbs;
   RedirectionTable& m_reta;
