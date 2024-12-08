@@ -149,6 +149,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
     if (c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
       if (c.m_state != Connection::CLOSED) {
         size_t bufcnt = 0;
+        size_t buflen = 0;
         /*
          * Process the incoming packet.
          */
@@ -180,17 +181,21 @@ Processor::process(const uint16_t len, const uint8_t* const data,
             return ret;
           }
           /*
+           * Update the counters.
+           */
+          bufcnt += 1;
+          buflen += frame.length();
+          /*
            * Pop the frame.
            */
           c.m_fb.pop();
-          bufcnt += 1;
         }
         /*
          * Log how many buffer we processed.
          */
         if (bufcnt > 0) {
           m_log.debug("TCP4", "<", c.id(), "> processed ", bufcnt,
-                      " buffered frame(s)");
+                      " buffered frame(s) (", buflen, "B)");
         }
       }
       /*
@@ -651,13 +656,15 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Out-of-order or dropped packet.
          */
         else {
-          bool was_empty = e.m_fb.empty();
+          const auto was_empty = e.m_fb.empty();
           /*
            * Push the frame in the framebuffer.
            */
           if (e.m_fb.push(len, data)) {
             if (was_empty) {
-              m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ ", seqno);
+              auto delta = seqno - e.m_rcv_nxt;
+              m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
+                          " (", delta, "B)");
             }
           }
           /*

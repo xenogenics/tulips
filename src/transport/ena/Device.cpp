@@ -24,6 +24,8 @@
 #include <dpdk/rte_thash.h>
 #include <net/ethernet.h>
 
+#define ENA_CAP_POLLING 1
+
 namespace tulips::transport::ena {
 
 Device::Device(system::Logger& log, const uint16_t port_id,
@@ -144,17 +146,24 @@ Device::poll(Processor& proc)
   /*
    * Define the RX buffer quota.
    */
+#ifdef ENA_CAP_POLLING
   static const uint16_t RX_QUOTA = 32;
-  static const size_t INFO_THRESHOLD = m_nrxbs >> 1;
+#endif
+  static const size_t POLL_DEBUG_THRESHOLD = m_nrxbs >> 1;
   /*
    * Print statistics every 10 seconds.
    */
   static const size_t PERIOD = 10 * Clock::toTicks(system::Clock::SECOND);
   /*
-   * Cap the execution of the processor to 25ms.
+   * Cap the execution of the processor to 10ms.
    */
-  static const size_t TIME_QUOTA_NS = 25 * system::Clock::MILLISECOND;
+  static const size_t TIME_QUOTA_NS = 10 * system::Clock::MILLISECOND;
+#ifdef ENA_CAP_POLLING
   static const size_t TIME_QUOTA = Clock::toTicks(TIME_QUOTA_NS);
+#endif
+  /*
+   * Get the start timestamp.
+   */
   const auto start_ts = Clock::instant();
   /*
    * Print the stats every seconds on queue 0.
@@ -209,6 +218,7 @@ Device::poll(Processor& proc)
    * Poll the device while there is data.
    */
   size_t pktcnt = 0;
+#ifdef ENA_CAP_POLLING
   size_t end_ts = Clock::instant();
   while (end_ts - start_ts < TIME_QUOTA) {
     ret = poll(proc, RX_QUOTA, pktcnt);
@@ -217,17 +227,26 @@ Device::poll(Processor& proc)
       break;
     }
   }
+#else
+  ret = poll(proc, m_nrxbs, pktcnt);
+  size_t end_ts = Clock::instant();
+#endif
   /*
    * Log how many buffer were processed.
    */
   if (pktcnt > 0) {
-    auto ns = Clock::toNanos(end_ts - start_ts);
-    if (pktcnt > INFO_THRESHOLD || ns > TIME_QUOTA_NS) {
+#ifdef ENA_CAP_POLLING
+    auto cnt = pktcnt % 64 == 0 ? " (+)" : " (=)";
+#else
+    auto cnt = "";
+#endif
+    auto lat = Clock::toNanos(end_ts - start_ts);
+    if (pktcnt > POLL_DEBUG_THRESHOLD || lat > TIME_QUOTA_NS) {
       m_log.debug("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
-                  m_nrxbs, ", processed in ", ns, "ns");
+                  m_nrxbs, cnt, ", processed in ", lat, "ns");
     } else {
       m_log.trace("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
-                  m_nrxbs, ", processed in ", ns, "ns");
+                  m_nrxbs, cnt, ", processed in ", lat, "ns");
     }
   }
   /*
