@@ -651,14 +651,13 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Out-of-order or dropped packet.
          */
         else {
-          bool was_empty = e.m_fb.empty();
           /*
            * Push the frame in the framebuffer.
            */
           if (e.m_fb.push(len, data)) {
-            if (was_empty) {
-              m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ ", seqno);
-            }
+            auto delta = seqno - e.m_rcv_nxt;
+            m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
+                        " (", delta, "B)");
           }
           /*
            * Abort in case of failure.
