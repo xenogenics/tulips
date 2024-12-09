@@ -5,9 +5,7 @@
 #include <cerrno>
 #include <cstdint>
 #include <cstring>
-#include <iomanip>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 #include <dpdk/rte_ethdev.h>
 #include <net/ethernet.h>

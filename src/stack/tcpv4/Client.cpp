@@ -150,7 +150,7 @@ Processor::close(const Connection::ID id)
   /*
    * If we are already busy, return OK.
    */
-  if (c.hasOutstandingSegments()) {
+  if (c.hasUsedSegments()) {
     c.m_state = Connection::CLOSE;
     return Status::Ok;
   }
@@ -293,7 +293,7 @@ Processor::connect(const Connection::ID id, ethernet::Address const& rhwaddr,
    * Prepare the SYN. SYN segments don't contain any data but have a size of 1
    * to increase the sequence number by 1.
    */
-  Segment& seg = c.nextAvailableSegment();
+  Segment& seg = c.acquireSegment();
   seg.set(1, c.m_snd_nxt, outdata);
   OUTTCP->flags = 0;
   /*
@@ -342,7 +342,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
   if (c.m_state != Connection::ESTABLISHED) {
     return Status::NotConnected;
   }
-  if (HAS_NODELAY(c) && !c.hasAvailableSegments()) {
+  if (HAS_NODELAY(c) && !c.hasFreeSegments()) {
     return Status::OperationInProgress;
   }
   if (len == 0 || data == nullptr) {
@@ -385,7 +385,7 @@ Processor::send(const Connection::ID id, const uint32_t len,
   /*
    * Check if we can send the current segment.
    */
-  if (!c.hasAvailableSegments()) {
+  if (!c.hasFreeSegments()) {
     return slen == 0 ? Status::OperationInProgress : Status::Ok;
   }
   /*

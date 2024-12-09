@@ -12,7 +12,7 @@ jobs:
     container: 
       image: xenogenics/tulips-builder
       env:
-        CTEST_PARALLEL_LEVEL: 2
+        CTEST_OUTPUT_ON_FAILURE: 1
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3
@@ -29,7 +29,7 @@ jobs:
       env:
         CC: gcc
         CXX: g++
-        CTEST_PARALLEL_LEVEL: 2
+        CTEST_OUTPUT_ON_FAILURE: 1
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3
@@ -43,8 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     container: 
       image: xenogenics/tulips-builder
-      env:
-        CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3
@@ -59,7 +57,6 @@ jobs:
       env:
         CC: gcc
         CXX: g++
-        CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3

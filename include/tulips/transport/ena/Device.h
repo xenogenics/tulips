@@ -9,8 +9,6 @@
 #include <tulips/transport/ena/RedirectionTable.h>
 #include <cstdint>
 #include <cstdlib>
-#include <limits>
-#include <string>
 #include <vector>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_mempool.h>
@@ -72,8 +70,10 @@ private:
 
   Status clearSentBuffers(Processor& proc);
 
+  Status poll(Processor& proc, const uint16_t nbrx, size_t& pktcnt);
+
   uint16_t m_portid;
-  uint16_t m_queueid;
+  uint16_t m_qid;
   uint16_t m_ntxbs;
   uint16_t m_nrxbs;
   RedirectionTable& m_reta;

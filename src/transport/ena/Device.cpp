@@ -5,7 +5,6 @@
 #include <tulips/system/Compiler.h>
 #include <tulips/transport/ena/Device.h>
 #include <tulips/transport/ena/RedirectionTable.h>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -25,6 +24,8 @@
 #include <dpdk/rte_thash.h>
 #include <net/ethernet.h>
 
+#define ENA_CAP_POLLING 0
+
 namespace tulips::transport::ena {
 
 Device::Device(system::Logger& log, const uint16_t port_id,
@@ -34,7 +35,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
                struct rte_mempool* const txpool, const bool bound)
   : transport::Device(log, "ena_" + std::to_string(queue_id))
   , m_portid(port_id)
-  , m_queueid(queue_id)
+  , m_qid(queue_id)
   , m_ntxbs(ntxbs)
   , m_nrxbs(nrxbs)
   , m_reta(reta)
@@ -66,7 +67,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   /*
    * Print some device information.
    */
-  if (m_queueid > 0) {
+  if (m_qid > 0) {
     log.debug("ENA", "port id: ", port_id);
     log.debug("ENA", "queue id: ", queue_id);
   }
@@ -127,7 +128,7 @@ Device::listen(UNUSED const stack::ipv4::Protocol proto,
                stack::ipv4::Address const& laddr, const uint16_t lport,
                stack::ipv4::Address const& raddr, const uint16_t rport)
 {
-  return m_reta.match(laddr, lport, raddr, rport, m_queueid);
+  return m_reta.match(laddr, lport, raddr, rport, m_qid);
 }
 
 void
@@ -143,13 +144,31 @@ Device::poll(Processor& proc)
 {
   using system::Clock;
   /*
+   * Define the RX buffer quota.
+   */
+#if ENA_CAP_POLLING
+  static const uint16_t RX_QUOTA = 32;
+#endif
+  static const size_t POLL_DEBUG_THRESHOLD = m_nrxbs >> 3;
+  /*
    * Print statistics every 10 seconds.
    */
   static const size_t PERIOD = 10 * Clock::toTicks(system::Clock::SECOND);
   /*
+   * Cap the execution of the processor to 10ms.
+   */
+  static const size_t TIME_QUOTA_NS = 10 * system::Clock::MILLISECOND;
+#if ENA_CAP_POLLING
+  static const size_t TIME_QUOTA = Clock::toTicks(TIME_QUOTA_NS);
+#endif
+  /*
+   * Get the start timestamp.
+   */
+  const auto start_ts = Clock::instant();
+  /*
    * Print the stats every seconds on queue 0.
    */
-  if (m_queueid == 0 && Clock::instant() - m_laststats >= PERIOD) {
+  if (m_qid == 0 && Clock::instant() - m_laststats >= PERIOD) {
     struct rte_eth_stats stats;
     rte_eth_stats_get(m_portid, &stats);
     m_log.debug("ENA", "TX: pkts=", stats.opackets, " byts=", stats.obytes,
@@ -174,9 +193,9 @@ Device::poll(Processor& proc)
     /*
      * Read a packet.
      */
-    m_buffer->read_all((uint8_t*)&len, sizeof(len));
-    m_buffer->read_all((uint8_t*)&ts, sizeof(ts));
-    m_buffer->read_all(m_packet, len);
+    m_buffer->readAll((uint8_t*)&len, sizeof(len));
+    m_buffer->readAll((uint8_t*)&ts, sizeof(ts));
+    m_buffer->readAll(m_packet, len);
     /*
      * Process the packet.
      */
@@ -196,20 +215,64 @@ Device::poll(Processor& proc)
     }
   }
   /*
+   * Poll the device while there is data.
+   */
+  size_t pktcnt = 0;
+#if ENA_CAP_POLLING
+  size_t end_ts = Clock::instant();
+  while (end_ts - start_ts < TIME_QUOTA) {
+    ret = poll(proc, RX_QUOTA, pktcnt);
+    end_ts = Clock::instant();
+    if (ret != Status::Ok) {
+      break;
+    }
+  }
+#else
+  ret = poll(proc, m_nrxbs, pktcnt);
+  size_t end_ts = Clock::instant();
+#endif
+  /*
+   * Log how many buffer were processed.
+   */
+  if (pktcnt > 0) {
+#if ENA_CAP_POLLING
+    auto cnt = pktcnt % 64 == 0 ? " (+)" : " (=)";
+#else
+    auto cnt = "";
+#endif
+    auto lat = Clock::toNanos(end_ts - start_ts);
+    if (pktcnt > POLL_DEBUG_THRESHOLD || lat > TIME_QUOTA_NS) {
+      m_log.debug("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
+                  m_nrxbs, cnt, ", processed in ", lat, "ns");
+    } else {
+      m_log.trace("ENA", "[", m_qid, "] received buffers ", pktcnt, "/",
+                  m_nrxbs, cnt, ", processed in ", lat, "ns");
+    }
+  }
+  /*
+   * Done.
+   */
+  return ret;
+}
+
+Status
+Device::poll(Processor& proc, const uint16_t nrxbs, size_t& pktcnt)
+{
+  /*
    * Process the incoming receive buffers.
    */
-  struct rte_mbuf* mbufs[m_nrxbs];
-  auto nbrx = rte_eth_rx_burst(m_portid, m_queueid, mbufs, m_nrxbs);
+  struct rte_mbuf* mbufs[nrxbs];
+  auto nbrx = rte_eth_rx_burst(m_portid, m_qid, mbufs, nrxbs);
+  /*
+   * Update the counter.
+   */
+  pktcnt += nbrx;
   /*
    * Check if there are any buffer.
    */
   if (nbrx == 0) {
     return Status::NoDataAvailable;
   }
-  /*
-   * Log how many buffer we will process.
-   */
-  m_log.trace("ENA", "received buffers ", nbrx, "/", m_nrxbs);
   /*
    * Process the buffers.
    */
@@ -223,7 +286,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_IP_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_IP_CKSUM_BAD) {
-          m_log.error("ENA", "invalid IP checksum, dropping packet");
+          m_log.error("ENA", "[", m_qid, "] bad IP checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -236,7 +299,7 @@ Device::poll(Processor& proc)
       if (m_hints & Device::VALIDATE_L4_CSUM) {
         auto flags = buf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK;
         if (flags == RTE_MBUF_F_RX_L4_CKSUM_BAD) {
-          m_log.error("ENA", "invalid L4 checksum, dropping packet");
+          m_log.error("ENA", "[", m_qid, "] bad L4 checksum, dropping packet");
           rte_pktmbuf_free(buf);
           continue;
         }
@@ -251,13 +314,15 @@ Device::poll(Processor& proc)
     /*
      * Process the packet.
      */
-    m_log.trace("ENA", "processing addr=", (void*)dat, " len=", len);
-    ret = proc.process(len, dat, system::Clock::now());
+    m_log.trace("ENA", "[", m_qid, "] processing buffer addr=", (void*)dat,
+                " len=", len);
+    auto ret = proc.process(len, dat, system::Clock::now());
     /*
      * Check the processor's status.
      */
     if (ret != Status::Ok && ret != Status::UnsupportedProtocol) {
-      m_log.error("ENA", "error processing buffer: ", toString(ret));
+      m_log.error("ENA", "[", m_qid,
+                  "] error processing buffer: ", toString(ret));
       return ret;
     }
     /*
@@ -309,7 +374,7 @@ Device::prepare(uint8_t*& buf)
    * Make sure we have free TX buffers.
    */
   if (m_free.empty()) {
-    m_log.trace("ENA", "no more TX buffer on queue: ", m_queueid);
+    m_log.trace("ENA", "[", m_qid, "] no more TX buffer on queue: ");
     return Status::NoMoreResources;
   }
   /*
@@ -321,7 +386,8 @@ Device::prepare(uint8_t*& buf)
    * Grab the data region.
    */
   buf = rte_pktmbuf_mtod(mbuf, uint8_t*);
-  m_log.trace("ENA", "preparing buffer ", (void*)buf, " ", (void*)mbuf);
+  m_log.trace("ENA", "[", m_qid, "] preparing buffer ", (void*)buf, " ",
+              (void*)mbuf);
   /*
    * Update the private data with the mbuf address.
    */
@@ -341,8 +407,8 @@ Device::commit(const uint16_t len, uint8_t* const buf,
    * Grab the packet buffer.
    */
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
-  m_log.trace("ENA", "committing buffer ", (void*)buf, " len ", len, " ",
-              (void*)mbuf);
+  m_log.trace("ENA", "[", m_qid, "] committing buffer ", (void*)buf, " len ",
+              len, " ", (void*)mbuf);
   /*
    * Update the packet buffer length.
    */
@@ -378,19 +444,19 @@ Device::commit(const uint16_t len, uint8_t* const buf,
   /*
    * Prepare the packet.
    */
-  res = rte_eth_tx_prepare(m_portid, m_queueid, &mbuf, 1);
+  res = rte_eth_tx_prepare(m_portid, m_qid, &mbuf, 1);
   if (res != 1) {
     auto error = rte_strerror(rte_errno);
-    m_log.error("ENA", "packet preparation for TX failed: ", error);
+    m_log.error("ENA", "[", m_qid, "] preparing packet for TX failed: ", error);
     return Status::HardwareError;
   }
   /*
    * Send the packet.
    */
-  res = rte_eth_tx_burst(m_portid, m_queueid, &mbuf, 1);
+  res = rte_eth_tx_burst(m_portid, m_qid, &mbuf, 1);
   if (res != 1) {
     auto error = rte_strerror(rte_errno);
-    m_log.error("ENA", "sending packet failed: ", error);
+    m_log.error("ENA", "[", m_qid, "] sending packet failed: ", error);
     return Status::HardwareError;
   }
   /*
@@ -407,8 +473,8 @@ Status
 Device::release(uint8_t* const buf)
 {
   auto* mbuf = *reinterpret_cast<struct rte_mbuf**>(buf - 8);
-  m_log.trace("ENA", "releasing buffer ", (void*)buf, " ", (void*)mbuf, " (",
-              m_free.size() + 1, "/", m_ntxbs, ")");
+  m_log.trace("ENA", "[", m_qid, "] releasing buffer ", (void*)buf, " ",
+              (void*)mbuf, " (", m_free.size() + 1, "/", m_ntxbs, ")");
   rte_pktmbuf_reset(mbuf);
   m_free.push_back(mbuf);
   return Status::Ok;

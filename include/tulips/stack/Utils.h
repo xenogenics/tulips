@@ -2,7 +2,6 @@
 
 #include <tulips/stack/IPv4.h>
 #include <cstdint>
-#include <iomanip>
 #include <limits>
 #include <ostream>
 

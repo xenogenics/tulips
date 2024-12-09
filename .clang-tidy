@@ -1,2 +1,2 @@
-Checks: '-*,bugprone-*,-bugprone-easily-swappable-parameters,-bugprone-narrowing-conversions,-bugprone-reserved-identifier,modernize-*,-modernize-use-nodiscard,-modernize-use-trailing-return-type,-modernize-use-default-member-init,-modernize-avoid-c-arrays,performance-*,-performance-avoid-endl,readability-braces-around-statements'
-WarningsAsErrors: '-*,bugprone-*,-bugprone-narrowing-conversions,-bugprone-easily-swappable-parameters,-bugprone-reserved-identifier'
+Checks: '-*,bugprone-*,-bugprone-easily-swappable-parameters,-bugprone-narrowing-conversions,-bugprone-reserved-identifier,-misc-include-cleaner,modernize-*,-modernize-use-nodiscard,-modernize-use-trailing-return-type,-modernize-use-default-member-init,-modernize-avoid-c-arrays,performance-*,-performance-avoid-endl,readability-braces-around-statements'
+WarningsAsErrors: '-*,bugprone-*,-bugprone-narrowing-conversions,-bugprone-easily-swappable-parameters,-bugprone-reserved-identifier,-misc-include-cleaner'

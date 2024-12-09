@@ -22,7 +22,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
    * If the send buffer is full, send immediately.
    */
   if (e.m_slen == bound) {
-    Segment& seg = e.nextAvailableSegment();
+    Segment& seg = e.acquireSegment();
     seg.set(e.m_slen, e.m_snd_nxt, e.m_sdat);
     e.resetSendBuffer();
     return send(e, seg, Flag::PSH);
@@ -30,7 +30,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
   /*
    * If there is data in flight, enqueue.
    */
-  if (e.hasOutstandingSegments()) {
+  if (e.hasUsedSegments()) {
     return Status::Ok;
   }
   /*
@@ -42,7 +42,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
 Status
 Processor::sendNoDelay(Connection& e, const uint8_t flag)
 {
-  Segment& seg = e.nextAvailableSegment();
+  Segment& seg = e.acquireSegment();
   seg.set(e.m_slen, e.m_snd_nxt, e.m_sdat);
   e.resetSendBuffer();
   return send(e, seg, flag);
@@ -126,7 +126,7 @@ Processor::sendClose(Connection& e)
    * This function MUST be called when segments are available. Making sure of
    * this is the responsibility of the caller.
    */
-  if (!e.hasAvailableSegments()) {
+  if (!e.hasFreeSegments()) {
     m_log.error("TCP4", "<", e.id(), "> close() without available segments");
     return Status::NoMoreResources;
   }
@@ -136,7 +136,7 @@ Processor::sendClose(Connection& e)
    */
   m_log.debug("TCP4", "<", e.id(), "> FIN wait #1");
   e.m_state = Connection::FIN_WAIT_1;
-  Segment& seg = e.nextAvailableSegment();
+  Segment& seg = e.acquireSegment();
   seg.set(1, e.m_snd_nxt, e.m_sdat);
   e.resetSendBuffer();
   return sendFinAck(e, seg);
@@ -180,7 +180,7 @@ Processor::sendAck(Connection& e, const bool k)
 Status
 Processor::sendSyn(Connection& e, Segment& s)
 {
-  uint8_t* outdata = s.m_dat;
+  uint8_t* outdata = s.data();
   uint16_t len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
   OUTTCP->flags |= Flag::SYN;
   OUTTCP->offset = len >> 2;
@@ -287,7 +287,7 @@ Processor::rexmit(Connection& e)
      */
     case Connection::ESTABLISHED: {
       m_log.debug("TCP4", "<", e.id(), "> retransmit PSH");
-      const auto len = e.segment().m_len + HEADER_LEN;
+      const auto len = e.segment().length() + HEADER_LEN;
       return send(e, len, e.segment());
     }
     /*
@@ -357,15 +357,15 @@ Processor::timeOut(Connection& e)
 Status
 Processor::send(Connection& e, const uint32_t len, Segment& s)
 {
-  uint8_t* outdata = s.m_dat;
-  const bool rexmit = s.m_seq != e.m_snd_nxt && OUTTCP->flags != Flag::ACK;
+  uint8_t* outdata = s.data();
+  const bool rexmit = s.seq() != e.m_snd_nxt && OUTTCP->flags != Flag::ACK;
   /*
    * We're done with the input processing. We are now ready to send a reply. Our
    * job is to fill in all the fields of the TCP and IP headers before
    * calculating the checksum and finally send the packet.
    */
   OUTTCP->ackno = htonl(e.m_rcv_nxt);
-  OUTTCP->seqno = htonl(s.m_seq);
+  OUTTCP->seqno = htonl(s.seq());
   OUTTCP->srcport = e.m_lport;
   OUTTCP->dstport = e.m_rport;
   /*
@@ -391,8 +391,8 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    * Print the flow information.
    */
   m_log.trace("FLOW", "<", e.id(), (rexmit ? "> <+ " : "> <- "),
-              getFlags(*OUTTCP), " len:", len, " seq:", s.m_seq,
-              " ack:", e.m_rcv_nxt, " seg:", e.id(s),
+              getFlags(*OUTTCP), " len:", len, " seq:", s.seq(),
+              " ack:", e.m_rcv_nxt, " seg:", e.segmentIndex(s),
               " lvl:", e.freeSegments());
   /*
    * Update the connection and segment state.
@@ -403,7 +403,7 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
       m_handler.onSent(e, system::Clock::now());
     }
 #endif
-    e.m_snd_nxt += s.m_len;
+    e.m_snd_nxt += s.length();
   }
   /*
    * Update IP and Ethernet attributes
