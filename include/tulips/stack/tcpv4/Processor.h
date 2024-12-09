@@ -130,7 +130,7 @@ public:
     /*
      * Check outstanding segments.
      */
-    res = c.hasOutstandingSegments();
+    res = c.hasUsedSegments();
     return Status::Ok;
   }
 

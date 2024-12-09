@@ -151,69 +151,47 @@ private:
   }
 
   /*
-   * Segments.
+   * Segments metadata.
    */
-
-  inline bool hasAvailableSegments() const
-  {
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].length() == 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  inline bool hasOutstandingSegments() const
-  {
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].length() != 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  inline size_t segmentId(Segment const& s) const { return &s - m_segments; }
 
   inline Segment& segment() { return m_segments[m_segidx]; }
 
-  inline Segment& nextAvailableSegment()
+  inline size_t segmentIndex(Segment const& s) const { return &s - m_segments; }
+
+  inline bool hasFreeSegments() const { return freeSegments() > 0; }
+
+  inline size_t freeSegments() const { return m_avlseg; }
+
+  inline bool hasUsedSegments() const { return usedSegments() > 0; }
+
+  inline size_t usedSegments() const { return SEGMENT_COUNT - m_avlseg; }
+
+  /*
+   * Segment allocation.
+   */
+
+  inline Segment& acquireSegment()
   {
     size_t idx = 0;
     for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
       idx = i & SEGMENT_BMASK;
       if (m_segments[idx].length() == 0) {
+        m_avlseg -= 1;
         return m_segments[idx];
       }
     }
     throw std::runtime_error("have you called hasAvailableSegments()?");
   }
 
-  inline size_t freeSegments() const
+  inline void releaseSegment(Segment& segment)
   {
-    size_t count = 0;
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].length() == 0) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  inline size_t usedSegments() const
-  {
-    size_t count = 0;
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].length() > 0) {
-        count += 1;
-      }
-    }
-    return count;
+    auto index = segmentIndex(segment);
+    m_segments[index].clear();
+    m_avlseg += 1;
   }
 
   /*
-   * First cache line: member variables.
+   * First cache line.
    */
 
   ID m_id;                      // 2 - Connection ID
@@ -258,10 +236,11 @@ private:
   void* m_cookie;        // 8 - Application state
 
   /*
-   * Frame buffer.
+   * Second cache line
    */
 
   FrameBuffer m_fb;
+  uint16_t m_avlseg;
 
   /*
    * Next 4 cache lines: segments.
