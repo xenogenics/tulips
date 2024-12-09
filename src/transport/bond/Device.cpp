@@ -10,6 +10,7 @@ namespace tulips::transport::bond {
 Device::Device(system::Logger& log, std::vector<transport::Device::Ref> devices,
                std::string_view name)
   : transport::Device(log, name)
+  , m_log(log)
   , m_devices(std::move(devices))
   , m_listens(0)
   , m_prepares(0)
@@ -36,7 +37,11 @@ Device::listen(const stack::ipv4::Protocol proto,
 {
   auto index = m_listens % m_devices.size();
   auto status = m_devices[index]->listen(proto, laddr, lport, raddr, rport);
-  m_listens += status == Status::Ok;
+  if (status == Status::Ok) {
+    m_log.debug("BOND", "[", index, "] bound to ", raddr.toString(), ":",
+                rport);
+    m_listens += 1;
+  }
   return status;
 }
 
