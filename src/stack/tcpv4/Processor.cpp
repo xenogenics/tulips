@@ -158,27 +158,27 @@ Processor::process(const uint16_t len, const uint8_t* const data,
           return ret;
         }
         /*
-         * Catch-up to the buffered frames.
-         */
-        c.m_fb.catchUp(c.m_rcv_nxt);
-        /*
          * Process any buffered packet.
+         *
+         * NOTE(xrg): stale frames are automatically ignored.
          */
         while (!c.m_fb.empty()) {
           auto const& frame = c.m_fb.peek();
-          const uint32_t seqno = ntohl(frame.header().seqno);
+          const uint32_t seqno = ntohl(frame.as<Header>().seqno);
           /*
-           * Bail out if the frame does not match the expected sequence.
+           * Break if the frame is ahead.
            */
-          if (seqno != c.m_rcv_nxt) {
+          if (SEQ_GT(seqno, c.m_rcv_nxt)) {
             break;
           }
           /*
-           * Process the packet.
+           * Process the frame if the sequences match.
            */
-          auto ret = process(c, frame.length(), frame.data(), ts);
-          if (ret != Status::Ok) {
-            return ret;
+          if (seqno == c.m_rcv_nxt) {
+            auto ret = process(c, frame.length(), frame.data(), ts);
+            if (ret != Status::Ok) {
+              return ret;
+            }
           }
           /*
            * Update the counters.

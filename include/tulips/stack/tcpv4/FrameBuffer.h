@@ -4,6 +4,7 @@
 #include <tulips/system/CircularBuffer.h>
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 
 namespace tulips::stack::tcpv4 {
 
@@ -24,9 +25,11 @@ public:
 
   inline constexpr uint32_t length() const { return m_length; }
 
-  inline Header const& header() const
+  template<typename T>
+  inline T const& as() const
   {
-    return *reinterpret_cast<const Header*>(m_data);
+    static_assert(std::is_trivially_copyable<T>::value);
+    return *reinterpret_cast<const T*>(m_data);
   }
 
   inline constexpr const uint8_t* data() const { return m_data; }
@@ -43,13 +46,12 @@ private:
 struct FrameBuffer
 {
 public:
-  FrameBuffer();
+  FrameBuffer(const size_t capacity);
 
   bool push(const uint32_t len, const uint8_t* const data);
-  Frame const& peek() const;
   void pop();
 
-  void catchUp(const uint32_t seq);
+  Frame const& peek() const;
 
   bool empty() const { return m_buffer->empty(); }
   void clear() { m_buffer->reset(); }

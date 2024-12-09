@@ -6,10 +6,8 @@
 
 namespace tulips::stack::tcpv4 {
 
-static constexpr const size_t CAPACITY = 256ULL * 1024ULL;
-
-FrameBuffer::FrameBuffer()
-  : m_buffer(system::CircularBuffer::allocate(CAPACITY))
+FrameBuffer::FrameBuffer(const size_t capacity)
+  : m_buffer(system::CircularBuffer::allocate(capacity))
 {}
 
 bool
@@ -38,26 +36,6 @@ FrameBuffer::push(const uint32_t len, const uint8_t* const data)
   return true;
 }
 
-Frame const&
-FrameBuffer::peek() const
-{
-  /*
-   * Sanity check.
-   */
-  if (m_buffer->empty()) {
-    throw std::runtime_error("have you called empty()?");
-  }
-  /*
-   * Wrap the buffer into a frame.
-   */
-  auto buffer = m_buffer->readAt();
-  auto const& frame = *reinterpret_cast<const Frame*>(buffer);
-  /*
-   * Done.
-   */
-  return frame;
-}
-
 void
 FrameBuffer::pop()
 {
@@ -78,41 +56,24 @@ FrameBuffer::pop()
   m_buffer->skip(flen);
 }
 
-void
-FrameBuffer::catchUp(const uint32_t seq)
+Frame const&
+FrameBuffer::peek() const
 {
   /*
-   * Bail-out if the buffer is empty.
+   * Sanity check.
    */
   if (m_buffer->empty()) {
-    return;
+    throw std::runtime_error("have you called empty()?");
   }
   /*
-   * Get the buffer information.
+   * Wrap the buffer into a frame.
    */
-  const auto* ptr = m_buffer->readAt();
-  size_t len = 0;
+  auto buffer = m_buffer->readAt();
+  auto const& frame = *reinterpret_cast<const Frame*>(buffer);
   /*
-   * Scan the packets for a matching sequence number.
+   * Done.
    */
-  while (len < m_buffer->readAvailable()) {
-    auto const& frame = *reinterpret_cast<const Frame*>(ptr + len);
-    const uint32_t fseq = ntohl(frame.header().seqno);
-    /*
-     * Bail out if seq <= fseq.
-     */
-    if (SEQ_LE(seq, fseq)) {
-      break;
-    }
-    /*
-     * Move to the next frame.
-     */
-    len += frame.length() + sizeof(Frame);
-  }
-  /*
-   * Skip stale frames.
-   */
-  m_buffer->skip(len);
+  return frame;
 }
 
 }
