@@ -12,6 +12,7 @@ jobs:
     container: 
       image: xenogenics/tulips-builder
       env:
+        CTEST_OUTPUT_ON_FAILURE: 1
         CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
@@ -29,6 +30,7 @@ jobs:
       env:
         CC: gcc
         CXX: g++
+        CTEST_OUTPUT_ON_FAILURE: 1
         CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
