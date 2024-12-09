@@ -14,12 +14,13 @@ RawProcessor::process(const uint16_t len, const uint8_t* const data,
   const auto* eth = reinterpret_cast<const stack::ethernet::Header*>(data);
   /*
    * Push all non-IP packets to the internal buffers.
+   *
+   * NOTE(xrg): this is a non-critical process, so we drop the packet if the
+   * target buffer is full.
    */
   if (ntohs(eth->type) != stack::ethernet::ETHTYPE_IP) {
     for (auto const& buffer : m_buffers) {
-      buffer->writeAll((uint8_t*)&len, sizeof(len));
-      buffer->writeAll((uint8_t*)&ts, sizeof(ts));
-      buffer->writeAll(data, len);
+      buffer->push(len, data, ts);
     }
   }
   /*
@@ -35,7 +36,7 @@ RawProcessor::sent(UNUSED const uint16_t len, UNUSED uint8_t* const data)
 }
 
 void
-RawProcessor::add(system::CircularBuffer::Ref const& buffer)
+RawProcessor::add(system::FrameBuffer::Ref const& buffer)
 {
   std::lock_guard<system::SpinLock> lock(m_lock);
   m_buffers.push_back(buffer);

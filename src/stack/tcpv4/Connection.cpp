@@ -31,7 +31,7 @@ Connection::Connection()
   , m_opts(0)
   , m_sdat(nullptr)
   , m_cookie(nullptr)
-  , m_fb()
+  , m_fb(128ULL * 1024)
   , m_avlseg(SEGMENT_COUNT)
   , m_segments()
 {}

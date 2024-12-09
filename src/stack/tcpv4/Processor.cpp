@@ -158,27 +158,27 @@ Processor::process(const uint16_t len, const uint8_t* const data,
           return ret;
         }
         /*
-         * Catch-up to the buffered frames.
-         */
-        c.m_fb.catchUp(c.m_rcv_nxt);
-        /*
          * Process any buffered packet.
+         *
+         * NOTE(xrg): stale frames are automatically ignored.
          */
         while (!c.m_fb.empty()) {
           auto const& frame = c.m_fb.peek();
-          const uint32_t seqno = ntohl(frame.header().seqno);
+          const uint32_t seqno = ntohl(frame.as<Header>().seqno);
           /*
-           * Bail out if the frame does not match the expected sequence.
+           * Break if the frame is ahead.
            */
-          if (seqno != c.m_rcv_nxt) {
+          if (SEQ_GT(seqno, c.m_rcv_nxt)) {
             break;
           }
           /*
-           * Process the packet.
+           * Process the frame if the sequences match.
            */
-          auto ret = process(c, frame.length(), frame.data(), ts);
-          if (ret != Status::Ok) {
-            return ret;
+          if (seqno == c.m_rcv_nxt) {
+            auto ret = process(c, frame.length(), frame.data(), ts);
+            if (ret != Status::Ok) {
+              return ret;
+            }
           }
           /*
            * Update the counters.
@@ -656,22 +656,21 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          * Out-of-order or dropped packet.
          */
         else {
-          const auto was_empty = e.m_fb.empty();
           /*
-           * Push the frame in the framebuffer.
+           * Log the event.
            */
-          if (e.m_fb.push(len, data)) {
-            if (was_empty) {
-              auto delta = seqno - e.m_rcv_nxt;
-              m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
-                          " (", delta, "B)");
-            }
+          if (e.m_fb.empty()) {
+            const uint32_t diff = SEQ_DIFF(seqno, e.m_rcv_nxt);
+            m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
+                        " (", diff, "B), buffering");
           }
           /*
-           * Abort in case of failure.
+           * Push the frame in the buffer.
            */
-          else {
-            m_log.debug("TCP4", "<", e.id(), "> still behind, aborting");
+          if (!e.m_fb.push(len, data, ts)) {
+            const auto len = e.m_fb.length();
+            m_log.debug("TCP4", "<", e.id(), "> still behind after ", len,
+                        "B, aborting");
             return abort(e);
           }
         }

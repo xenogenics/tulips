@@ -24,7 +24,7 @@
 #include <dpdk/rte_thash.h>
 #include <net/ethernet.h>
 
-#define ENA_CAP_POLLING 0
+#define ENA_CAP_POLLING 1
 
 namespace tulips::transport::ena {
 
@@ -41,8 +41,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_reta(reta)
   , m_txpool(txpool)
   , m_bound(bound)
-  , m_buffer(system::CircularBuffer::allocate(16384))
-  , m_packet(new uint8_t[16384])
+  , m_buffer(system::FrameBuffer::allocate(16384))
   , m_free()
   , m_sent()
   , m_laststats(0)
@@ -76,6 +75,10 @@ Device::Device(system::Logger& log, const uint16_t port_id,
 Device::~Device()
 {
   /*
+   * Clear the internal buffer.
+   */
+  m_buffer->clear();
+  /*
    * Clean-up the unreleased send buffers.
    */
   while (!m_sent.empty()) {
@@ -92,11 +95,6 @@ Device::~Device()
     m_free.pop_back();
     rte_pktmbuf_free(mbuf);
   }
-  /*
-   * Delete the packet buffer.
-   */
-  delete[] m_packet;
-  m_packet = nullptr;
 }
 
 Status
@@ -146,10 +144,10 @@ Device::poll(Processor& proc)
   /*
    * Define the RX buffer quota.
    */
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
   static const uint16_t RX_QUOTA = 32;
 #endif
-  static const size_t POLL_DEBUG_THRESHOLD = m_nrxbs >> 1;
+  static const size_t POLL_DEBUG_THRESHOLD = m_nrxbs >> 3;
   /*
    * Print statistics every 10 seconds.
    */
@@ -158,7 +156,7 @@ Device::poll(Processor& proc)
    * Cap the execution of the processor to 10ms.
    */
   static const size_t TIME_QUOTA_NS = 10 * system::Clock::MILLISECOND;
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
   static const size_t TIME_QUOTA = Clock::toTicks(TIME_QUOTA_NS);
 #endif
   /*
@@ -187,22 +185,22 @@ Device::poll(Processor& proc)
   /*
    * Process the internal buffer.
    */
-  if (!m_buffer->empty()) {
-    uint16_t len = 0;
-    system::Clock::Epoch ts = 0;
+  while (!m_buffer->empty()) {
     /*
      * Read a packet.
      */
-    m_buffer->readAll((uint8_t*)&len, sizeof(len));
-    m_buffer->readAll((uint8_t*)&ts, sizeof(ts));
-    m_buffer->readAll(m_packet, len);
+    auto const& frame = m_buffer->peek();
     /*
      * Process the packet.
      */
-    ret = proc.process(len, m_packet, ts);
+    ret = proc.process(frame.length(), frame.data(), frame.timestamp());
     if (ret != Status::Ok) {
       return ret;
     }
+    /*
+     * Pop the packet.
+     */
+    m_buffer->pop();
     /*
      * Run the processor.
      *
@@ -218,7 +216,7 @@ Device::poll(Processor& proc)
    * Poll the device while there is data.
    */
   size_t pktcnt = 0;
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
   size_t end_ts = Clock::instant();
   while (end_ts - start_ts < TIME_QUOTA) {
     ret = poll(proc, RX_QUOTA, pktcnt);
@@ -235,7 +233,7 @@ Device::poll(Processor& proc)
    * Log how many buffer were processed.
    */
   if (pktcnt > 0) {
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
     auto cnt = pktcnt % 64 == 0 ? " (+)" : " (=)";
 #else
     auto cnt = "";

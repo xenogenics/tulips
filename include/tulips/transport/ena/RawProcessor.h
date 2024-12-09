@@ -1,5 +1,5 @@
-#include <tulips/system/CircularBuffer.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/FrameBuffer.h>
 #include <tulips/system/SpinLock.h>
 #include <tulips/transport/Processor.h>
 #include <vector>
@@ -14,11 +14,11 @@ public:
                  const Timestamp ts) override;
   Status sent(UNUSED const uint16_t len, UNUSED uint8_t* const data) override;
 
-  void add(system::CircularBuffer::Ref const& buffer);
+  void add(system::FrameBuffer::Ref const& buffer);
 
 private:
   system::SpinLock m_lock;
-  std::vector<system::CircularBuffer::Ref> m_buffers;
+  std::vector<system::FrameBuffer::Ref> m_buffers;
 };
 
 }

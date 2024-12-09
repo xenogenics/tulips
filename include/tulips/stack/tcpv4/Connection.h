@@ -4,9 +4,9 @@
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Producer.h>
-#include <tulips/stack/tcpv4/FrameBuffer.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Segment.h>
+#include <tulips/system/FrameBuffer.h>
 #include <tulips/system/SpinLock.h>
 #include <cstdint>
 #include <functional>
@@ -239,7 +239,7 @@ private:
    * Second cache line
    */
 
-  FrameBuffer m_fb;
+  system::FrameBuffer m_fb;
   uint16_t m_avlseg;
 
   /*

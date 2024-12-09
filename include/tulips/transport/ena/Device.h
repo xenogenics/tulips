@@ -2,8 +2,8 @@
 
 #include <tulips/stack/Ethernet.h>
 #include <tulips/stack/IPv4.h>
-#include <tulips/system/CircularBuffer.h>
 #include <tulips/system/Compiler.h>
+#include <tulips/system/FrameBuffer.h>
 #include <tulips/transport/Device.h>
 #include <tulips/transport/ena/AbstractionLayer.h>
 #include <tulips/transport/ena/RedirectionTable.h>
@@ -66,7 +66,7 @@ private:
          stack::ethernet::Address const& m_address, const uint32_t m_mtu,
          struct rte_mempool* const txpool, const bool bound);
 
-  system::CircularBuffer::Ref internalBuffer() { return m_buffer; }
+  system::FrameBuffer::Ref internalBuffer() { return m_buffer; }
 
   Status clearSentBuffers(Processor& proc);
 
@@ -79,8 +79,7 @@ private:
   RedirectionTable& m_reta;
   struct rte_mempool* m_txpool;
   bool m_bound;
-  system::CircularBuffer::Ref m_buffer;
-  uint8_t* m_packet;
+  system::FrameBuffer::Ref m_buffer;
   std::vector<struct rte_mbuf*> m_free;
   std::vector<SentBuffer> m_sent;
   uint64_t m_laststats;
