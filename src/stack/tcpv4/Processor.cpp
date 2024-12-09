@@ -653,27 +653,38 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           m_log.debug("TCP4", "<", e.id(), "> spurious rexmit of SEQ ", seqno);
         }
         /*
-         * Out-of-order or dropped packet.
+         * First out-of-order or dropped packet.
          */
-        else {
-          const auto was_empty = e.m_fb.empty();
+        else if (e.m_fb.empty()) {
+          const uint32_t diff = SEQ_DIFF(seqno, e.m_rcv_nxt);
+          /*
+           * Abort if the frame is ahead by more than 1 MTU.
+           *
+           * NOTE(xrg): this likely results from us being too slow and dropping
+           * packets. There is virtually no hope to catching up.
+           */
+          if (diff > m_device.mtu()) {
+            m_log.debug("TCP4", "<", e.id(), "> too-far-ahead SEQ: ", seqno,
+                        " (", diff, "B), aborting");
+            return abort(e);
+          }
           /*
            * Push the frame in the framebuffer.
            */
-          if (e.m_fb.push(len, data)) {
-            if (was_empty) {
-              auto delta = seqno - e.m_rcv_nxt;
-              m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
-                          " (", delta, "B)");
-            }
-          }
-          /*
-           * Abort in case of failure.
-           */
           else {
-            m_log.debug("TCP4", "<", e.id(), "> still behind, aborting");
-            return abort(e);
+            m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
+                        " (", diff, "B), buffering");
+            e.m_fb.push(len, data);
           }
+        }
+        /*
+         * Keep buffering until we run out of space.
+         */
+        else if (!e.m_fb.push(len, data)) {
+          const auto len = e.m_fb.length();
+          m_log.debug("TCP4", "<", e.id(), "> still behind after ", len,
+                      "B, aborting");
+          return abort(e);
         }
         /*
          * Reset the delayed ACK timer.

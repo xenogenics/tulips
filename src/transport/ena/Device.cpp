@@ -146,10 +146,10 @@ Device::poll(Processor& proc)
   /*
    * Define the RX buffer quota.
    */
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
   static const uint16_t RX_QUOTA = 32;
 #endif
-  static const size_t POLL_DEBUG_THRESHOLD = m_nrxbs >> 1;
+  static const size_t POLL_DEBUG_THRESHOLD = m_nrxbs >> 3;
   /*
    * Print statistics every 10 seconds.
    */
@@ -158,7 +158,7 @@ Device::poll(Processor& proc)
    * Cap the execution of the processor to 10ms.
    */
   static const size_t TIME_QUOTA_NS = 10 * system::Clock::MILLISECOND;
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
   static const size_t TIME_QUOTA = Clock::toTicks(TIME_QUOTA_NS);
 #endif
   /*
@@ -218,7 +218,7 @@ Device::poll(Processor& proc)
    * Poll the device while there is data.
    */
   size_t pktcnt = 0;
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
   size_t end_ts = Clock::instant();
   while (end_ts - start_ts < TIME_QUOTA) {
     ret = poll(proc, RX_QUOTA, pktcnt);
@@ -235,7 +235,7 @@ Device::poll(Processor& proc)
    * Log how many buffer were processed.
    */
   if (pktcnt > 0) {
-#ifdef ENA_CAP_POLLING
+#if ENA_CAP_POLLING
     auto cnt = pktcnt % 64 == 0 ? " (+)" : " (=)";
 #else
     auto cnt = "";

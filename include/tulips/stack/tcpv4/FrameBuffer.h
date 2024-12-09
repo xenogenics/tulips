@@ -53,6 +53,8 @@ public:
 
   Frame const& peek() const;
 
+  size_t length() const { return m_buffer->readAvailable(); }
+
   bool empty() const { return m_buffer->empty(); }
   void clear() { m_buffer->reset(); }
 
