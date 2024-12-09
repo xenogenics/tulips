@@ -24,7 +24,7 @@
 #include <dpdk/rte_thash.h>
 #include <net/ethernet.h>
 
-#define ENA_CAP_POLLING 1
+#define ENA_CAP_POLLING 0
 
 namespace tulips::transport::ena {
 
