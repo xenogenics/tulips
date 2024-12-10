@@ -1,4 +1,3 @@
-#include "Debug.h"
 #include <tulips/stack/IPv4.h>
 #include <tulips/stack/TCPv4.h>
 #include <tulips/stack/Utils.h>
@@ -85,6 +84,7 @@ Processor::open(Connection::ID& id)
    * Last resort, we allocate a new connection.
    */
   auto c = Connection::allocate(m_conns.size());
+  c->m_state = Connection::OPEN;
   id = c->id();
   m_conns.emplace_back(std::move(c));
   /*
