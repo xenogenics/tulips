@@ -100,12 +100,12 @@ protected:
      * Create the client.
      */
     m_client =
-      api::Client::allocate(m_log, m_cdlg, *m_cdev, 2, m_cip4, route, nmask);
+      api::Client::allocate(m_log, m_cdlg, *m_cdev, m_cip4, route, nmask);
     /*
      * Create the server.
      */
     m_server =
-      api::Server::allocate(m_log, m_sdlg, *m_sdev, 2, m_sip4, route, nmask);
+      api::Server::allocate(m_log, m_sdlg, *m_sdev, m_sip4, route, nmask);
   }
 
   system::ConsoleLogger m_log;
@@ -127,10 +127,8 @@ TEST_F(API_OneClient, OpenClose)
 {
   api::Client::ID id1 = api::Client::DEFAULT_ID;
   api::Client::ID id2 = api::Client::DEFAULT_ID;
-  api::Client::ID id3 = api::Client::DEFAULT_ID;
   ASSERT_EQ(Status::Ok, m_client->open(id1));
   ASSERT_EQ(Status::Ok, m_client->open(id2));
-  ASSERT_EQ(Status::NoMoreResources, m_client->open(id3));
   ASSERT_EQ(Status::NotConnected, m_client->close(id2));
   ASSERT_EQ(Status::NotConnected, m_client->close(id1));
 }

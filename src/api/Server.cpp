@@ -7,9 +7,8 @@ namespace tulips::api {
 using namespace stack;
 
 Server::Server(system::Logger& log, Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-               stack::ipv4::Address const& nm)
+               transport::Device& device, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& gw, stack::ipv4::Address const& nm)
   : m_log(log)
   , m_delegate(delegate)
   , m_ethto(log, device, device.address())
@@ -25,7 +24,7 @@ Server::Server(system::Logger& log, Delegate& delegate,
 #ifdef TULIPS_ENABLE_RAW
   , m_raw()
 #endif
-  , m_tcp(log, device, m_ethto, m_ip4to, *this, nconn)
+  , m_tcp(log, device, m_ethto, m_ip4to, *this)
 {
   /*
    * Hint the device about checksum.

@@ -2,8 +2,8 @@
 
 namespace tulips::stack::tcpv4 {
 
-Connection::Connection()
-  : m_id(-1)
+Connection::Connection(const ID id)
+  : m_id(id)
   , m_rethaddr()
   , m_ripaddr()
   , m_lport(0)

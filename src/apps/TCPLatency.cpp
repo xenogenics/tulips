@@ -115,14 +115,12 @@ run(Options const& options, transport::Device::Ref dev)
    */
   api::interface::Client* client = nullptr;
   if (options.withSSL()) {
-    client = new tulips::ssl::Client(log, delegate, *device, 1,
-                                     options.source(), options.route(),
-                                     options.mask(), tulips::ssl::Protocol::TLS,
-                                     options.sslCert(), options.sslKey());
+    client = new tulips::ssl::Client(
+      log, delegate, *device, options.source(), options.route(), options.mask(),
+      tulips::ssl::Protocol::TLS, options.sslCert(), options.sslKey());
   } else {
-    client = new tulips::api::Client(log, delegate, *device, 1,
-                                     options.source(), options.route(),
-                                     options.mask());
+    client = new tulips::api::Client(log, delegate, *device, options.source(),
+                                     options.route(), options.mask());
   }
   /*
    * Set the CPU affinity.
@@ -397,12 +395,10 @@ run(Options const& options, transport::Device::Ref dev)
   api::interface::Server* server = nullptr;
   if (options.withSSL()) {
     server = new tulips::ssl::Server(
-      log, delegate, *device, options.connections(), options.source(),
-      options.route(), options.mask(), tulips::ssl::Protocol::TLS,
-      options.sslCert(), options.sslKey());
+      log, delegate, *device, options.source(), options.route(), options.mask(),
+      tulips::ssl::Protocol::TLS, options.sslCert(), options.sslKey());
   } else {
-    server = new tulips::api::Server(log, delegate, *device,
-                                     options.connections(), options.source(),
+    server = new tulips::api::Server(log, delegate, *device, options.source(),
                                      options.route(), options.mask());
   }
   delegate.setServer(server);

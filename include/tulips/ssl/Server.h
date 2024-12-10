@@ -24,14 +24,13 @@ public:
 
   static Ref allocate(system::Logger& log,
                       api::interface::Server::Delegate& delegate,
-                      transport::Device& device, const size_t nconn,
-                      stack::ipv4::Address const& ip,
+                      transport::Device& device, stack::ipv4::Address const& ip,
                       stack::ipv4::Address const& gw,
                       stack::ipv4::Address const& nm, const ssl::Protocol type,
                       std::string_view cert, std::string_view key)
   {
-    return std::make_unique<Server>(log, delegate, device, nconn, ip, gw, nm,
-                                    type, cert, key);
+    return std::make_unique<Server>(log, delegate, device, ip, gw, nm, type,
+                                    cert, key);
   }
 
   /*
@@ -39,10 +38,9 @@ public:
    */
 
   Server(system::Logger& log, api::interface::Server::Delegate& delegate,
-         transport::Device& device, const size_t nconn,
-         stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-         stack::ipv4::Address const& nm, const ssl::Protocol type,
-         std::string_view cert, std::string_view key);
+         transport::Device& device, stack::ipv4::Address const& ip,
+         stack::ipv4::Address const& gw, stack::ipv4::Address const& nm,
+         const ssl::Protocol type, std::string_view cert, std::string_view key);
 
   ~Server() override;
 
@@ -120,7 +118,6 @@ private:
   api::interface::Server::Delegate& m_delegate;
   system::Logger& m_log;
   std::unique_ptr<api::Server> m_server;
-  size_t m_nconn;
   void* m_ssl;
   Connections m_cns;
 };

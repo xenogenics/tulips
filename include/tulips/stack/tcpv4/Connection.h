@@ -10,6 +10,7 @@
 #include <tulips/system/SpinLock.h>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <stdexcept>
 
 namespace tulips::stack::tcpv4 {
@@ -34,8 +35,19 @@ static constexpr int USED MAXSYNRTX = 5;
 class Connection
 {
 public:
+  /**
+   * Connection ID.
+   */
   using ID = uint16_t;
 
+  /**
+   * Connection reference.
+   */
+  using Ref = std::unique_ptr<Connection>;
+
+  /**
+   * Connection state.
+   */
   enum State : uint8_t
   {
     CLOSE = 0x1,
@@ -51,6 +63,9 @@ public:
     TIME_WAIT = 0xB,
   };
 
+  /**
+   * Connection option.
+   */
   enum Option : uint16_t
   {
     /**
@@ -67,22 +82,61 @@ public:
     KEEP_ALIVE = 0x4,
   };
 
-  Connection();
+  /**
+   * Allocate a new connection.
+   */
+  static Ref allocate(const ID id) { return std::make_unique<Connection>(id); }
 
+  /*
+   * Constructor.
+   */
+
+  Connection(const ID id);
+
+  /**
+   * @return the connection's ID.
+   */
   inline ID id() const { return m_id; }
 
+  /**
+   * @return the connection's local port.
+   */
   inline uint16_t localPort() const { return m_lport; }
 
+  /**
+   * @return the connection's remote port.
+   */
   inline uint16_t remotePort() const { return m_rport; }
 
+  /**
+   * @return the connection's cookie.
+   */
   inline void* cookie() const { return m_cookie; }
 
+  /**
+   * Set the connection's cookie.
+   *
+   * @param cookie a new cookie.
+   */
   inline void setCookie(void* const cookie) { m_cookie = cookie; }
 
+  /**
+   * Set some connection options.
+   *
+   * @param opts the options to set.
+   */
   inline void setOptions(const uint8_t opts) { m_opts |= opts; }
 
+  /**
+   * Clear some connection options.
+   *
+   * @param opts the options to clear.
+   */
   inline void clearOptions(const uint8_t opts) { m_opts &= ~opts; }
 
+  /**
+   * @return true if the connection needs to push some data.
+   */
   inline bool isNewDataPushed() const { return m_pshdata; }
 
 private:
