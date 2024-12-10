@@ -12,7 +12,7 @@ jobs:
     container: 
       image: xenogenics/tulips-builder
       env:
-        CTEST_PARALLEL_LEVEL: 2
+        CTEST_OUTPUT_ON_FAILURE: 1
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3
@@ -22,6 +22,15 @@ jobs:
         run: make build
       - name: test
         run: make test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clang-tests-artifacts
+          retention-days: 1
+          path: |
+            build/tests/**/*.keys
+            build/tests/**/*.log
+            build/tests/**/*.pcap
   build-debug-and-test-with-gcc:
     runs-on: ubuntu-latest
     container: 
@@ -29,7 +38,7 @@ jobs:
       env:
         CC: gcc
         CXX: g++
-        CTEST_PARALLEL_LEVEL: 2
+        CTEST_OUTPUT_ON_FAILURE: 1
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3
@@ -39,12 +48,19 @@ jobs:
         run: make build
       - name: test
         run: make test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gcc-tests-artifacts
+          retention-days: 1
+          path: |
+            build/tests/**/*.keys
+            build/tests/**/*.log
+            build/tests/**/*.pcap
   build-release-with-clang:
     runs-on: ubuntu-latest
     container: 
       image: xenogenics/tulips-builder
-      env:
-        CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3
@@ -59,7 +75,6 @@ jobs:
       env:
         CC: gcc
         CXX: g++
-        CTEST_PARALLEL_LEVEL: 2
       options: --cpus 2
     steps:
       - uses: actions/checkout@v3

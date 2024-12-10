@@ -58,7 +58,7 @@ private:
 #if defined(__x86_64__)
   inline static Instant cycles() { return __rdtsc(); }
 #elif defined(__aarch64__)
-  inline static Instant cycles() { return clock(); }
+  inline static Instant cycles() { return clock() / 1000; }
 #else
 #error "Processor architecture not supported"
 #endif

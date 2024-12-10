@@ -1,7 +1,6 @@
 #pragma once
 
 #include <tulips/transport/Device.h>
-#include <string>
 #include <vector>
 
 namespace tulips::transport::bond {
@@ -71,6 +70,7 @@ public:
 private:
   using Devices = std::vector<transport::Device::Ref>;
 
+  system::Logger& m_log;
   Devices m_devices;
   size_t m_listens;
   size_t m_prepares;

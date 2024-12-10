@@ -381,11 +381,11 @@ Client::onConnected(ID const& id, void* const cookie, const Timestamp ts)
     stack::tcpv4::Port lport, rport;
     m_client.get(id, laddr, lport, raddr, rport);
     path.append(laddr.toString());
-    path.append(":");
+    path.append("_");
     path.append(std::to_string(lport));
     path.append("_");
     path.append(raddr.toString());
-    path.append(":");
+    path.append("_");
     path.append(std::to_string(rport));
     path.append(".keys");
     keyfd = ::open(path.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);

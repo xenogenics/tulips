@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 
+#if defined(__x86_64__)
 namespace {
 
 constexpr size_t N_SAMPLES = 100;
@@ -53,13 +54,14 @@ tickPeriod()
 }
 
 }
+#endif
 
 namespace tulips::system {
 
 #if defined(__x86_64__)
 const size_t Clock::TICKS_PER_SECOND = tickPeriod();
 #elif defined(__aarch64__)
-const size_t Clock::TICKS_PER_SECOND = Clock::SECOND;
+const size_t Clock::TICKS_PER_SECOND = Clock::MILLISECOND;
 #else
 #error "Processor architecture not supported"
 #endif

@@ -5,6 +5,7 @@
 #include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Processor.h>
+#include <tulips/stack/tcpv4/Utils.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Utils.h>
 #include <cstdint>
@@ -79,8 +80,7 @@ Processor::run()
     /*
      * Get the ticks and reset the timer.
      */
-    auto ticks = m_fast.ticks();
-    m_fast.reset();
+    auto ticks = m_fast.reset();
     /*
      * Call the handler.
      */
@@ -97,8 +97,7 @@ Processor::run()
     /*
      * Get the ticks and reset the timer.
      */
-    auto ticks = m_slow.ticks();
-    m_slow.reset();
+    auto ticks = m_slow.reset();
     /*
      * Call the handler.
      */
@@ -145,9 +144,62 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   auto i = m_index.find(std::hash<Header>()(*INTCP));
   if (i != m_index.end()) {
     auto& c = m_conns[i->second];
-    if (c.m_state != Connection::CLOSED &&
-        c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
-      return process(c, len, data, ts);
+    if (c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
+      if (c.m_state != Connection::CLOSED) {
+        size_t bufcnt = 0;
+        size_t buflen = 0;
+        /*
+         * Process the incoming packet.
+         */
+        auto ret = process(c, len, data, ts);
+        if (ret != Status::Ok) {
+          return ret;
+        }
+        /*
+         * Process any buffered packet.
+         *
+         * NOTE(xrg): stale frames are automatically ignored.
+         */
+        while (!c.m_fb.empty()) {
+          auto const& frame = c.m_fb.peek();
+          const uint32_t seqno = ntohl(frame.as<Header>().seqno);
+          /*
+           * Break if the frame is ahead.
+           */
+          if (SEQ_GT(seqno, c.m_rcv_nxt)) {
+            break;
+          }
+          /*
+           * Process the frame if the sequences match.
+           */
+          if (seqno == c.m_rcv_nxt) {
+            auto ret = process(c, frame.length(), frame.data(), ts);
+            if (ret != Status::Ok) {
+              return ret;
+            }
+          }
+          /*
+           * Update the counters.
+           */
+          bufcnt += 1;
+          buflen += frame.length();
+          /*
+           * Pop the frame.
+           */
+          c.m_fb.pop();
+        }
+        /*
+         * Log how many buffer we processed.
+         */
+        if (bufcnt > 0) {
+          m_log.debug("TCP4", "<", c.id(), "> processed ", bufcnt,
+                      " buffered frame(s) (", buflen, "B)");
+        }
+      }
+      /*
+       * Done.
+       */
+      return Status::Ok;
     }
   }
   /*
@@ -248,7 +300,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * Prepare the connection segment. SYN segments don't contain any data but
    * have a size of 1 to increase the sequence number by 1.
    */
-  Segment& seg = e->nextAvailableSegment();
+  Segment& seg = e->acquireSegment();
   seg.set(1, e->m_snd_nxt, sdat);
   /*
    * Parse the TCP MSS option, if present.
@@ -399,7 +451,7 @@ Processor::onSlowTimer(const size_t ticks)
     /*
      * Handle retransmissions.
      */
-    if (e.hasOutstandingSegments()) {
+    if (e.hasUsedSegments()) {
       /*
        * Update the retransmission tick counter.
        */
@@ -436,9 +488,9 @@ Processor::onSlowTimer(const size_t ticks)
         m_log.debug("TCP4", "<", e.id(), "> automatic repeat request (",
                     size_t(e.m_nrtx), "/", MAXRTX, ")");
         m_log.debug("TCP4", "<", e.id(), "> segments available? ",
-                    std::boolalpha, e.hasAvailableSegments());
+                    std::boolalpha, e.hasFreeSegments());
         m_log.debug("TCP4", "<", e.id(), "> segments outstanding? ",
-                    std::boolalpha, e.hasOutstandingSegments());
+                    std::boolalpha, e.hasUsedSegments());
         /*
          * Retransmit.
          */
@@ -471,8 +523,8 @@ Processor::onSlowTimer(const size_t ticks)
       /*
        * If the connection is not live, send the keep-alive.
        */
-      if (e.m_ktm > 0 && e.hasAvailableSegments()) {
-        m_log.debug("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
+      if (e.m_ktm > 0 && e.hasFreeSegments()) {
+        m_log.trace("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
         /*
          * Send the ACK.
          */
@@ -513,12 +565,16 @@ Processor::close(Connection& e)
   m_device.unlisten(ipv4::Protocol::TCP, m_ipv4to.hostAddress(), e.m_lport);
   m_index.erase(std::hash<Connection>()(e));
   /*
+   * Clear the frame buffer.
+   */
+  e.m_fb.clear();
+  /*
    * Clear the segments.
    */
   for (auto& s : e.m_segments) {
-    if (s.m_len > 0) {
-      m_ipv4to.release(s.m_dat);
-      s.clear();
+    if (s.length() > 0) {
+      m_ipv4to.release(s.data());
+      e.releaseSegment(s);
     }
   }
   /*
@@ -588,8 +644,34 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        * And the sequence number is not expected.
        */
       if (seqno != e.m_rcv_nxt) {
-        m_log.debug("TCP4", "<", e.id(), "> unexpected SEQ ", seqno,
-                    ", sending ACK for ", e.m_rcv_nxt);
+        /*
+         * Spurious rexmit, we just ignore those.
+         */
+        if (SEQ_LT(seqno, e.m_rcv_nxt)) {
+          m_log.debug("TCP4", "<", e.id(), "> spurious rexmit of SEQ ", seqno);
+        }
+        /*
+         * Out-of-order or dropped packet.
+         */
+        else {
+          /*
+           * Log the event.
+           */
+          if (e.m_fb.empty()) {
+            const uint32_t diff = SEQ_DIFF(seqno, e.m_rcv_nxt);
+            m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
+                        " (", diff, "B), buffering");
+          }
+          /*
+           * Push the frame in the buffer.
+           */
+          if (!e.m_fb.push(len, data, ts)) {
+            const auto len = e.m_fb.length();
+            m_log.debug("TCP4", "<", e.id(), "> still behind after ", len,
+                        "B, aborting");
+            return abort(e);
+          }
+        }
         /*
          * Reset the delayed ACK timer.
          */
@@ -608,9 +690,12 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    * we update the sequence number, reset the length of the outstanding data,
    * calculate RTT estimations, and reset the retransmission timer.
    */
-  if ((INTCP->flags & Flag::ACK) && e.hasOutstandingSegments()) {
+  if ((INTCP->flags & Flag::ACK) && e.hasUsedSegments()) {
     /*
      * Scan the available segments.
+     *
+     * NOTE(xrg): available segments are always contiguous. So we dont' bother
+     * checking whether a segment is empty or not.
      */
     for (size_t i = 0; i < e.usedSegments(); i += 1) {
       /*
@@ -620,19 +705,19 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Compute the expected ackno.
        */
-      uint64_t explm = (uint64_t)seg.m_seq + seg.m_len;
+      uint64_t explm = (uint64_t)seg.seq() + seg.length();
       uint64_t acklm = ackno;
       /*
        * Linearly adjust the received ACK number to handle overflow cases.
        */
-      if (ackno < seg.m_seq) {
+      if (ackno < seg.seq()) {
         acklm += 1ULL << 32;
       }
       /*
        * Check if the peers is letting us know about something that went amok.
        * It can be either an OoO packet or a window size change.
        */
-      if (ackno == seg.m_seq) {
+      if (ackno == seg.seq()) {
         /*
          * Stop checking if the ACK is also a FIN or has payload. The current
          * segment could be in-flight and the server has not processed it yet.
@@ -702,13 +787,17 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Release the buffer associated with the segment.
        */
-      m_ipv4to.release(seg.m_dat);
+      m_ipv4to.release(seg.data());
       /*
-       * Clear the current seqgment and go to the next segment. The compiler
-       * will generate the wrap-around appropriate for the bit length of the
-       * index.
+       * Clear the current segment.
        */
-      seg.clear();
+      e.releaseSegment(seg);
+      /*
+       * Go to the next segment.
+       *
+       * NOTE(xrg): the compiler will generate the wrap-around appropriate for
+       * the bit length of the index.
+       */
       e.m_segidx += 1;
       /*
        * Stop processing the segments if the ACK number is the one expected.
@@ -833,7 +922,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * If some of our data is still in flight, ignore the FIN.
          */
-        if (e.hasOutstandingSegments()) {
+        if (e.hasUsedSegments()) {
           m_log.debug("TCP4", "<", e.id(),
                       "> FIN received but outstanding data");
           return Status::Ok;
@@ -856,7 +945,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         m_log.debug("TCP4", "<", e.id(), "> last ACK");
         e.m_state = Connection::LAST_ACK;
-        Segment& seg = e.nextAvailableSegment();
+        Segment& seg = e.acquireSegment();
         seg.set(1, e.m_snd_nxt, e.m_sdat);
         e.resetSendBuffer();
         return sendFinAck(e, seg);
@@ -915,7 +1004,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * Check if the application can send.
          */
-        bool can_send = e.hasAvailableSegments() && e.window() > e.m_slen;
+        bool can_send = e.hasFreeSegments() && e.window() > e.m_slen;
         /*
          * Notify the application on an ACK.
          */
@@ -978,7 +1067,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           /*
            * Update the send state.
            */
-          can_send = e.hasAvailableSegments() && e.window() > e.m_slen;
+          can_send = e.hasFreeSegments() && e.window() > e.m_slen;
         }
         /*
          * Collect the connection's buffer state.
@@ -1006,7 +1095,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              */
             if (e.hasPendingSendData() && can_send) {
               res = sendNoDelay(e, Flag::PSH);
-              can_send = e.hasAvailableSegments() && e.window() > 0;
+              can_send = e.hasFreeSegments() && e.window() > 0;
             }
             /*
              * Otherwise, just send the ACK.
@@ -1078,7 +1167,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           /*
            * Update the send state.
            */
-          can_send = e.hasAvailableSegments() && e.window() > e.m_slen;
+          can_send = e.hasFreeSegments() && e.window() > e.m_slen;
         }
         /*
          * If there is any buffered send data, send it.
@@ -1197,7 +1286,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Check if there is still data in flight. In that case, keep waiting.
        */
-      if (e.hasOutstandingSegments()) {
+      if (e.hasUsedSegments()) {
         break;
       }
       /*
@@ -1206,7 +1295,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       m_log.debug("TCP4", "<", e.id(), "> FIN wait #1");
       e.m_state = Connection::FIN_WAIT_1;
-      Segment& seg = e.nextAvailableSegment();
+      Segment& seg = e.acquireSegment();
       seg.set(1, e.m_snd_nxt, e.m_sdat);
       e.resetSendBuffer();
       /*

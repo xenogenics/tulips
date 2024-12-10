@@ -6,6 +6,7 @@
 #include <tulips/stack/ipv4/Producer.h>
 #include <tulips/stack/tcpv4/Options.h>
 #include <tulips/stack/tcpv4/Segment.h>
+#include <tulips/system/FrameBuffer.h>
 #include <tulips/system/SpinLock.h>
 #include <cstdint>
 #include <functional>
@@ -23,7 +24,7 @@ static constexpr int USED MAXSYNRTX = 5;
  * We rely on the compiler to wrap around the value of the next segment. We
  * need at least 3 bits for NRTX to SEGM_B cannot be more that 5.
  */
-#define SEGM_B 4
+#define SEGM_B 5
 #define NRTX_B (8 - SEGM_B)
 
 #define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
@@ -88,32 +89,11 @@ private:
   static constexpr size_t SEGMENT_COUNT = 1 << SEGM_B;
   static constexpr size_t SEGMENT_BMASK = SEGMENT_COUNT - 1;
 
-  inline void armAckTimer(const uint32_t sendnxt)
-  {
-    if (m_newdata && m_atm == 0 && sendnxt == m_snd_nxt) {
-      m_atm = ATO;
-    }
-  }
+  /*
+   * State.
+   */
 
-  inline bool hasAvailableSegments() const
-  {
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len == 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  inline bool hasOutstandingSegments() const
-  {
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len != 0) {
-        return true;
-      }
-    }
-    return false;
-  }
+  inline bool isActive() const { return m_state != CLOSED; }
 
   inline bool hasPendingSendData() const { return m_slen != 0; }
 
@@ -126,8 +106,6 @@ private:
     }
   }
 
-  inline bool isActive() const { return m_state != CLOSED; }
-
   inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
   {
     return header.dstport == m_lport && header.srcport == m_rport &&
@@ -139,44 +117,6 @@ private:
   inline uint32_t window(const uint16_t wnd) const
   {
     return (uint32_t)wnd << m_wndscl;
-  }
-
-  inline size_t id(Segment const& s) const { return &s - m_segments; }
-
-  inline Segment& segment() { return m_segments[m_segidx]; }
-
-  inline size_t freeSegments() const
-  {
-    size_t count = 0;
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len == 0) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  inline size_t usedSegments() const
-  {
-    size_t count = 0;
-    for (size_t i = 0; i < SEGMENT_COUNT; i += 1) {
-      if (m_segments[i].m_len > 0) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  inline Segment& nextAvailableSegment()
-  {
-    size_t idx = 0;
-    for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
-      idx = i & SEGMENT_BMASK;
-      if (m_segments[idx].m_len == 0) {
-        return m_segments[idx];
-      }
-    }
-    throw std::runtime_error("have you called hasAvailableSegments()?");
   }
 
   inline void updateRttEstimation()
@@ -200,7 +140,58 @@ private:
   }
 
   /*
-   * Member variables, all in one cache line.
+   * Timers.
+   */
+
+  inline void armAckTimer(const uint32_t sendnxt)
+  {
+    if (m_newdata && m_atm == 0 && sendnxt == m_snd_nxt) {
+      m_atm = ATO;
+    }
+  }
+
+  /*
+   * Segments metadata.
+   */
+
+  inline Segment& segment() { return m_segments[m_segidx]; }
+
+  inline size_t segmentIndex(Segment const& s) const { return &s - m_segments; }
+
+  inline bool hasFreeSegments() const { return freeSegments() > 0; }
+
+  inline size_t freeSegments() const { return m_avlseg; }
+
+  inline bool hasUsedSegments() const { return usedSegments() > 0; }
+
+  inline size_t usedSegments() const { return SEGMENT_COUNT - m_avlseg; }
+
+  /*
+   * Segment allocation.
+   */
+
+  inline Segment& acquireSegment()
+  {
+    size_t idx = 0;
+    for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
+      idx = i & SEGMENT_BMASK;
+      if (m_segments[idx].length() == 0) {
+        m_avlseg -= 1;
+        return m_segments[idx];
+      }
+    }
+    throw std::runtime_error("have you called hasAvailableSegments()?");
+  }
+
+  inline void releaseSegment(Segment& segment)
+  {
+    auto index = segmentIndex(segment);
+    m_segments[index].clear();
+    m_avlseg += 1;
+  }
+
+  /*
+   * First cache line.
    */
 
   ID m_id;                      // 2 - Connection ID
@@ -245,11 +236,20 @@ private:
   void* m_cookie;        // 8 - Application state
 
   /*
-   * Segments. Size is 16B per segment, 4 segments per cache line, for a maximum
-   * of 16 segments (segment index is 4 bits).
+   * Second cache line
    */
 
-  Segment m_segments[SEGMENT_COUNT];
+  system::FrameBuffer m_fb;
+  uint16_t m_avlseg;
+
+  /*
+   * Next 4 cache lines: segments.
+   *
+   * Size is 16B per segment, 4 segments per cache line, for a maximum of 16
+   * segments (segment index is 4 bits).
+   */
+
+  Segment m_segments[SEGMENT_COUNT] __attribute__((aligned(64)));
 
   /*
    * Friendship declaration.
@@ -261,7 +261,7 @@ private:
 
 } __attribute__((aligned(64)));
 
-static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 64,
+static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 128,
               "Size of tcpv4::Connection is invalid");
 }
 
