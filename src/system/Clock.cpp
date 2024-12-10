@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 
+#if defined(__x86_64__)
 namespace {
 
 constexpr size_t N_SAMPLES = 100;
@@ -53,6 +54,7 @@ tickPeriod()
 }
 
 }
+#endif
 
 namespace tulips::system {
 
