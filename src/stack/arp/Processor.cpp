@@ -32,8 +32,7 @@ Processor::run()
    * Poll the timer
    */
   if (m_timer.expired()) {
-    m_time += m_timer.ticks();
-    m_timer.reset();
+    m_time += m_timer.reset();
     for (auto& e : m_table) {
       if (e.ipaddr.empty()) {
         continue;

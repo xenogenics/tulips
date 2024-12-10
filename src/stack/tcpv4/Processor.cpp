@@ -80,8 +80,7 @@ Processor::run()
     /*
      * Get the ticks and reset the timer.
      */
-    auto ticks = m_fast.ticks();
-    m_fast.reset();
+    auto ticks = m_fast.reset();
     /*
      * Call the handler.
      */
@@ -98,8 +97,7 @@ Processor::run()
     /*
      * Get the ticks and reset the timer.
      */
-    auto ticks = m_slow.ticks();
-    m_slow.reset();
+    auto ticks = m_slow.reset();
     /*
      * Call the handler.
      */

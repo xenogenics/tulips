@@ -318,7 +318,13 @@ Processor::isClosed(const Connection::ID id) const
   if (id >= m_nconn) {
     return true;
   }
+  /*
+   * Get the connection.
+   */
   Connection const& c = m_conns[id];
+  /*
+   * Check its state.
+   */
   return c.m_state == Connection::CLOSED;
 }
 

@@ -13,16 +13,18 @@ public:
     m_start = Clock::instant();
   }
 
-  inline void reset() { m_start = Clock::instant(); }
+  inline size_t reset()
+  {
+    const auto end = Clock::instant();
+    const auto dlt = end - m_start;
+    const auto res = dlt / m_interval;
+    m_start = end;
+    return res;
+  }
 
   inline bool expired() const
   {
     return Clock::instant() - m_start >= m_interval;
-  }
-
-  inline size_t ticks() const
-  {
-    return (Clock::instant() - m_start) / m_interval;
   }
 
 private:
