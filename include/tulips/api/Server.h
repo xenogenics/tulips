@@ -32,20 +32,19 @@ public:
    */
 
   static Ref allocate(system::Logger& log, Delegate& dlg,
-                      transport::Device& device, const size_t nconn,
-                      stack::ipv4::Address const& ip,
+                      transport::Device& device, stack::ipv4::Address const& ip,
                       stack::ipv4::Address const& gw,
                       stack::ipv4::Address const& nm)
   {
-    return std::make_unique<Server>(log, dlg, device, nconn, ip, gw, nm);
+    return std::make_unique<Server>(log, dlg, device, ip, gw, nm);
   }
 
   /**
    * Constructor and destructor.
    */
   Server(system::Logger& log, Delegate& delegate, transport::Device& device,
-         const size_t nconn, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& gw, stack::ipv4::Address const& nm);
+         stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+         stack::ipv4::Address const& nm);
 
   /**
    * Device interface.

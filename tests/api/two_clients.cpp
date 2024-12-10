@@ -129,14 +129,14 @@ protected:
      * Create the clients.
      */
     m_client1 =
-      api::Client::allocate(m_log, m_c1dlg, *m_cdev, 1, m_cip4, route, nmask);
+      api::Client::allocate(m_log, m_c1dlg, *m_cdev, m_cip4, route, nmask);
     m_client2 =
-      api::Client::allocate(m_log, m_c2dlg, *m_cdev, 1, m_cip4, route, nmask);
+      api::Client::allocate(m_log, m_c2dlg, *m_cdev, m_cip4, route, nmask);
     /*
      * Create the server.
      */
     m_server =
-      api::Server::allocate(m_log, m_sdlg, *m_sdev, 2, m_sip4, route, nmask);
+      api::Server::allocate(m_log, m_sdlg, *m_sdev, m_sip4, route, nmask);
     /*
      * Server listens.
      */

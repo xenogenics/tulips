@@ -19,19 +19,17 @@ namespace tulips::stack::tcpv4 {
 
 Processor::Processor(system::Logger& log, transport::Device& device,
                      ethernet::Producer& eth, ipv4::Producer& ip4,
-                     EventHandler& h, const size_t nconn)
+                     EventHandler& h)
   : m_log(log)
   , m_device(device)
   , m_ethto(eth)
   , m_ipv4to(ip4)
   , m_handler(h)
-  , m_nconn(nconn)
   , m_ethfrom(nullptr)
   , m_ipv4from(nullptr)
   , m_iss(0)
   , m_mss(m_ipv4to.mss() - HEADER_LEN)
   , m_listenports()
-  , m_conns()
   , m_index()
   , m_stats()
   , m_fast()
@@ -45,13 +43,7 @@ Processor::Processor(system::Logger& log, transport::Device& device,
   /*
    * Resize the connections.
    */
-  m_conns.resize(nconn);
-  /*
-   * Set the connection IDs.
-   */
-  for (uint16_t id = 0; id < nconn; id += 1) {
-    m_conns[id].m_id = id;
-  }
+  m_conns.reserve(512);
 }
 
 void
@@ -144,14 +136,14 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   auto i = m_index.find(std::hash<Header>()(*INTCP));
   if (i != m_index.end()) {
     auto& c = m_conns[i->second];
-    if (c.matches(m_ipv4from->sourceAddress(), *INTCP)) {
-      if (c.m_state != Connection::CLOSED) {
+    if (c->matches(m_ipv4from->sourceAddress(), *INTCP)) {
+      if (c->m_state != Connection::CLOSED) {
         size_t bufcnt = 0;
         size_t buflen = 0;
         /*
          * Process the incoming packet.
          */
-        auto ret = process(c, len, data, ts);
+        auto ret = process(*c, len, data, ts);
         if (ret != Status::Ok) {
           return ret;
         }
@@ -160,20 +152,20 @@ Processor::process(const uint16_t len, const uint8_t* const data,
          *
          * NOTE(xrg): stale frames are automatically ignored.
          */
-        while (!c.m_fb.empty()) {
-          auto const& frame = c.m_fb.peek();
+        while (!c->m_fb.empty()) {
+          auto const& frame = c->m_fb.peek();
           const uint32_t seqno = ntohl(frame.as<Header>().seqno);
           /*
            * Break if the frame is ahead.
            */
-          if (SEQ_GT(seqno, c.m_rcv_nxt)) {
+          if (SEQ_GT(seqno, c->m_rcv_nxt)) {
             break;
           }
           /*
            * Process the frame if the sequences match.
            */
-          if (seqno == c.m_rcv_nxt) {
-            auto ret = process(c, frame.length(), frame.data(), ts);
+          if (seqno == c->m_rcv_nxt) {
+            auto ret = process(*c, frame.length(), frame.data(), ts);
             if (ret != Status::Ok) {
               return ret;
             }
@@ -186,13 +178,13 @@ Processor::process(const uint16_t len, const uint8_t* const data,
           /*
            * Pop the frame.
            */
-          c.m_fb.pop();
+          c->m_fb.pop();
         }
         /*
          * Log how many buffer we processed.
          */
         if (bufcnt > 0) {
-          m_log.debug("TCP4", "<", c.id(), "> processed ", bufcnt,
+          m_log.debug("TCP4", "<", c->id(), "> processed ", bufcnt,
                       " buffered frame(s) (", buflen, "B)");
         }
       }
@@ -226,7 +218,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * no CLOSED connections are found.
    */
   for (e = m_conns.begin(); e != m_conns.end(); e++) {
-    if (e->m_state == Connection::CLOSED) {
+    if ((*e)->m_state == Connection::CLOSED) {
       break;
     }
   }
@@ -235,17 +227,23 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    */
   if (e == m_conns.end()) {
     for (auto c = m_conns.begin(); c != m_conns.end(); c++) {
-      if (c->m_state == Connection::TIME_WAIT) {
-        if (e == m_conns.end() || c->m_rtm > e->m_rtm) {
+      if ((*c)->m_state == Connection::TIME_WAIT) {
+        if (e == m_conns.end() || (*c)->m_rtm > (*e)->m_rtm) {
           e = c;
         }
       }
     }
   }
   /*
-   * If all connections are used already, we drop packet and hope that the
-   * remote end will retransmit the packet at a time when we have more spare
-   * connections.
+   * If all connections are used already, allocate a new connection.
+   */
+  if (e == m_conns.end() && m_conns.size() < MAX_CONNECTIONS) {
+    auto c = Connection::allocate(m_conns.size());
+    m_conns.emplace_back(std::move(c));
+    e = --m_conns.end();
+  }
+  /*
+   * If we could not allocate a new connection, abort.
    */
   if (e == m_conns.end()) {
     m_stats.syndrop += 1;
@@ -269,54 +267,54 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   /*
    * Prepare the connection.
    */
-  e->m_rethaddr = m_ethfrom->sourceAddress();
-  e->m_ripaddr = m_ipv4from->sourceAddress();
-  e->m_lport = INTCP->dstport;
-  e->m_rport = INTCP->srcport;
-  e->m_rcv_nxt = ntohl(INTCP->seqno) + 1;
-  e->m_snd_nxt = m_iss;
-  e->m_state = Connection::SYN_RCVD;
-  e->m_wndlvl = WndLimits::max();
-  e->m_atm = 0;
-  e->m_ktm = 0;
-  e->m_opts = 0;
-  e->m_ackdata = false;
-  e->m_newdata = false;
-  e->m_pshdata = false;
-  e->m_live = false;
-  e->m_wndscl = 0;
-  e->m_window = ntohs(INTCP->wnd);
-  e->m_segidx = 0;
-  e->m_nrtx = 0; // Initial SYN send
-  e->m_slen = 0;
-  e->m_sdat = nullptr;
-  e->m_initialmss = m_device.mtu() - HEADER_OVERHEAD;
-  e->m_mss = e->m_initialmss;
-  e->m_sa = 0;
-  e->m_sv = 4; // Initial value of the RTT variance
-  e->m_rto = RTO;
-  e->m_rtm = RTO;
+  (*e)->m_rethaddr = m_ethfrom->sourceAddress();
+  (*e)->m_ripaddr = m_ipv4from->sourceAddress();
+  (*e)->m_lport = INTCP->dstport;
+  (*e)->m_rport = INTCP->srcport;
+  (*e)->m_rcv_nxt = ntohl(INTCP->seqno) + 1;
+  (*e)->m_snd_nxt = m_iss;
+  (*e)->m_state = Connection::SYN_RCVD;
+  (*e)->m_wndlvl = WndLimits::max();
+  (*e)->m_atm = 0;
+  (*e)->m_ktm = 0;
+  (*e)->m_opts = 0;
+  (*e)->m_ackdata = false;
+  (*e)->m_newdata = false;
+  (*e)->m_pshdata = false;
+  (*e)->m_live = false;
+  (*e)->m_wndscl = 0;
+  (*e)->m_window = ntohs(INTCP->wnd);
+  (*e)->m_segidx = 0;
+  (*e)->m_nrtx = 0; // Initial SYN send
+  (*e)->m_slen = 0;
+  (*e)->m_sdat = nullptr;
+  (*e)->m_initialmss = m_device.mtu() - HEADER_OVERHEAD;
+  (*e)->m_mss = (*e)->m_initialmss;
+  (*e)->m_sa = 0;
+  (*e)->m_sv = 4; // Initial value of the RTT variance
+  (*e)->m_rto = RTO;
+  (*e)->m_rtm = RTO;
   /*
    * Prepare the connection segment. SYN segments don't contain any data but
    * have a size of 1 to increase the sequence number by 1.
    */
-  Segment& seg = e->acquireSegment();
-  seg.set(1, e->m_snd_nxt, sdat);
+  Segment& seg = (*e)->acquireSegment();
+  seg.set(1, (*e)->m_snd_nxt, sdat);
   /*
    * Parse the TCP MSS option, if present.
    */
   if (INTCP->offset > 5) {
     uint16_t nbytes = (INTCP->offset - 5) << 2;
-    Options::parse(m_log, *e, nbytes, data);
+    Options::parse(m_log, **e, nbytes, data);
   }
   /*
    * Update the connection index.
    */
-  m_index.insert({ std::hash<Connection>()(*e), e->id() });
+  m_index.insert({ std::hash<Connection>()(**e), (*e)->id() });
   /*
    * Send the SYN/ACK.
    */
-  return sendSynAck(*e, seg);
+  return sendSynAck(**e, seg);
 }
 
 Status
@@ -370,35 +368,35 @@ Processor::onFastTimer(const size_t ticks)
     /*
      * Only care about established connections.
      */
-    if (e.m_state != Connection::ESTABLISHED) {
+    if (e->m_state != Connection::ESTABLISHED) {
       continue;
     }
     /*
      * Skip the connection if it does not have delayed ACKs.
      */
-    if (!HAS_DELAYED_ACK(e)) {
+    if (!HAS_DELAYED_ACK(*e)) {
       continue;
     }
     /*
      * Skip the connection if there is no active timer.
      */
-    if (e.m_atm == 0) {
+    if (e->m_atm == 0) {
       continue;
     }
     /*
      * Update the delayed ack tick counter.
      */
-    e.m_atm -= ticks > e.m_atm ? e.m_atm : ticks;
+    e->m_atm -= ticks > e->m_atm ? e->m_atm : ticks;
     /*
      * Skip the connection if the timer has not expired.
      */
-    if (e.m_atm > 0) {
+    if (e->m_atm > 0) {
       continue;
     }
     /*
      * Send the delayed ACK.
      */
-    auto ret = sendAck(e, false);
+    auto ret = sendAck(*e, false);
     if (ret != Status::Ok) {
       m_log.error("TCP", "sending delayed ACK failed: ", ret);
       return ret;
@@ -424,24 +422,24 @@ Processor::onSlowTimer(const size_t ticks)
     /*
      * Ignore closed connections.
      */
-    if (e.m_state == Connection::CLOSED) {
+    if (e->m_state == Connection::CLOSED) {
       continue;
     }
     /*
      * Handle connections that are just waiting to time out.
      */
-    if (e.m_state == Connection::TIME_WAIT ||
-        e.m_state == Connection::FIN_WAIT_2) {
+    if (e->m_state == Connection::TIME_WAIT ||
+        e->m_state == Connection::FIN_WAIT_2) {
       /*
        * Increase the connection's timer.
        */
-      e.m_rtm += ticks;
+      e->m_rtm += ticks;
       /*
        * If it timed out, close the connection.
        */
-      if (e.m_rtm >= TIME_WAIT_TIMEOUT) {
-        m_log.debug("TCP4", "<", e.id(), "> closed");
-        close(e);
+      if (e->m_rtm >= TIME_WAIT_TIMEOUT) {
+        m_log.debug("TCP4", "<", e->id(), "> closed");
+        close(*e);
       }
       /*
        * Done.
@@ -451,24 +449,24 @@ Processor::onSlowTimer(const size_t ticks)
     /*
      * Handle retransmissions.
      */
-    if (e.hasUsedSegments()) {
+    if (e->hasUsedSegments()) {
       /*
        * Update the retransmission tick counter.
        */
-      e.m_rtm -= ticks > e.m_rtm ? e.m_rtm : ticks;
+      e->m_rtm -= ticks > e->m_rtm ? e->m_rtm : ticks;
       /*
        * Proceed with retransmissions.
        */
-      if (e.m_rtm == 0) {
+      if (e->m_rtm == 0) {
         /*
          * The connection has expired, reset it.
          */
-        if (e.hasExpired()) {
-          m_log.debug("TCP4", "<", e.id(), "> expired, aborting");
+        if (e->hasExpired()) {
+          m_log.debug("TCP4", "<", e->id(), "> expired, aborting");
           /*
            * Abort the connection.
            */
-          auto res = timeOut(e);
+          auto res = timeOut(*e);
           if (res != Status::Ok) {
             return res;
           }
@@ -480,21 +478,21 @@ Processor::onSlowTimer(const size_t ticks)
         /*
          * Exponential backoff.
          */
-        e.m_rtm = RTO << (e.m_nrtx > 4 ? 4 : e.m_nrtx);
-        e.m_nrtx += 1;
+        e->m_rtm = RTO << (e->m_nrtx > 4 ? 4 : e->m_nrtx);
+        e->m_nrtx += 1;
         /*
          * Print retransmission statistics.
          */
-        m_log.debug("TCP4", "<", e.id(), "> automatic repeat request (",
-                    size_t(e.m_nrtx), "/", MAXRTX, ")");
-        m_log.debug("TCP4", "<", e.id(), "> segments available? ",
-                    std::boolalpha, e.hasFreeSegments());
-        m_log.debug("TCP4", "<", e.id(), "> segments outstanding? ",
-                    std::boolalpha, e.hasUsedSegments());
+        m_log.debug("TCP4", "<", e->id(), "> automatic repeat request (",
+                    size_t(e->m_nrtx), "/", MAXRTX, ")");
+        m_log.debug("TCP4", "<", e->id(), "> segments available? ",
+                    std::boolalpha, e->hasFreeSegments());
+        m_log.debug("TCP4", "<", e->id(), "> segments outstanding? ",
+                    std::boolalpha, e->hasUsedSegments());
         /*
          * Retransmit.
          */
-        auto ret = rexmit(e);
+        auto ret = rexmit(*e);
         if (ret != Status::Ok) {
           return ret;
         }
@@ -507,28 +505,28 @@ Processor::onSlowTimer(const size_t ticks)
     /*
      * Handle keep-alive.
      */
-    if (e.m_state == Connection::ESTABLISHED && HAS_KEEP_ALIVE(e)) {
+    if (e->m_state == Connection::ESTABLISHED && HAS_KEEP_ALIVE(*e)) {
       /*
        * Reset the live flag.
        */
-      if (e.m_live) {
-        e.m_live = false;
-        e.m_ktm = KTO + 1;
+      if (e->m_live) {
+        e->m_live = false;
+        e->m_ktm = KTO + 1;
         continue;
       }
       /*
        * Update the keep-alive tick counter.
        */
-      e.m_ktm -= ticks > e.m_ktm ? e.m_ktm : ticks;
+      e->m_ktm -= ticks > e->m_ktm ? e->m_ktm : ticks;
       /*
        * If the connection is not live, send the keep-alive.
        */
-      if (e.m_ktm > 0 && e.hasFreeSegments()) {
-        m_log.trace("TCP4", "<", e.id(), "> KA ", int(e.m_ktm), "/", KTO);
+      if (e->m_ktm > 0 && e->hasFreeSegments()) {
+        m_log.trace("TCP4", "<", e->id(), "> KA ", int(e->m_ktm), "/", KTO);
         /*
          * Send the ACK.
          */
-        auto ret = sendAck(e, true);
+        auto ret = sendAck(*e, true);
         if (ret != Status::Ok) {
           return ret;
         }
@@ -540,11 +538,11 @@ Processor::onSlowTimer(const size_t ticks)
       /*
        * The keep-alive has expired.
        */
-      m_log.debug("TCP4", "<", e.id(), "> expired, aborting");
+      m_log.debug("TCP4", "<", e->id(), "> expired, aborting");
       /*
        * Abort the connection.
        */
-      auto res = timeOut(e);
+      auto res = timeOut(*e);
       if (res != Status::Ok) {
         return res;
       }
@@ -1334,5 +1332,4 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    */
   return Status::Ok;
 }
-
 }

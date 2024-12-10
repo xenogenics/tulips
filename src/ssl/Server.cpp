@@ -6,14 +6,13 @@
 namespace tulips::ssl {
 
 Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
-               transport::Device& device, const size_t n,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-               stack::ipv4::Address const& nm, const ssl::Protocol type,
-               std::string_view cert, std::string_view key)
+               transport::Device& device, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& gw, stack::ipv4::Address const& nm,
+               const ssl::Protocol type, std::string_view cert,
+               std::string_view key)
   : m_delegate(delegate)
   , m_log(log)
-  , m_server(std::make_unique<api::Server>(log, *this, device, n, ip, gw, nm))
-  , m_nconn(n)
+  , m_server(std::make_unique<api::Server>(log, *this, device, ip, gw, nm))
   , m_ssl(nullptr)
   , m_cns()
 {
@@ -72,7 +71,7 @@ Server::Server(system::Logger& log, api::interface::Server::Delegate& delegate,
   /*
    * Resize the connections.
    */
-  m_cns.resize(n);
+  m_cns.reserve(512);
 }
 
 Server::~Server()
@@ -86,7 +85,7 @@ Server::close(const ID id)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -124,7 +123,7 @@ Server::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -152,7 +151,19 @@ void*
 Server::onConnected(ID const& id, void* const cookie, const Timestamp ts)
 {
   auto* ssl = AS_SSL(m_ssl);
+  /*
+   * Check if we need to create the connection.
+   */
+  if (id == m_cns.size()) {
+    m_cns.emplace_back();
+  }
+  /*
+   * Accept the connection.
+   */
   m_cns[id].accept(ssl, id, cookie, ts, -1);
+  /*
+   * Done.
+   */
   return nullptr;
 }
 

@@ -222,7 +222,7 @@ protected:
     m_cli_eth_proc = new ethernet::Processor(m_log, m_cdev->address());
     m_cli_ip4_proc = new ipv4::Processor(m_log, m_cip4);
     m_cli_tcp = new tcpv4::Processor(m_log, *m_cdev, *m_cli_eth_prod,
-                                     *m_cli_ip4_prod, *m_cli_evt, 1);
+                                     *m_cli_ip4_prod, *m_cli_evt);
     /*
      * Client processor binding
      */
@@ -243,7 +243,7 @@ protected:
     m_srv_eth_proc = new ethernet::Processor(m_log, m_sdev->address());
     m_srv_ip4_proc = new ipv4::Processor(m_log, m_sip4);
     m_srv_tcp = new tcpv4::Processor(m_log, *m_sdev, *m_srv_eth_prod,
-                                     *m_srv_ip4_prod, *m_srv_evt, 1);
+                                     *m_srv_ip4_prod, *m_srv_evt);
     /*
      * Server processor binding
      */

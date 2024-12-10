@@ -28,15 +28,13 @@ keylogCallback(const SSL* ssl, const char* line)
 namespace tulips::ssl {
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-               stack::ipv4::Address const& nm, const Protocol type,
-               const bool save_keys)
+               transport::Device& device, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& gw, stack::ipv4::Address const& nm,
+               const Protocol type, const bool save_keys)
   : m_delegate(delegate)
   , m_log(log)
-  , m_client(log, *this, device, nconn, ip, gw, nm)
+  , m_client(log, *this, device, ip, gw, nm)
   , m_ssl(nullptr)
-  , m_nconn(nconn)
   , m_savekeys(save_keys)
   , m_cns()
 {
@@ -67,17 +65,16 @@ Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
     throw std::runtime_error("SSL_CTX_set_cipher_list failed");
   }
   /*
-   * Resize the connections.
+   * Reserve the connections.
    */
-  m_cns.resize(nconn);
+  m_cns.reserve(512);
 }
 
 Client::Client(system::Logger& log, api::interface::Client::Delegate& delegate,
-               transport::Device& device, const size_t nconn,
-               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
-               stack::ipv4::Address const& nm, const Protocol type,
-               std::string_view cert, std::string_view key)
-  : Client(log, delegate, device, nconn, ip, gw, nm, type, true)
+               transport::Device& device, stack::ipv4::Address const& ip,
+               stack::ipv4::Address const& gw, stack::ipv4::Address const& nm,
+               const Protocol type, std::string_view cert, std::string_view key)
+  : Client(log, delegate, device, ip, gw, nm, type, true)
 {
   int err = 0;
   /*
@@ -123,7 +120,23 @@ Status
 Client::open(const ApplicationLayerProtocol alpn, const uint16_t options,
              ID& id)
 {
-  return m_client.open(alpn, options, id);
+  /*
+   * Call the API client.
+   */
+  auto ret = m_client.open(alpn, options, id);
+  if (ret != Status::Ok) {
+    return ret;
+  }
+  /*
+   * Check if we need to allocate a new connection.
+   */
+  if (id >= m_cns.size()) {
+    m_cns.emplace_back();
+  }
+  /*
+   * Done.
+   */
+  return ret;
 }
 
 Status
@@ -132,7 +145,7 @@ Client::abort(const ID id)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -158,7 +171,7 @@ Client::close(const ID id)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -201,7 +214,7 @@ Client::connect(const ID id, stack::ipv4::Address const& ripaddr,
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -332,7 +345,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*

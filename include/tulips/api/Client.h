@@ -37,12 +37,11 @@ public:
    */
 
   static Ref allocate(system::Logger& log, Delegate& dlg,
-                      transport::Device& device, const size_t nconn,
-                      stack::ipv4::Address const& ip,
+                      transport::Device& device, stack::ipv4::Address const& ip,
                       stack::ipv4::Address const& gw,
                       stack::ipv4::Address const& nm)
   {
-    return std::make_unique<Client>(log, dlg, device, nconn, ip, gw, nm);
+    return std::make_unique<Client>(log, dlg, device, ip, gw, nm);
   }
 
   /*
@@ -50,8 +49,8 @@ public:
    */
 
   Client(system::Logger& log, Delegate& dlg, transport::Device& device,
-         const size_t nconn, stack::ipv4::Address const& ip,
-         stack::ipv4::Address const& gw, stack::ipv4::Address const& nm);
+         stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+         stack::ipv4::Address const& nm);
   ~Client() override = default;
 
   /*
@@ -151,7 +150,6 @@ private:
   system::Logger& m_log;
   Delegate& m_delegate;
   transport::Device& m_dev;
-  size_t m_nconn;
   stack::ethernet::Producer m_ethto;
   stack::ipv4::Producer m_ip4to;
 #ifdef TULIPS_ENABLE_ARP
