@@ -130,7 +130,7 @@ public:
     /*
      * Check outstanding segments.
      */
-    res = c->hasUsedSegments();
+    res = c->m_segs->hasUsed();
     return Status::Ok;
   }
 

@@ -22,7 +22,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
    * If the send buffer is full, send immediately.
    */
   if (e.m_slen == bound) {
-    Segment& seg = e.acquireSegment();
+    Segment& seg = e.m_segs->acquire();
     seg.set(e.m_slen, e.m_snd_nxt, e.m_sdat);
     e.resetSendBuffer();
     return send(e, seg, Flag::PSH);
@@ -30,7 +30,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
   /*
    * If there is data in flight, enqueue.
    */
-  if (e.hasUsedSegments()) {
+  if (e.m_segs->hasUsed()) {
     return Status::Ok;
   }
   /*
@@ -42,7 +42,7 @@ Processor::sendNagle(Connection& e, const uint32_t bound)
 Status
 Processor::sendNoDelay(Connection& e, const uint8_t flag)
 {
-  Segment& seg = e.acquireSegment();
+  Segment& seg = e.m_segs->acquire();
   seg.set(e.m_slen, e.m_snd_nxt, e.m_sdat);
   e.resetSendBuffer();
   return send(e, seg, flag);
@@ -126,7 +126,7 @@ Processor::sendClose(Connection& e)
    * This function MUST be called when segments are available. Making sure of
    * this is the responsibility of the caller.
    */
-  if (!e.hasFreeSegments()) {
+  if (!e.m_segs->hasFree()) {
     m_log.error("TCP4", "<", e.id(), "> close() without available segments");
     return Status::NoMoreResources;
   }
@@ -136,7 +136,7 @@ Processor::sendClose(Connection& e)
    */
   m_log.debug("TCP4", "<", e.id(), "> FIN wait #1");
   e.m_state = Connection::FIN_WAIT_1;
-  Segment& seg = e.acquireSegment();
+  Segment& seg = e.m_segs->acquire();
   seg.set(1, e.m_snd_nxt, e.m_sdat);
   e.resetSendBuffer();
   return sendFinAck(e, seg);
@@ -272,7 +272,7 @@ Processor::rexmit(Connection& e)
     case Connection::SYN_RCVD: {
       m_log.debug("TCP4", "<", e.id(), "> retransmit SYNACK");
       const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
-      return send(e, len, e.segment());
+      return send(e, len, e.m_segs->currentSegment());
     }
     /*
      * In the SYN_SENT state, we retransmit out SYN.
@@ -280,15 +280,15 @@ Processor::rexmit(Connection& e)
     case Connection::SYN_SENT: {
       m_log.debug("TCP4", "<", e.id(), "> retransmit SYN");
       const auto len = HEADER_LEN + Options::MSS_LEN + Options::WSC_LEN + 1;
-      return send(e, len, e.segment());
+      return send(e, len, e.m_segs->currentSegment());
     }
     /*
      * In the ESTABLISHED state, we resend the oldest segment.
      */
     case Connection::ESTABLISHED: {
       m_log.debug("TCP4", "<", e.id(), "> retransmit PSH");
-      const auto len = e.segment().length() + HEADER_LEN;
-      return send(e, len, e.segment());
+      const auto len = e.m_segs->currentSegment().length() + HEADER_LEN;
+      return send(e, len, e.m_segs->currentSegment());
     }
     /*
      * In all these states we should retransmit a FINACK.
@@ -297,7 +297,7 @@ Processor::rexmit(Connection& e)
     case Connection::CLOSING:
     case Connection::LAST_ACK: {
       m_log.debug("TCP4", "<", e.id(), "> retransmit FINACK");
-      return send(e, HEADER_LEN, e.segment());
+      return send(e, HEADER_LEN, e.m_segs->currentSegment());
     }
     /*
      * For the other states, do nothing. In the CLOSE state, if we are still
@@ -392,8 +392,8 @@ Processor::send(Connection& e, const uint32_t len, Segment& s)
    */
   m_log.trace("FLOW", "<", e.id(), (rexmit ? "> <+ " : "> <- "),
               getFlags(*OUTTCP), " len:", len, " seq:", s.seq(),
-              " ack:", e.m_rcv_nxt, " seg:", e.segmentIndex(s),
-              " lvl:", e.freeSegments());
+              " ack:", e.m_rcv_nxt, " seg:", e.m_segs->index(s),
+              " lvl:", e.m_segs->free());
   /*
    * Update the connection and segment state.
    */

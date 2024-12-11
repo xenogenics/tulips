@@ -152,8 +152,8 @@ Processor::process(const uint16_t len, const uint8_t* const data,
          *
          * NOTE(xrg): stale frames are automatically ignored.
          */
-        while (!c->m_fb.empty()) {
-          auto const& frame = c->m_fb.peek();
+        while (!c->m_fbuf.empty()) {
+          auto const& frame = c->m_fbuf.peek();
           const uint32_t seqno = ntohl(frame.as<Header>().seqno);
           /*
            * Break if the frame is ahead.
@@ -178,7 +178,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
           /*
            * Pop the frame.
            */
-          c->m_fb.pop();
+          c->m_fbuf.pop();
         }
         /*
          * Log how many buffer we processed.
@@ -284,7 +284,6 @@ Processor::process(const uint16_t len, const uint8_t* const data,
   (*e)->m_live = false;
   (*e)->m_wndscl = 0;
   (*e)->m_window = ntohs(INTCP->wnd);
-  (*e)->m_segidx = 0;
   (*e)->m_nrtx = 0; // Initial SYN send
   (*e)->m_slen = 0;
   (*e)->m_sdat = nullptr;
@@ -298,7 +297,7 @@ Processor::process(const uint16_t len, const uint8_t* const data,
    * Prepare the connection segment. SYN segments don't contain any data but
    * have a size of 1 to increase the sequence number by 1.
    */
-  Segment& seg = (*e)->acquireSegment();
+  Segment& seg = (*e)->m_segs->acquire();
   seg.set(1, (*e)->m_snd_nxt, sdat);
   /*
    * Parse the TCP MSS option, if present.
@@ -449,7 +448,7 @@ Processor::onSlowTimer(const size_t ticks)
     /*
      * Handle retransmissions.
      */
-    if (e->hasUsedSegments()) {
+    if (e->m_segs->hasUsed()) {
       /*
        * Update the retransmission tick counter.
        */
@@ -486,9 +485,9 @@ Processor::onSlowTimer(const size_t ticks)
         m_log.debug("TCP4", "<", e->id(), "> automatic repeat request (",
                     size_t(e->m_nrtx), "/", MAXRTX, ")");
         m_log.debug("TCP4", "<", e->id(), "> segments available? ",
-                    std::boolalpha, e->hasFreeSegments());
+                    std::boolalpha, e->m_segs->hasFree());
         m_log.debug("TCP4", "<", e->id(), "> segments outstanding? ",
-                    std::boolalpha, e->hasUsedSegments());
+                    std::boolalpha, e->m_segs->hasUsed());
         /*
          * Retransmit.
          */
@@ -521,7 +520,7 @@ Processor::onSlowTimer(const size_t ticks)
       /*
        * If the connection is not live, send the keep-alive.
        */
-      if (e->m_ktm > 0 && e->hasFreeSegments()) {
+      if (e->m_ktm > 0 && e->m_segs->hasFree()) {
         m_log.trace("TCP4", "<", e->id(), "> KA ", int(e->m_ktm), "/", KTO);
         /*
          * Send the ACK.
@@ -565,14 +564,14 @@ Processor::close(Connection& e)
   /*
    * Clear the frame buffer.
    */
-  e.m_fb.clear();
+  e.m_fbuf.clear();
   /*
    * Clear the segments.
    */
-  for (auto& s : e.m_segments) {
+  for (auto& s : e.m_segs->container()) {
     if (s.length() > 0) {
       m_ipv4to.release(s.data());
-      e.releaseSegment(s);
+      e.m_segs->release(s);
     }
   }
   /*
@@ -627,7 +626,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    * Print the flow information if requested.
    */
   m_log.trace("FLOW", "<", e.id(), "> -> ", getFlags(*INTCP), " len:", plen,
-              " seq:", seqno, " ack:", ackno, " seg:", size_t(e.m_segidx));
+              " seq:", seqno, " ack:", ackno,
+              " seg:", size_t(e.m_segs->currentIndex()));
   /*
    * Check if the sequence number of the incoming packet is what we're
    * expecting next, except if we are expecting a SYN/ACK.
@@ -655,7 +655,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           /*
            * Log the event.
            */
-          if (e.m_fb.empty()) {
+          if (e.m_fbuf.empty()) {
             const uint32_t diff = SEQ_DIFF(seqno, e.m_rcv_nxt);
             m_log.debug("TCP4", "<", e.id(), "> out-of-order SEQ: ", seqno,
                         " (", diff, "B), buffering");
@@ -663,8 +663,8 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           /*
            * Push the frame in the buffer.
            */
-          if (!e.m_fb.push(len, data, ts)) {
-            const auto len = e.m_fb.length();
+          if (!e.m_fbuf.push(len, data, ts)) {
+            const auto len = e.m_fbuf.length();
             m_log.debug("TCP4", "<", e.id(), "> still behind after ", len,
                         "B, aborting");
             return abort(e);
@@ -688,18 +688,18 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
    * we update the sequence number, reset the length of the outstanding data,
    * calculate RTT estimations, and reset the retransmission timer.
    */
-  if ((INTCP->flags & Flag::ACK) && e.hasUsedSegments()) {
+  if ((INTCP->flags & Flag::ACK) && e.m_segs->hasUsed()) {
     /*
      * Scan the available segments.
      *
      * NOTE(xrg): available segments are always contiguous. So we dont' bother
      * checking whether a segment is empty or not.
      */
-    for (size_t i = 0; i < e.usedSegments(); i += 1) {
+    for (size_t i = 0; i < e.m_segs->used(); i += 1) {
       /*
        * Get the oldest pending segment.
        */
-      Segment& seg = e.segment();
+      Segment& seg = e.m_segs->currentSegment();
       /*
        * Compute the expected ackno.
        */
@@ -787,16 +787,9 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       m_ipv4to.release(seg.data());
       /*
-       * Clear the current segment.
+       * Clear the current segment and go to the next one.
        */
-      e.releaseSegment(seg);
-      /*
-       * Go to the next segment.
-       *
-       * NOTE(xrg): the compiler will generate the wrap-around appropriate for
-       * the bit length of the index.
-       */
-      e.m_segidx += 1;
+      e.m_segs->release(seg);
       /*
        * Stop processing the segments if the ACK number is the one expected.
        */
@@ -920,7 +913,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * If some of our data is still in flight, ignore the FIN.
          */
-        if (e.hasUsedSegments()) {
+        if (e.m_segs->hasUsed()) {
           m_log.debug("TCP4", "<", e.id(),
                       "> FIN received but outstanding data");
           return Status::Ok;
@@ -943,7 +936,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
          */
         m_log.debug("TCP4", "<", e.id(), "> last ACK");
         e.m_state = Connection::LAST_ACK;
-        Segment& seg = e.acquireSegment();
+        Segment& seg = e.m_segs->acquire();
         seg.set(1, e.m_snd_nxt, e.m_sdat);
         e.resetSendBuffer();
         return sendFinAck(e, seg);
@@ -1002,7 +995,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
         /*
          * Check if the application can send.
          */
-        bool can_send = e.hasFreeSegments() && e.window() > e.m_slen;
+        bool can_send = e.m_segs->hasFree() && e.window() > e.m_slen;
         /*
          * Notify the application on an ACK.
          */
@@ -1065,7 +1058,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           /*
            * Update the send state.
            */
-          can_send = e.hasFreeSegments() && e.window() > e.m_slen;
+          can_send = e.m_segs->hasFree() && e.window() > e.m_slen;
         }
         /*
          * Collect the connection's buffer state.
@@ -1093,7 +1086,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
              */
             if (e.hasPendingSendData() && can_send) {
               res = sendNoDelay(e, Flag::PSH);
-              can_send = e.hasFreeSegments() && e.window() > 0;
+              can_send = e.m_segs->hasFree() && e.window() > 0;
             }
             /*
              * Otherwise, just send the ACK.
@@ -1165,7 +1158,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
           /*
            * Update the send state.
            */
-          can_send = e.hasFreeSegments() && e.window() > e.m_slen;
+          can_send = e.m_segs->hasFree() && e.window() > e.m_slen;
         }
         /*
          * If there is any buffered send data, send it.
@@ -1284,7 +1277,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
       /*
        * Check if there is still data in flight. In that case, keep waiting.
        */
-      if (e.hasUsedSegments()) {
+      if (e.m_segs->hasUsed()) {
         break;
       }
       /*
@@ -1293,7 +1286,7 @@ Processor::process(Connection& e, const uint16_t len, const uint8_t* const data,
        */
       m_log.debug("TCP4", "<", e.id(), "> FIN wait #1");
       e.m_state = Connection::FIN_WAIT_1;
-      Segment& seg = e.acquireSegment();
+      Segment& seg = e.m_segs->acquire();
       seg.set(1, e.m_snd_nxt, e.m_sdat);
       e.resetSendBuffer();
       /*
