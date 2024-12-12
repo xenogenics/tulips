@@ -23,9 +23,10 @@
 namespace tulips::stack::tcpv4 {
 
 /*
- * Protocol constants.
+ * Constants.
  */
 static constexpr int USED TIME_WAIT_TIMEOUT = 120;
+static constexpr size_t USED MAX_CONNECTIONS = 1024;
 
 /*
  * The TCPv4 statistics.
@@ -50,8 +51,7 @@ class Processor : public transport::Processor
 {
 public:
   Processor(system::Logger& log, transport::Device& device,
-            ethernet::Producer& eth, ipv4::Producer& ip4, EventHandler& h,
-            const size_t nconn);
+            ethernet::Producer& eth, ipv4::Producer& ip4, EventHandler& h);
 
   /*
    * Processor interface.
@@ -120,23 +120,23 @@ public:
     /*
      * Check that the connection is valid.
      */
-    if (id >= m_nconn) {
+    if (id >= m_conns.size()) {
       return Status::InvalidConnection;
     }
     /*
      * Get the connection.
      */
-    Connection& c = m_conns[id];
+    auto& c = m_conns[id];
     /*
      * Check outstanding segments.
      */
-    res = c.hasUsedSegments();
+    res = c->m_segs->hasUsed();
     return Status::Ok;
   }
 
 private:
   using Ports = std::unordered_set<Port>;
-  using Connections = std::vector<Connection>;
+  using Connections = std::vector<Connection::Ref>;
   using Index = std::unordered_map<uint64_t, Connection::ID>;
 
 #if !(defined(TULIPS_HAS_HW_CHECKSUM) && defined(TULIPS_DISABLE_CHECKSUM_CHECK))
@@ -399,7 +399,6 @@ private:
   ethernet::Producer& m_ethto;
   ipv4::Producer& m_ipv4to;
   EventHandler& m_handler;
-  const size_t m_nconn;
   ethernet::Processor* m_ethfrom;
   ipv4::Processor* m_ipv4from;
   uint32_t m_iss;

@@ -10,22 +10,12 @@
 #include <tulips/system/SpinLock.h>
 #include <cstdint>
 #include <functional>
-#include <stdexcept>
+#include <memory>
 
 namespace tulips::stack::tcpv4 {
 
-/*
- * Protocol constants.
- */
 static constexpr int USED MAXRTX = 5;
 static constexpr int USED MAXSYNRTX = 5;
-
-/*
- * We rely on the compiler to wrap around the value of the next segment. We
- * need at least 3 bits for NRTX to SEGM_B cannot be more that 5.
- */
-#define SEGM_B 5
-#define NRTX_B (8 - SEGM_B)
 
 #define HAS_NODELAY(__e) ((__e).m_opts & Connection::NO_DELAY)
 #define HAS_DELAYED_ACK(__e) ((__e).m_opts & Connection::DELAYED_ACK)
@@ -34,8 +24,24 @@ static constexpr int USED MAXSYNRTX = 5;
 class Connection
 {
 public:
+  /**
+   * Number of segments for the connection (must be a power of 2).
+   */
+  static constexpr size_t SEGMENT_COUNT = 32;
+
+  /**
+   * Connection ID.
+   */
   using ID = uint16_t;
 
+  /**
+   * Connection reference.
+   */
+  using Ref = std::unique_ptr<Connection>;
+
+  /**
+   * Connection state.
+   */
   enum State : uint8_t
   {
     CLOSE = 0x1,
@@ -51,6 +57,9 @@ public:
     TIME_WAIT = 0xB,
   };
 
+  /**
+   * Connection option.
+   */
   enum Option : uint16_t
   {
     /**
@@ -67,36 +76,78 @@ public:
     KEEP_ALIVE = 0x4,
   };
 
-  Connection();
+  /**
+   * Allocate a new connection.
+   */
+  static Ref allocate(const ID id) { return std::make_unique<Connection>(id); }
 
+  /**
+   * Constructor.
+   */
+  Connection(const ID id);
+
+  /**
+   * @return the connection's ID.
+   */
   inline ID id() const { return m_id; }
 
+  /**
+   * @return the connection's local port.
+   */
   inline uint16_t localPort() const { return m_lport; }
 
+  /**
+   * @return the connection's remote port.
+   */
   inline uint16_t remotePort() const { return m_rport; }
 
+  /**
+   * @return the connection's cookie.
+   */
   inline void* cookie() const { return m_cookie; }
 
+  /**
+   * Set the connection's cookie.
+   *
+   * @param cookie a new cookie.
+   */
   inline void setCookie(void* const cookie) { m_cookie = cookie; }
 
+  /**
+   * Set some connection options.
+   *
+   * @param opts the options to set.
+   */
   inline void setOptions(const uint8_t opts) { m_opts |= opts; }
 
+  /**
+   * Clear some connection options.
+   *
+   * @param opts the options to clear.
+   */
   inline void clearOptions(const uint8_t opts) { m_opts &= ~opts; }
 
+  /**
+   * @return true if the connection needs to push some data.
+   */
   inline bool isNewDataPushed() const { return m_pshdata; }
 
 private:
-  static constexpr size_t SEGMENT_COUNT = 1 << SEGM_B;
   static constexpr size_t SEGMENT_BMASK = SEGMENT_COUNT - 1;
 
-  /*
-   * State.
+  /**
+   * @return true if the connection is active.
    */
-
   inline bool isActive() const { return m_state != CLOSED; }
 
+  /**
+   * @return true if the connection has pending data.
+   */
   inline bool hasPendingSendData() const { return m_slen != 0; }
 
+  /**
+   * @return true if the connection has expired.
+   */
   inline bool hasExpired() const
   {
     if (m_state == Connection::SYN_SENT || m_state == Connection::SYN_RCVD) {
@@ -106,19 +157,40 @@ private:
     }
   }
 
+  /**
+   * Check if the connection matches the parameters.
+   *
+   * @param ripaddr the remote IP address.
+   * @param header the incoming TCP header.
+   *
+   * @return true if the connection matches.
+   */
   inline bool matches(ipv4::Address const& ripaddr, Header const& header) const
   {
     return header.dstport == m_lport && header.srcport == m_rport &&
            ripaddr == m_ripaddr;
   }
 
+  /**
+   * @ return the connection peer's scaled-up window.
+   */
   inline uint32_t window() const { return (uint32_t)m_window << m_wndscl; }
 
+  /**
+   * Compute a scaled up window using the connection peer scaling factor.
+   *
+   * @param wnd the window to scale up.
+   *
+   * @return the scaled-up window.
+   */
   inline uint32_t window(const uint16_t wnd) const
   {
     return (uint32_t)wnd << m_wndscl;
   }
 
+  /**
+   * Update the RTT estimation.
+   */
   inline void updateRttEstimation()
   {
     int8_t m = m_rto - m_rtm;
@@ -133,61 +205,23 @@ private:
     m_rto = (m_sa >> 3) + m_sv;
   }
 
+  /**
+   * Reset the send buffer.
+   */
   inline void resetSendBuffer()
   {
     m_slen = 0;
     m_sdat = nullptr;
   }
 
-  /*
-   * Timers.
+  /**
+   * Arm the delayed ACK timer.
    */
-
   inline void armAckTimer(const uint32_t sendnxt)
   {
     if (m_newdata && m_atm == 0 && sendnxt == m_snd_nxt) {
       m_atm = ATO;
     }
-  }
-
-  /*
-   * Segments metadata.
-   */
-
-  inline Segment& segment() { return m_segments[m_segidx]; }
-
-  inline size_t segmentIndex(Segment const& s) const { return &s - m_segments; }
-
-  inline bool hasFreeSegments() const { return freeSegments() > 0; }
-
-  inline size_t freeSegments() const { return m_avlseg; }
-
-  inline bool hasUsedSegments() const { return usedSegments() > 0; }
-
-  inline size_t usedSegments() const { return SEGMENT_COUNT - m_avlseg; }
-
-  /*
-   * Segment allocation.
-   */
-
-  inline Segment& acquireSegment()
-  {
-    size_t idx = 0;
-    for (size_t i = m_segidx; i < m_segidx + SEGMENT_COUNT; i += 1) {
-      idx = i & SEGMENT_BMASK;
-      if (m_segments[idx].length() == 0) {
-        m_avlseg -= 1;
-        return m_segments[idx];
-      }
-    }
-    throw std::runtime_error("have you called hasAvailableSegments()?");
-  }
-
-  inline void releaseSegment(Segment& segment)
-  {
-    auto index = segmentIndex(segment);
-    m_segments[index].clear();
-    m_avlseg += 1;
   }
 
   /*
@@ -207,16 +241,15 @@ private:
 
   struct
   {
-    uint64_t m_state : 4;       //  4 - Connection state
-    uint64_t m_ackdata : 1;     //  5 - Connection has been acked
-    uint64_t m_newdata : 1;     //  6 - Connection has new data
-    uint64_t m_pshdata : 1;     //  7 - Connection data is being pushed
-    uint64_t m_live : 1;        //  8 - Connection is live
-    uint64_t m_wndscl : 8;      // 16 - Remote peer window scale (max is 14)
-    uint64_t m_window : 16;     // 32 - Remote peer window
-    uint64_t m_segidx : SEGM_B; // 36 - Free segment index
-    uint64_t m_nrtx : NRTX_B;   // 40 - Number of retransmissions (3 bit min)
-    uint64_t m_slen : 24;       // 64 - Length of the send buffer
+    uint64_t m_state : 4;   //  4 - Connection state
+    uint64_t m_ackdata : 1; //  5 - Connection has been acked
+    uint64_t m_newdata : 1; //  6 - Connection has new data
+    uint64_t m_pshdata : 1; //  7 - Connection data is being pushed
+    uint64_t m_live : 1;    //  8 - Connection is live
+    uint64_t m_wndscl : 8;  // 16 - Remote peer window scale (max is 14)
+    uint64_t m_window : 16; // 32 - Remote peer window
+    uint64_t m_nrtx : 8;    // 40 - Number of retransmissions (3 bit min)
+    uint64_t m_slen : 24;   // 64 - Length of the send buffer
   };
 
   uint16_t m_initialmss; // 2 - Initial maximum segment size for the connection
@@ -236,20 +269,11 @@ private:
   void* m_cookie;        // 8 - Application state
 
   /*
-   * Second cache line
+   * Second cache line.
    */
 
-  system::FrameBuffer m_fb;
-  uint16_t m_avlseg;
-
-  /*
-   * Next 4 cache lines: segments.
-   *
-   * Size is 16B per segment, 4 segments per cache line, for a maximum of 16
-   * segments (segment index is 4 bits).
-   */
-
-  Segment m_segments[SEGMENT_COUNT] __attribute__((aligned(64)));
+  system::FrameBuffer m_fbuf;
+  Segments<SEGMENT_COUNT, SEGMENT_BMASK>::Ref m_segs;
 
   /*
    * Friendship declaration.
@@ -261,8 +285,7 @@ private:
 
 } __attribute__((aligned(64)));
 
-static_assert(sizeof(Connection) == (1 << SEGM_B) * sizeof(Segment) + 128,
-              "Size of tcpv4::Connection is invalid");
+static_assert(sizeof(Connection) == 128, "Invalid size for tcpv4::Connection");
 }
 
 namespace std {

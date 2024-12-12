@@ -82,7 +82,11 @@ private:
   system::FrameBuffer::Ref m_buffer;
   std::vector<struct rte_mbuf*> m_free;
   std::vector<SentBuffer> m_sent;
-  uint64_t m_laststats;
+  uint64_t m_statsts;
+  uint64_t m_txpktcnt;
+  uint64_t m_txbytcnt;
+  uint64_t m_rxpktcnt;
+  uint64_t m_rxbytcnt;
 
   friend class Port;
 

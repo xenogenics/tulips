@@ -27,7 +27,6 @@ public:
   std::string interface() const { return iff.getValue(); }
   uint16_t port() const { return prt.getValue()[0]; }
   std::vector<uint16_t> ports() const { return prt.getValue(); }
-  size_t connections() const { return con.getValue(); }
   bool wait() const { return wai.isSet(); }
   size_t length() const { return len.getValue(); }
   size_t count() const { return cnt.getValue(); }
@@ -51,7 +50,6 @@ private:
   TCLAP::ValueArg<size_t> dly;
   TCLAP::ValueArg<std::string> iff;
   TCLAP::MultiArg<uint16_t> prt;
-  TCLAP::ValueArg<size_t> con;
   TCLAP::SwitchArg wai;
   TCLAP::ValueArg<size_t> len;
   TCLAP::ValueArg<size_t> cnt;

@@ -3,6 +3,7 @@
 #include <tulips/stack/ethernet/Producer.h>
 #include <tulips/stack/ipv4/Processor.h>
 #include <tulips/stack/ipv4/Producer.h>
+#include <tulips/stack/tcpv4/Connection.h>
 #include <tulips/stack/tcpv4/Processor.h>
 #include <tulips/system/Compiler.h>
 #include <tulips/system/Logger.h>
@@ -225,7 +226,7 @@ protected:
     m_cli_eth_proc = new ethernet::Processor(m_log, m_cdev->address());
     m_cli_ip4_proc = new ipv4::Processor(m_log, m_cip4);
     m_cli_tcp = new tcpv4::Processor(m_log, *m_cdev, *m_cli_eth_prod,
-                                     *m_cli_ip4_prod, *m_cli_evt, 1);
+                                     *m_cli_ip4_prod, *m_cli_evt);
     /*
      * Client processor binding
      */
@@ -246,7 +247,7 @@ protected:
     m_srv_eth_proc = new ethernet::Processor(m_log, m_sdev->address());
     m_srv_ip4_proc = new ipv4::Processor(m_log, m_sip4);
     m_srv_tcp = new tcpv4::Processor(m_log, *m_sdev, *m_srv_eth_prod,
-                                     *m_srv_ip4_prod, *m_srv_evt, 1);
+                                     *m_srv_ip4_prod, *m_srv_evt);
     /*
      * Server processor binding
      */
@@ -395,7 +396,7 @@ TEST_F(TCP_Nagle, ConnectSendConsecutiveNagle)
   /*
    * Fill all segments.
    */
-  for (int i = 0; i < 1 << SEGM_B; i += 1) {
+  for (size_t i = 0; i < tcpv4::Connection::SEGMENT_COUNT; i += 1) {
     res = 0;
     pld[1] = 2 * i;
     ASSERT_EQ(Status::Ok, m_cli_tcp->send(c, PKTLEN, (uint8_t*)&pld, res));
@@ -420,7 +421,7 @@ TEST_F(TCP_Nagle, ConnectSendConsecutiveNagle)
   /*
    * Receive the combined payloads.
    */
-  for (int i = 0; i < 1 << SEGM_B; i += 1) {
+  for (size_t i = 0; i < tcpv4::Connection::SEGMENT_COUNT; i += 1) {
     ASSERT_EQ(Status::Ok, m_sdev->poll(*m_srv_eth_proc));
     ASSERT_EQ(Status::Ok, m_cdev->poll(*m_cli_eth_proc));
     ASSERT_EQ(2 * PKTLEN, m_srv_evt->receivedLength());

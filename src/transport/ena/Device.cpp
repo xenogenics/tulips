@@ -44,7 +44,11 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_buffer(system::FrameBuffer::allocate(16384))
   , m_free()
   , m_sent()
-  , m_laststats(0)
+  , m_statsts(0)
+  , m_txpktcnt(0)
+  , m_txbytcnt(0)
+  , m_rxpktcnt(0)
+  , m_rxbytcnt(0)
   , m_address(address)
   , m_mtu(mtu)
 {
@@ -166,14 +170,37 @@ Device::poll(Processor& proc)
   /*
    * Print the stats every seconds on queue 0.
    */
-  if (m_qid == 0 && Clock::instant() - m_laststats >= PERIOD) {
+  if (m_qid == 0 && start_ts - m_statsts >= PERIOD) {
+    /*
+     * Read the stats.
+     */
     struct rte_eth_stats stats;
     rte_eth_stats_get(m_portid, &stats);
-    m_log.debug("ENA", "TX: pkts=", stats.opackets, " byts=", stats.obytes,
-                " errs=", stats.oerrors);
-    m_log.debug("ENA", "RX: pkts=", stats.ipackets, " byts=", stats.ibytes,
-                " errs=", stats.ierrors, " miss=", stats.imissed);
-    m_laststats = Clock::instant();
+    /*
+     * Get the delta.
+     */
+    auto txpktcnt = stats.opackets - m_txpktcnt;
+    auto txbytcnt = stats.obytes - m_txbytcnt;
+    auto rxpktcnt = stats.ipackets - m_rxpktcnt;
+    auto rxbytcnt = stats.ibytes - m_rxbytcnt;
+    /*
+     * Log the stats.
+     */
+    m_log.debug("ENA", "TX(pkts=", txpktcnt, ", byts=", txbytcnt,
+                ", errs=", stats.oerrors, "), RX(pkts=", rxpktcnt,
+                ", byts=", rxbytcnt, ", errs=", stats.ierrors,
+                ", miss=", stats.imissed, ")");
+    /*
+     * Save the counters.
+     */
+    m_txpktcnt = stats.opackets;
+    m_txbytcnt = stats.obytes;
+    m_rxpktcnt = stats.ipackets;
+    m_rxbytcnt = stats.ibytes;
+    /*
+     * Update the timestamp.
+     */
+    m_statsts = start_ts;
   }
   /*
    * Clear buffers sent out-of-band.

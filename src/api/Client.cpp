@@ -12,12 +12,11 @@ using namespace stack;
  */
 
 Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
-               const size_t nconn, stack::ipv4::Address const& ip,
-               stack::ipv4::Address const& gw, stack::ipv4::Address const& nm)
+               stack::ipv4::Address const& ip, stack::ipv4::Address const& gw,
+               stack::ipv4::Address const& nm)
   : m_log(log)
   , m_delegate(dlg)
   , m_dev(device)
-  , m_nconn(nconn)
   , m_ethto(log, m_dev, device.address())
   , m_ip4to(log, m_ethto, ip)
 #ifdef TULIPS_ENABLE_ARP
@@ -31,7 +30,7 @@ Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
 #ifdef TULIPS_ENABLE_RAW
   , m_raw()
 #endif
-  , m_tcp(log, device, m_ethto, m_ip4to, *this, nconn)
+  , m_tcp(log, device, m_ethto, m_ip4to, *this)
   , m_cns()
 {
   /*
@@ -69,7 +68,7 @@ Client::Client(system::Logger& log, Delegate& dlg, transport::Device& device,
   /*
    * Reserve connections.
    */
-  m_cns.resize(nconn);
+  m_cns.reserve(512);
 }
 
 bool
@@ -101,6 +100,12 @@ Client::open(const ApplicationLayerProtocol alpn, const uint16_t options,
     return ret;
   }
   /*
+   * Check if we need to allocate the connection.
+   */
+  if (id == m_cns.size()) {
+    m_cns.emplace_back();
+  }
+  /*
    * Save the options and return.
    */
   m_cns[id].open(alpn, options);
@@ -113,13 +118,13 @@ Client::setHostName(const ID id, std::string_view hostname)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
    * Get the connections.
    */
-  Connection& c = m_cns[id];
+  auto& c = m_cns[id];
   /*
    * Check if the connection is the right state.
    */
@@ -139,13 +144,13 @@ Client::getHostName(const ID id, std::optional<std::string>& hostname)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
    * Get the connections.
    */
-  Connection& c = m_cns[id];
+  auto& c = m_cns[id];
   /*
    * Get the hostname.
    */
@@ -161,13 +166,13 @@ Client::connect(const ID id, ipv4::Address const& ripaddr,
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
    * Get the connection.
    */
-  Connection& c = m_cns[id];
+  auto& c = m_cns[id];
   /*
    * Go through the states.
    */
@@ -262,13 +267,13 @@ Client::abort(const ID id)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
    * Get the connection.
    */
-  Connection& c = m_cns[id];
+  auto& c = m_cns[id];
   /*
    * Check if the connection is connected.
    */
@@ -288,13 +293,13 @@ Client::close(const ID id)
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
    * Get the connection.
    */
-  Connection& c = m_cns[id];
+  auto& c = m_cns[id];
   /*
    * Check if the connection is connected.
    */
@@ -313,13 +318,13 @@ Client::isClosed(const ID id) const
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return true;
   }
   /*
    * Get the connection.
    */
-  Connection const& c = m_cns[id];
+  auto const& c = m_cns[id];
   /*
    * Done.
    */
@@ -333,7 +338,7 @@ Client::get(const ID id, stack::ipv4::Address& laddr, stack::tcpv4::Port& lport,
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -355,7 +360,7 @@ Client::send(const ID id, const uint32_t len, const uint8_t* const data,
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return Status::InvalidConnection;
   }
   /*
@@ -390,10 +395,10 @@ Client::applicationLayerProtocol(const ID id) const
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return ApplicationLayerProtocol::None;
   }
-  Connection const& c = m_cns[id];
+  auto const& c = m_cns[id];
   /*
    * Compute the latency.
    */
@@ -406,7 +411,7 @@ Client::cookie(const ID id) const
   /*
    * Check if connection ID is valid.
    */
-  if (id >= m_nconn) {
+  if (id >= m_cns.size()) {
     return nullptr;
   }
   /*
@@ -418,7 +423,7 @@ Client::cookie(const ID id) const
 void
 Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 {
-  Connection& d = m_cns[c.id()];
+  auto& d = m_cns[c.id()];
   m_log.debug("APICLI", "<", c.id(), "> connected");
   d.connected();
   c.setCookie(m_delegate.onConnected(c.id(), nullptr, ts));
@@ -428,7 +433,7 @@ Client::onConnected(tcpv4::Connection& c, const Timestamp ts)
 void
 Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
 {
-  Connection& d = m_cns[c.id()];
+  auto& d = m_cns[c.id()];
   /*
    * Close the connection.
    */
@@ -448,7 +453,7 @@ Client::onAborted(tcpv4::Connection& c, const Timestamp ts)
 void
 Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 {
-  Connection& d = m_cns[c.id()];
+  auto& d = m_cns[c.id()];
   /*
    * Close the connection.
    */
@@ -468,7 +473,7 @@ Client::onTimedOut(tcpv4::Connection& c, const Timestamp ts)
 void
 Client::onClosed(tcpv4::Connection& c, const Timestamp ts)
 {
-  Connection& d = m_cns[c.id()];
+  auto& d = m_cns[c.id()];
   /*
    * Close the connection.
    */

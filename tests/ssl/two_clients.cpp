@@ -252,13 +252,13 @@ protected:
     /*
      * Create the client.
      */
-    m_client = ssl::Client::allocate(m_log, m_cdlg, *m_cdev, 2, m_cip4, route,
+    m_client = ssl::Client::allocate(m_log, m_cdlg, *m_cdev, m_cip4, route,
                                      nmask, tulips::ssl::Protocol::TLS, cert,
                                      key);
     /*
      * Create the server.
      */
-    m_server = ssl::Server::allocate(m_log, m_sdlg, *m_sdev, 2, m_sip4, route,
+    m_server = ssl::Server::allocate(m_log, m_sdlg, *m_sdev, m_sip4, route,
                                      nmask, tulips::ssl::Protocol::TLS, cert,
                                      key);
     /*

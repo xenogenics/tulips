@@ -2,8 +2,8 @@
 
 namespace tulips::stack::tcpv4 {
 
-Connection::Connection()
-  : m_id(-1)
+Connection::Connection(const ID id)
+  : m_id(id)
   , m_rethaddr()
   , m_ripaddr()
   , m_lport(0)
@@ -17,7 +17,6 @@ Connection::Connection()
   , m_live(false)
   , m_wndscl(0)
   , m_window(0)
-  , m_segidx(0)
   , m_nrtx(0)
   , m_slen(0)
   , m_initialmss(0)
@@ -31,9 +30,8 @@ Connection::Connection()
   , m_opts(0)
   , m_sdat(nullptr)
   , m_cookie(nullptr)
-  , m_fb(128ULL * 1024)
-  , m_avlseg(SEGMENT_COUNT)
-  , m_segments()
+  , m_fbuf(1024ULL * 1024)
+  , m_segs(Segments<SEGMENT_COUNT, SEGMENT_BMASK>::allocate())
 {}
 
 }
