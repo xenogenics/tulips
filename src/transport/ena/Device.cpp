@@ -28,14 +28,15 @@
 
 namespace tulips::transport::ena {
 
-Device::Device(system::Logger& log, const uint16_t port_id,
-               const uint16_t queue_id, const uint16_t ntxbs,
-               const uint16_t nrxbs, RedirectionTable& reta,
-               stack::ethernet::Address const& address, const uint32_t mtu,
-               struct rte_mempool* const txpool, const bool bound)
-  : transport::Device(log, "ena_" + std::to_string(queue_id))
-  , m_portid(port_id)
-  , m_qid(queue_id)
+Device::Device(system::Logger& log, const uint16_t pid, const uint16_t qid,
+               const uint16_t nqus, const uint16_t ntxbs, const uint16_t nrxbs,
+               RedirectionTable& reta, stack::ethernet::Address const& addr,
+               const uint32_t mtu, struct rte_mempool* const txpool,
+               const bool bound)
+  : transport::Device(log, "ena_" + std::to_string(qid))
+  , m_portid(pid)
+  , m_qid(qid)
+  , m_nqus(nqus)
   , m_ntxbs(ntxbs)
   , m_nrxbs(nrxbs)
   , m_reta(reta)
@@ -49,7 +50,7 @@ Device::Device(system::Logger& log, const uint16_t port_id,
   , m_txbytcnt(0)
   , m_rxpktcnt(0)
   , m_rxbytcnt(0)
-  , m_address(address)
+  , m_address(addr)
   , m_mtu(mtu)
 {
   /*
@@ -71,8 +72,8 @@ Device::Device(system::Logger& log, const uint16_t port_id,
    * Print some device information.
    */
   if (m_qid > 0) {
-    log.debug("ENA", "port id: ", port_id);
-    log.debug("ENA", "queue id: ", queue_id);
+    log.debug("ENA", "port id: ", pid);
+    log.debug("ENA", "queue id: ", qid);
   }
 }
 
@@ -156,6 +157,7 @@ Device::poll(Processor& proc)
    * Print statistics every 10 seconds.
    */
   static const size_t PERIOD = 10 * Clock::toTicks(system::Clock::SECOND);
+  static const size_t GIGABYTE = 1024ULL * 1024 * 1024;
   /*
    * Cap the execution of the processor to 10ms.
    */
@@ -184,12 +186,17 @@ Device::poll(Processor& proc)
     auto rxpktcnt = stats.ipackets - m_rxpktcnt;
     auto rxbytcnt = stats.ibytes - m_rxbytcnt;
     /*
+     * Compute the bandwidth.
+     */
+    auto bw = (double(rxbytcnt) / double(GIGABYTE)) / 10;
+    /*
      * Log the stats.
      */
-    m_log.debug("ENA", "TX(pkts=", txpktcnt, ", byts=", txbytcnt,
-                ", errs=", stats.oerrors, "), RX(pkts=", rxpktcnt,
-                ", byts=", rxbytcnt, ", errs=", stats.ierrors,
-                ", miss=", stats.imissed, ")");
+    m_log.debug("ENA", "TX", m_portid, ": pkts=", txpktcnt, ", byts=", txbytcnt,
+                ", errs=", stats.oerrors);
+    m_log.debug("ENA", "RX", m_portid, ": pkts=", rxpktcnt, ", byts=", rxbytcnt,
+                ", bandwidth=", bw, "GB/s", ", errs=", stats.ierrors,
+                ", miss=", stats.imissed);
     /*
      * Save the counters.
      */

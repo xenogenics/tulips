@@ -7,7 +7,6 @@
 #include <tulips/transport/ena/RawProcessor.h>
 #include <tulips/transport/ena/RedirectionTable.h>
 #include <list>
-#include <string>
 #include <vector>
 #include <dpdk/rte_ethdev.h>
 #include <dpdk/rte_mempool.h>
@@ -26,15 +25,14 @@ public:
   Device::Ref next(system::Logger& log, const bool bonded);
 
 private:
-  void configure(struct rte_eth_dev_info const& dev_info, const uint16_t nqus);
+  void configure(struct rte_eth_dev_info const& dev_info);
 
-  void setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
-                           const uint16_t nqus);
+  void setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen);
 
-  void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
-                               const uint16_t nqus);
+  void setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info);
 
   system::Logger& m_log;
+  size_t m_nqus;
   size_t m_ntxds;
   size_t m_nrxds;
   uint16_t m_portid;

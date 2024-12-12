@@ -109,7 +109,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
    */
   auto ntxq = RTE_MIN(width, dev_info.max_tx_queues);
   auto nrxq = RTE_MIN(width, dev_info.max_rx_queues);
-  auto nqus = RTE_MIN(nrxq, ntxq);
+  m_nqus = RTE_MIN(nrxq, ntxq);
   /*
    * Get the TX descriptor count.
    */
@@ -127,19 +127,19 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   log.debug("ENA", "name: ", rte_dev_name(dev_info.device));
   log.debug("ENA", "hardware address: ", m_address.toString());
   log.debug("ENA", "MTU: ", m_mtu);
-  log.debug("ENA", "TX queues: ", nqus, "/", dev_info.max_tx_queues);
-  log.debug("ENA", "RX queues: ", nqus, "/", dev_info.max_rx_queues);
+  log.debug("ENA", "TX queues: ", m_nqus, "/", dev_info.max_tx_queues);
+  log.debug("ENA", "RX queues: ", m_nqus, "/", dev_info.max_rx_queues);
   log.debug("ENA", "TX buffers: ", m_ntxds, "/", dev_info.tx_desc_lim.nb_max);
   log.debug("ENA", "RX buffers: ", m_nrxds, "/", dev_info.rx_desc_lim.nb_max);
   log.debug("ENA", "buffer length: ", buflen);
   /*
    * Configure the device.
    */
-  configure(dev_info, nqus);
+  configure(dev_info);
   /*
    * Setup the pools and queues.
    */
-  setupPoolsAndQueues(ifn, buflen, nqus);
+  setupPoolsAndQueues(ifn, buflen);
   /*
    * Start the port.
    */
@@ -150,7 +150,7 @@ Port::Port(system::Logger& log, std::string_view ifn, const size_t width,
   /*
    * Update the RSS state.
    */
-  setupReceiveSideScaling(dev_info, nqus);
+  setupReceiveSideScaling(dev_info);
   /*
    * Reset the statistics of the port.
    */
@@ -232,8 +232,8 @@ Port::next(system::Logger& log, const bool bound)
   /*
    * Allocate the new device.
    */
-  auto* dev = new ena::Device(log, m_portid, qid, m_ntxds, m_nrxds, *m_reta,
-                              m_address, m_mtu, txpool, bound);
+  auto* dev = new ena::Device(log, m_portid, qid, m_nqus, m_ntxds, m_nrxds,
+                              *m_reta, m_address, m_mtu, txpool, bound);
   /*
    * Add the device queue to the raw processor.
    */
@@ -247,8 +247,7 @@ Port::next(system::Logger& log, const bool bound)
 }
 
 void
-Port::configure(UNUSED struct rte_eth_dev_info const& dev_info,
-                const uint16_t nqus)
+Port::configure(UNUSED struct rte_eth_dev_info const& dev_info)
 {
   /*
    * Erase the configurations.
@@ -290,15 +289,14 @@ Port::configure(UNUSED struct rte_eth_dev_info const& dev_info,
   /*
    * Configure the device.
    */
-  auto ret = rte_eth_dev_configure(m_portid, nqus, nqus, &m_ethconf);
+  auto ret = rte_eth_dev_configure(m_portid, m_nqus, m_nqus, &m_ethconf);
   if (ret != 0) {
     throw std::runtime_error("Failed to configure the device");
   }
 }
 
 void
-Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
-                          const uint16_t nqus)
+Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen)
 {
   /*
    * Get the NUMA node.
@@ -307,7 +305,7 @@ Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
   /*
    * Configure the RX queues.
    */
-  for (size_t i = 0; i < nqus; i += 1) {
+  for (size_t i = 0; i < m_nqus; i += 1) {
     char name[32];
     /*
      * Allocate the pool.
@@ -331,7 +329,7 @@ Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
   /*
    * Configure the TX pools.
    */
-  for (size_t i = 0; i < nqus; i += 1) {
+  for (size_t i = 0; i < m_nqus; i += 1) {
     char name[32];
     /*
      * Allocate the pool.
@@ -355,14 +353,13 @@ Port::setupPoolsAndQueues(std::string_view ifn, const uint16_t buflen,
   /*
    * Update the free list. We reserve the 0th queue.
    */
-  for (size_t i = 0; i < nqus; i += 1) {
+  for (size_t i = 0; i < m_nqus; i += 1) {
     m_free.push_back(i);
   }
 }
 
 void
-Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
-                              const uint16_t nqus)
+Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info)
 {
   auto hlen = dev_info.hash_key_size;
   auto hkey = new uint8_t[hlen];
@@ -393,7 +390,7 @@ Port::setupReceiveSideScaling(struct rte_eth_dev_info const& dev_info,
    * Allocate the redirection table.
    */
   auto size = dev_info.reta_size;
-  m_reta = RedirectionTable::allocate(m_portid, nqus, size, hlen, hkey, dflt);
+  m_reta = RedirectionTable::allocate(m_portid, m_nqus, size, hlen, hkey, dflt);
 }
 
 }
