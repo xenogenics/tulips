@@ -267,6 +267,8 @@ protected:
     m_server->listen(12345, nullptr);
   }
 
+  void TearDown() override { system::Clock::get().resetOffset(); }
+
   system::ConsoleLogger m_log;
   transport::list::Device::List m_clst;
   transport::list::Device::List m_slst;

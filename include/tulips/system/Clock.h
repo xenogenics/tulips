@@ -30,6 +30,7 @@ public:
   inline static Epoch instant() { return cycles() + toTicks(get().offset()); }
   inline static Epoch now() { return clock() + get().offset(); }
 
+  inline void resetOffset() { m_offset = 0; }
   inline void offsetBy(const size_t offset) { m_offset += offset; }
   inline Epoch offset() const { return m_offset; }
 #else
