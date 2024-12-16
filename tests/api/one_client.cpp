@@ -1,3 +1,4 @@
+#include "tulips/system/Clock.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>

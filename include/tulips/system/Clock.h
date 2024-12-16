@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <ctime>
 
@@ -40,12 +41,14 @@ public:
 
   inline static size_t toNanos(const size_t v)
   {
-    return (v * SECOND) / TICKS_PER_SECOND;
+    const auto w = (long double)v / TICKS_PER_SECOND;
+    return std::llround(w * SECOND);
   }
 
   inline static size_t toTicks(const size_t v)
   {
-    return (v * TICKS_PER_SECOND) / SECOND;
+    const auto w = (long double)v / SECOND;
+    return std::llround(w * TICKS_PER_SECOND);
   }
 
 private:
