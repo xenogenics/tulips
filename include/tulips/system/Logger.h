@@ -104,7 +104,8 @@ protected:
   void flush(UNUSED const Level level, std::string_view hdr,
              std::string&& value) final
   {
-    std::cout << "[ " << std::setw(8) << hdr << " ] " << value << std::endl;
+    std::cout << "[ " << std::setw(8) << hdr << " ] ";
+    std::cout << std::fixed << std::setprecision(5) << value << std::endl;
   }
 };
 
@@ -129,7 +130,8 @@ protected:
              std::string&& value) final
   {
     std::lock_guard<system::SpinLock> lock(m_lock);
-    m_stream << "[ " << std::setw(8) << hdr << " ] " << value << std::endl;
+    m_stream << "[ " << std::setw(8) << hdr << " ] ";
+    m_stream << std::fixed << std::setprecision(5) << value << std::endl;
   }
 
 private:

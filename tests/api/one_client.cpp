@@ -1,3 +1,4 @@
+#include "tulips/system/Clock.h"
 #include <tulips/api/Client.h>
 #include <tulips/api/Defaults.h>
 #include <tulips/api/Server.h>
@@ -107,6 +108,8 @@ protected:
     m_server =
       api::Server::allocate(m_log, m_sdlg, *m_sdev, m_sip4, route, nmask);
   }
+
+  void TearDown() override { system::Clock::get().resetOffset(); }
 
   system::ConsoleLogger m_log;
   ethernet::Address m_cadr;

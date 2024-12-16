@@ -61,10 +61,11 @@ public:
 private:
   using SentBuffer = std::tuple<uint16_t, uint8_t*>;
 
-  Device(system::Logger& log, const uint16_t port_id, const uint16_t queue_id,
-         const uint16_t ntxbs, const uint16_t nrxbs, RedirectionTable& reta,
-         stack::ethernet::Address const& m_address, const uint32_t m_mtu,
-         struct rte_mempool* const txpool, const bool bound);
+  Device(system::Logger& log, const uint16_t pid, const uint16_t qid,
+         const uint16_t nqus, const uint16_t ntxbs, const uint16_t nrxbs,
+         RedirectionTable& reta, stack::ethernet::Address const& addr,
+         const uint32_t mtu, struct rte_mempool* const txpool,
+         const bool bound);
 
   system::FrameBuffer::Ref internalBuffer() { return m_buffer; }
 
@@ -74,6 +75,7 @@ private:
 
   uint16_t m_portid;
   uint16_t m_qid;
+  uint16_t m_nqus;
   uint16_t m_ntxbs;
   uint16_t m_nrxbs;
   RedirectionTable& m_reta;

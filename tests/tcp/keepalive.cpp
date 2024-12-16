@@ -257,6 +257,10 @@ protected:
   void TearDown() override
   {
     /*
+     * Reset the clock offset.
+     */
+    system::Clock::get().resetOffset();
+    /*
      * Delete client stack.
      */
     delete m_cli_evt;
